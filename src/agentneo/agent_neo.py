@@ -1,5 +1,5 @@
 import requests
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Tuple
 
 
 BASE_URL = "http://74.249.60.46:5000"
@@ -7,22 +7,91 @@ BASE_URL = "http://74.249.60.46:5000"
 
 class AgentNeo:
     def __init__(
-        self, access_key: str, secret_key: str, base_url: Optional[str] = None
+        self,
+        access_key: Optional[str] = None,
+        secret_key: Optional[str] = None,
+        email: Optional[str] = None,
+        base_url: Optional[str] = None,
     ):
-        self.access_key = access_key
-        self.secret_key = secret_key
         self.base_url = base_url or BASE_URL
         self.token = None
 
+        if access_key and secret_key:
+            self.access_key = access_key
+            self.secret_key = secret_key
+        elif email:
+            self.access_key, self.secret_key = self._get_or_create_user(email)
+        else:
+            raise ValueError(
+                "Either (access_key, secret_key) or email must be provided"
+            )
+
+        if not self.authenticate():
+            raise AuthenticationError("Invalid or empty access key and secret key.")
+
+    def _get_or_create_user(self, email: str) -> Tuple[str, str]:
+        try:
+            keys = self.get_user_keys(email)
+            print(f"Existing user found for email: {email}")
+            print("Please keep your access key and secret key handy for future logins:")
+            print(f"Access Key: {keys['access_key']}")
+            print(f"Secret Key: {keys['secret_key']}")
+            return keys["access_key"], keys["secret_key"]
+        except KeyRetrievalError:
+            print(f"User not found for email: {email}. Creating new user...")
+            try:
+                user = self.create_user(email)
+                print(f"New user created for email: {email}")
+                print(
+                    "Please keep your access key and secret key handy for future logins:"
+                )
+                print(f"Access Key: {user['access_key']}")
+                print(f"Secret Key: {user['secret_key']}")
+                return user["access_key"], user["secret_key"]
+            except UserCreationError as e:
+                print(f"Failed to create user: {str(e)}")
+                raise AuthenticationError(
+                    f"Unable to authenticate or create user for email: {email}"
+                )
+
     def authenticate(self):
-        response = requests.post(
-            f"{self.base_url}/auth/authenticate",
-            json={"access_key": self.access_key, "secret_key": self.secret_key},
-        )
-        if response.status_code == 200:
+        if not self.access_key or not self.secret_key:
+            return False
+        try:
+            response = requests.post(
+                f"{self.base_url}/auth/authenticate",
+                json={"access_key": self.access_key, "secret_key": self.secret_key},
+                timeout=10,
+            )
+            response.raise_for_status()
             self.token = response.json()["token"]
             return True
-        return False
+        except requests.RequestException as e:
+            print(f"Authentication failed: {str(e)}")
+            return False
+        except KeyError:
+            print("Authentication failed: Invalid response format")
+            return False
+
+    def get_user_keys(self, email: str) -> Dict[str, str]:
+        response = requests.post(
+            f"{self.base_url}/auth/get_user_keys",
+            json={"email": email},
+        )
+        if response.status_code == 200:
+            data = response.json()
+            if "access_key" in data and "secret_key" in data:
+                return data
+        raise KeyRetrievalError(f"Failed to retrieve keys for user: {email}")
+
+    def create_user(self, email: str) -> Dict:
+        response = requests.post(
+            f"{self.base_url}/auth/create_user",
+            json={"email": email},
+        )
+        if response.status_code == 201:
+            return response.json()
+        raise UserCreationError(f"Failed to create user: {response.json()}")
 
     def _check_authentication(self):
         if not self.token:
@@ -54,135 +123,14 @@ class AgentNeo:
         else:
             raise Exception(f"Request failed: {response.json()}")
 
-    def list_projects(self) -> List[Dict[str, Any]]:
-        projects = self._make_request("GET", "projects/get_projects")
-        if not projects:
-            print("No projects available.")
-            return
-        print("Available projects:")
-        for project in projects:
-            print(f"- {project['name']}")
-        return
 
-    def create_project(self, name: str, description: str) -> Dict[str, Any]:
-        response = self._make_request(
-            "POST",
-            "projects/create_project",
-            data={"name": name, "description": description},
-        )
-        if "id" in response:
-            print(f"Project '{name}' created successfully with ID: {response['id']}")
-        else:
-            print(f"Failed to create project '{name}'. Response: {response}")
-        return response
+class AuthenticationError(Exception):
+    pass
 
-    # def list_datasets(self) -> List[Dict[str, Any]]:
-    #     datasets = self._make_request("GET", "datasets/get_datasets")
-    #     if not datasets:
-    #         print("No datasets available.")
-    #         return
-    #     print("Available datasets:")
-    #     for dataset in datasets:
-    #         print(f"- {dataset['name']}")
-    #     return
 
-    # def create_dataset_from_trace(
-    #     self,
-    #     name: str,
-    #     description: str,
-    #     project_id: int,
-    #     trace_id: str,
-    #     trace_filter: Optional[Dict] = None,
-    # ) -> Dict[str, Any]:
-    #     return self._make_request(
-    #         "POST",
-    #         "datasets/dataset_from_trace",
-    #         data={
-    #             "name": name,
-    #             "description": description,
-    #             "project_id": project_id,
-    #             "trace_id": trace_id,
-    #             "trace_filter": trace_filter,
-    #         },
-    #     )
+class KeyRetrievalError(Exception):
+    pass
 
-    # def create_dataset_from_json(
-    #     self, name: str, description: str, project_id: int, filepath: str
-    # ) -> Dict[str, Any]:
-    #     return self._make_request(
-    #         "POST",
-    #         "datasets/dataset_from_json",
-    #         data={
-    #             "name": name,
-    #             "description": description,
-    #             "project_id": project_id,
-    #             "filepath": filepath,
-    #         },
-    #     )
 
-    # def list_experiments(self) -> List[Dict[str, Any]]:
-    #     experiments = self._make_request("GET", "experiments/get_experiments")
-    #     if not experiments:
-    #         print("No experiments available.")
-    #         return
-    #     print("Available experiments:")
-    #     for experiment in experiments:
-    #         print(f"- {experiment['name']}")
-    #     return
-
-    # def execute_experiment(
-    #     self,
-    #     project_id: int,
-    #     dataset_id: int,
-    #     name: str,
-    #     description: str,
-    #     metrics: List[Dict[str, Any]],
-    # ) -> Dict[str, Any]:
-    #     return self._make_request(
-    #         "POST",
-    #         "experiments/execute_experiment",
-    #         data={
-    #             "project_id": project_id,
-    #             "dataset_id": dataset_id,
-    #             "name": name,
-    #             "description": description,
-    #             "metrics": metrics,
-    #         },
-    #     )
-
-    # def get_experiment_results(self, experiment_id: int) -> Dict[str, Any]:
-    #     return self._make_request(
-    #         "GET", f"experiments/get_experiment_results?id={experiment_id}"
-    #     )
-
-    def log_trace(self, trace_file_path: str) -> Dict[str, Any]:
-        with open(trace_file_path, "rb") as trace_file:
-            return self._make_request(
-                "POST",
-                "trace/log_trace",
-                files={"trace_file": trace_file},
-            )
-
-    def list_metrics(self) -> List[Dict[str, Any]]:
-        metrics = self._make_request("GET", "metrics/get_metrics")
-        if not metrics:
-            print("No metrics available.")
-            return
-        print("Available metrics:")
-        for metric in metrics:
-            print(f"- {metric['name']}")
-        return
-
-    def execute_metric(
-        self, experiment_id: int, metrics: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
-        return self._make_request(
-            "POST",
-            "experiments/execute_experiment",
-            data={"experiment_id": experiment_id, "metrics": metrics},
-        )
-
-    def get_metric_results(self, experiment_id: int) -> List[Dict[str, Any]]:
-        return self._make_request(
-            "GET", "metrics/get_metric_results", data={"experiment_id": experiment_id}
-        )
+class UserCreationError(Exception):
+    pass
