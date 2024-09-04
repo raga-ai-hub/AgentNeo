@@ -67,6 +67,9 @@ class Tracer:
         self.traces = []
         self.server_url = session.base_url
 
+        self.trace_llms = []
+        self.trace_console = []
+
         temp_dir = tempfile.gettempdir()
         self.log_file_path = os.path.join(temp_dir, f".neo_trace_{time.time()}.json")
 
