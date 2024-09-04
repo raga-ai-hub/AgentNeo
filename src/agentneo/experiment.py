@@ -35,16 +35,21 @@ class Experiment:
         return response
 
     def execute(self, metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
-        return self.session._make_request(
-            "POST",
-            "experiments/execute_experiment",
-            data={
-                "name": self.experiment_name,
-                "project_id": self.project_id,
-                "dataset_id": self.dataset_id,
-                "metrics": metrics,
-            },
-        )
+        try:
+            response = self.session._make_request(
+                "POST",
+                "experiments/execute_experiment",
+                data={
+                    "name": self.experiment_name,
+                    "project_id": self.project_id,
+                    "dataset_id": self.dataset_id,
+                    "metrics": metrics,
+                },
+            )
+            return response
+        except Exception as e:
+            print(f"An error occurred while executing the experiment: {str(e)}")
+            return {"error": str(e)}
 
     def get_results(self, experiment_id: int) -> Dict[str, Any]:
         return self.session._make_request(

@@ -3,6 +3,9 @@ logs
 *.pyc
 __pycache__
 .DS_Store
+venv/
+*.zip
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
