@@ -13,11 +13,17 @@ from agentneo import AgentNeo
 
 ## To authenticate
 ```python
+# To autheticate if you have access to RAGAAI AgentNeo ACCESS_KEY & SECRET_KEY
 agent_session = AgentNeo(
     access_key=ACCESS_KEY,
     secret_key=SECRET_KEY,
-    base_url=BASE_URL
+    base_url=BASE_URL # "http://74.249.60.46:5000"
 )
+```
+
+```py
+# To autheticate using email-id, creates new account if is not a user else retrieves the existing account
+agent_session = AgentNeo(email="your.mailid@domain.com", base_url=BASE_URL)
 ```
 
 ## Project Management
@@ -25,13 +31,11 @@ Allows listing and creating projects
 ```python
 from agentneo import Project
 
-# To list the available projects
-Project.list_projects(session=agent_session)
-
 # To create a new project
 project = Project(session=agent_session, 
                   project_name="project_name", 
                   description="Project Description").create()
+project_id = project['id']
 ```
 
 ## Trace Management
@@ -40,7 +44,12 @@ Enables tracing of agents, methods, and LangGraph graphs
 from agentneo import Trace
 
 # Create a tracer object
-tracer = Tracer(session=agent_session)
+tracer = Tracer(session=agent_session, metadata={
+                tools= [
+                    {"name": "name1", "description": "tool_description1"},
+                    {"name": "name2", "description": "tool_description2"},
+                    ...
+                ])
 
 # Decorator to trace agents & methods
 @tracer.trace_node
@@ -62,9 +71,6 @@ Allows creation and management of datasets
 ```python
 from agentneo import Dataset
 
-# To list the available Datasets
-Dataset.list_datasets(session=agent_session)
-
 # To define a new dataset
 dataset = Dataset(
     session=agent_session,
@@ -75,19 +81,12 @@ dataset = Dataset(
 
 # Create dataset from recorded trace
 dataset_traced = dataset.from_trace(trace_id=tracer.id, trace_filter=None)
-
-# Create dataset from json dataset
-dataset_json = dataset.from_json(json_filepath=filepath, 
-                                 schema={"key": "value"})
 ```
 
 ## Experiment Management
 Allows creation, execution, and analysis of experiments
 ```python
 from agentneo import Experiment
-
-# To list the available experiments
-Experiment.list_experiments(session=agent_session)
 
 # Create a new experiment 
 experiment_object = Experiment(
@@ -103,7 +102,7 @@ experiment_created = experiment_object.create()
 # To run a metric
 exp = experiment.execute(metrics=[
     {
-            "name": "goal_fulfillment_rate", 
+            "name": "tool_selection_accuracy", 
             "config": {
                     "model": "gpt-4o-mini", 
                     "OPENAI_API_KEY": os.environ.get("OPENAI_API_KEY")
@@ -118,21 +117,28 @@ exp = experiment.execute(metrics=[
             "config": {}
     },
     {
-            "name": "tool_correctness", 
+            "name": "tool_selection_accuracy", 
             "config": {
                     "model": "gpt-4o-mini", 
                     "OPENAI_API_KEY": os.environ.get("OPENAI_API_KEY")
             }
     },
     {
-            "name": "tool_call_success_rate", 
+            "name": "tool_usage_efficiency", 
             "config": {
                     "model": "gpt-4o-mini", 
                     "OPENAI_API_KEY": os.environ.get("OPENAI_API_KEY")
             }
     },
     {
-            "name": "goal_fulfillment_rate", 
+            "name": "goal_decomposition_efficiency", 
+            "config": {
+                    "model": "gpt-4o-mini", 
+                    "OPENAI_API_KEY": os.environ.get("OPENAI_API_KEY")
+            }
+    },
+    {
+            "name": "plan_adaptibility", 
             "config": {
                     "model": "gpt-4o-mini", 
                     "OPENAI_API_KEY": os.environ.get("OPENAI_API_KEY")
@@ -141,5 +147,12 @@ exp = experiment.execute(metrics=[
 ])
 
 # To get the results of the experiments run
-experiment.get_results(exp.id)
+exp = experiment.get_results(experiment_id=exp.id)
+
+for i in exp['results']:
+    print(f"Name: {i['metric_name']}")
+    print(f"Result:")
+    for key, value in i['result'].items():
+        print(f"{key}: {value}")
+    print(f"{'*'*100}\n")
 ```
