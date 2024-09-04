@@ -1,6 +1,6 @@
 [project]
 name = "agentneo"
-version = "0.1.3.beta.1"
+version = "0.1.3.1"
 authors = [
   { name="Kiran Scaria", email="kiran.scaria@raga.ai" },
 ]
@@ -23,7 +23,8 @@ classifiers = [
 dependencies = [
     "requests>=2.25.1",
     "langchain>=0.2.1",
-    "requests-toolbelt~=1.0.0"
+    "requests-toolbelt~=1.0.0",
+    "openai~=1.43.0"
 ]
 
 [build-system]
