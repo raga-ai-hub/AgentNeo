@@ -1,5 +1,8 @@
 # AgentNeo
 
+[![Example Notebook](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1m_zfLYZaamIvK6hENyr4FWMJMjfZgkv7?usp=sharing)
+
+
 ## To install the package
 ```bash
 pip install agentneo -U
@@ -156,3 +159,7 @@ for i in exp['results']:
         print(f"{key}: {value}")
     print(f"{'*'*100}\n")
 ```
+
+## Additional Examples
+
+For more detailed examples and use cases, please visit [examples](https://github.com/raga-ai-hub/agentneo/tree/main/examples).
