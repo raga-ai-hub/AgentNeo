@@ -1,48 +1,84 @@
+
 # AgentNeo
 
 [![Example Notebook](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1m_zfLYZaamIvK6hENyr4FWMJMjfZgkv7?usp=sharing)
 
+AgentNEO is an AI-driven project management and experimentation tool that allows users to create, manage, and track the performance of AI agents. It provides comprehensive features for project management, dataset creation, agent tracing, and running experiments with various metrics, all within a seamless and scalable environment.
 
-## To install the package
+## Table of Contents
+- [Introduction](#introduction)
+- [Installation](#installation)
+- [Authentication](#authentication)
+- [Project Management](#project-management)
+- [Trace Management](#trace-management)
+- [Dataset Management](#dataset-management)
+- [Experiment Management](#experiment-management)
+- [Metrics Execution](#metrics-execution)
+- [Serialization and Callbacks](#serialization-and-callbacks)
+- [Examples](#additional-examples)
+- [Support](#support)
+
+## Introduction
+AgentNEO provides a streamlined environment to organize AI-driven projects, trace experiment results, and evaluate performance with various metrics. It is ideal for AI engineers and data scientists managing multiple agents, datasets, and experiments.
+
+## Installation
+To install AgentNEO, you can use pip:
 ```bash
 pip install agentneo -U
 ```
 
+### Prerequisites
+You will need the following dependencies installed:
+- `requests`: For making HTTP requests to the API.
+- `jsonschema`: For validating JSON payloads.
+- `uuid`: For handling unique identifiers.
+- `os`: For environment variable management.
+- `openai`: For using OpenAI models.
+
+Ensure you set the following environment variables:
+- `ACCESS_KEY`: Your AgentNEO access key.
+- `SECRET_KEY`: Your AgentNEO secret key.
+- `OPENAI_API_KEY`: Your OpenAI API key for experiment metrics.
+
 ## Authentication
-Creates an authenticated session with AgentNeo
+
+### Using ACCESS_KEY and SECRET_KEY
+To authenticate with AgentNeo, you can use your RAGAAI AgentNeo `ACCESS_KEY` and `SECRET_KEY`:
 ```python
 from agentneo import AgentNeo
-```
 
-## To authenticate
-```python
-# To autheticate if you have access to RAGAAI AgentNeo ACCESS_KEY & SECRET_KEY
 agent_session = AgentNeo(
     access_key=ACCESS_KEY,
     secret_key=SECRET_KEY,
-    base_url=BASE_URL # "http://74.249.60.46:5000"
+    base_url=BASE_URL # Example: "http://74.249.60.46:5000"
 )
 ```
 
-```py
-# To autheticate using email-id, creates new account if is not a user else retrieves the existing account
+### Using Email
+Alternatively, you can authenticate with an email ID. A new account will be created if you are not already a user, otherwise, the existing account is retrieved:
+```python
 agent_session = AgentNeo(email="your.mailid@domain.com", base_url=BASE_URL)
 ```
 
 ## Project Management
-Allows listing and creating projects
+The project management module helps you organize AI agents, datasets, and experiments within structured projects.
+
+### Creating a Project
 ```python
 from agentneo import Project
 
-# To create a new project
-project = Project(session=agent_session, 
-                  project_name="project_name", 
-                  description="Project Description").create()
+project = Project(
+    session=agent_session, 
+    project_name="project_name", 
+    description="Project Description"
+)
 project_id = project['id']
 ```
 
 ## Trace Management
-Enables tracing of agents, methods, and LangGraph graphs
+Trace management enables logging and tracking of interactions between agents, datasets, and tools during experiments.
+
+### Creating a Tracer
 ```python
 from agentneo import Trace
 
@@ -50,9 +86,8 @@ from agentneo import Trace
 tracer = Tracer(session=agent_session, metadata={
                 tools= [
                     {"name": "name1", "description": "tool_description1"},
-                    {"name": "name2", "description": "tool_description2"},
-                    ...
-                ])
+                    {"name": "name2", "description": "tool_description2"}
+                ]})
 
 # Decorator to trace agents & methods
 @tracer.trace_node
@@ -69,16 +104,19 @@ openai_llm = ChatOpenAI(other_parameters,
 trace_id = tracer.upload_trace()
 ```
 
+The tracer will create logs for LLM events and console events, and these logs will be stored in `.tracer_logs`.
+
 ## Dataset Management
-Allows creation and management of datasets
+Datasets are key elements used to train and evaluate your agents.
+
+### Creating a Dataset
 ```python
 from agentneo import Dataset
 
-# To define a new dataset
 dataset = Dataset(
     session=agent_session,
-    project_id=project_id, 
-    dataset_name="test_dataset1", 
+    project_id=project_id,
+    dataset_name="test_dataset1",
     description="A test dataset"
 )
 
@@ -87,7 +125,9 @@ dataset_traced = dataset.from_trace(trace_id=tracer.id, trace_filter=None)
 ```
 
 ## Experiment Management
-Allows creation, execution, and analysis of experiments
+Experiments allow you to measure agent performance with specific metrics.
+
+### Creating and Running an Experiment
 ```python
 from agentneo import Experiment
 
@@ -157,9 +197,31 @@ for i in exp['results']:
     print(f"Result:")
     for key, value in i['result'].items():
         print(f"{key}: {value}")
-    print(f"{'*'*100}\n")
+    print(f"{'*'*100}
+")
 ```
 
-## Additional Examples
+## Serialization and Callbacks
+AgentNeo uses `UUIDEncoder` for serializing UUID objects, which allows complex objects like `AgentNeo` sessions to be converted into JSON.
 
-For more detailed examples and use cases, please visit [examples](https://github.com/raga-ai-hub/agentneo/tree/main/examples).
+Additionally, `NeoCallbackHandler` can be used for logging LLM events, enabling detailed tracking of AI agents’ performance during experiments.
+
+### Example Callback
+```python
+from agentneo import Tracer
+
+neo_tracer = Tracer.init(session=agent_session, trace_llms=True)
+
+callback_handler = NeoCallbackHandler(neo_tracer)
+```
+
+This will log the start and end of LLM events, recording latency, token usage, and model performance.
+
+### Error Handling
+The `Tracer` class includes error handling for issues during serialization. Errors are captured and stored, allowing users to diagnose issues in logs. Logs can be found in `.tracer_logs`.
+
+## Additional Examples
+For more detailed examples and use cases, visit [examples](https://github.com/raga-ai-hub/agentneo/tree/main/examples).
+
+## Support
+If you encounter any issues, feel free to raise them via [issues on GitHub](https://github.com/raga-ai-hub/agentneo/issues).
