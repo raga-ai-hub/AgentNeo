@@ -2,9 +2,9 @@
 
 **Empower Your AI Applications with Unparalleled Observability and Optimization**
 
-![AgentNeo Dashboard](docs/assets/dashboard.png)
-
 AgentNeo is an advanced, open-source **Agentic AI Application Observability, Monitoring, and Evaluation Framework**. Designed to elevate your AI development experience, AgentNeo provides deep insights into your AI agents, Large Language Model (LLM) calls, and tool interactions. By leveraging AgentNeo, you can build more efficient, cost-effective, and high-quality AI-driven solutions.
+
+![AgentNeo Dashboard](docs/assets/dashboard.png)
 
 Whether you're a seasoned AI developer or just starting out, AgentNeo offers robust logging, visualization, and evaluation capabilities to help you debug and optimize your applications with ease.
 
@@ -203,7 +203,7 @@ Dive deeper into AgentNeo's capabilities by visiting our [official documentation
 
 We warmly welcome contributions from the community! Whether it's reporting bugs, suggesting new features, or improving documentation, your input is invaluable.
 
-- **GitHub Repository**: [github.com/aristotle-ai/ragaai-agentneo](https://github.com/aristotle-ai/ragaai-agentneo)
+- **GitHub Repository**: [raga-ai-hub/agentneo](https://github.com/raga-ai-hub/agentneo)
 - **Contribution Guidelines**: Check out our contribution guidelines on GitHub to get started.
 
 Join us in making AgentNeo even better!
