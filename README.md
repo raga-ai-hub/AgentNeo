@@ -161,15 +161,15 @@ We are committed to continuously improving AgentNeo. Here's a glimpse of what's 
 | Feature                                   | Status          |
 |-------------------------------------------|-----------------|
 | **Local Data Storage Improvements**       | ✅ Completed    |
-| **Support for Additional LLMs**           | 🔄 In Progress  |
+| **Support for Additional LLMs**           | ✅ Completed    |
 | **Integration with AutoGen**              | 🔄 In Progress  |
 | **Integration with CrewAI**               | 🔄 In Progress  |
 | **Integration with Langraph**             | 🔄 In Progress  |
-| **Comprehensive Logging Enhancements**    | 🔄 In Progress  |
+| **Comprehensive Logging Enhancements**    | ✅ Completed    |
 | **Custom Agent Orchestration Support**    | 🔜 Coming Soon  |
-| **Advanced Error Detection Tools**        | 🔜 Coming Soon  |
-| **Multi-Agent Framework Visualization**   | 🔜 Coming Soon  |
-| **Performance Bottleneck Identification** | 🔜 Coming Soon  |
+| **Advanced Error Detection Tools**        | 🔄 In Progress  |
+| **Multi-Agent Framework Visualization**   | ✅ Completed    |
+| **Performance Bottleneck Identification** | ✅ Completed    |
 | **Code Execution Sandbox**                | 🔜 Coming Soon  |
 | **Prompt Caching for Latency Reduction**  | 📝 Planned      |
 | **Real-Time Guardrails Implementation**   | 📝 Planned      |
