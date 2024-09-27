@@ -166,7 +166,7 @@ We are committed to continuously improving AgentNeo. Here's a glimpse of what's 
 | **Integration with CrewAI**               | 🔄 In Progress  |
 | **Integration with Langraph**             | 🔄 In Progress  |
 | **Comprehensive Logging Enhancements**    | ✅ Completed    |
-| **Custom Agent Orchestration Support**    | 🔜 Coming Soon  |
+| **Custom Agent Orchestration Support**    | ✅ Completed    |
 | **Advanced Error Detection Tools**        | 🔄 In Progress  |
 | **Multi-Agent Framework Visualization**   | ✅ Completed    |
 | **Performance Bottleneck Identification** | ✅ Completed    |
