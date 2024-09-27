@@ -197,16 +197,16 @@ Encountering issues? Here are some common solutions:
 
 ## 📚 Documentation
 
-Dive deeper into AgentNeo's capabilities by visiting our [official documentation](https://docs.raga.ai/agentneo).
+Dive deeper into AgentNeo's capabilities by visiting our TODO
 
 ## 🤝 Contributing
 
 We warmly welcome contributions from the community! Whether it's reporting bugs, suggesting new features, or improving documentation, your input is invaluable.
 
 - **GitHub Repository**: [raga-ai-hub/agentneo](https://github.com/raga-ai-hub/agentneo)
-- **Contribution Guidelines**: Check out our contribution guidelines on GitHub to get started.
+- **Contribution Guidelines**: Check out our contribution guidelines(TODO) on GitHub to get started.
 
 Join us in making AgentNeo even better!
 
-## 📄 License
+## 📄 License (TO Be Updated)
 
