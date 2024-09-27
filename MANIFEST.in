@@ -1,0 +1,5 @@
+agentneo/configs/model_costs.json
+recursive-include agentneo/ui *
+recursive-exclude agentneo/ui/node_modules *
+recursive-exclude agentneo/ui/__pycache__ *
+global-exclude *.pyc

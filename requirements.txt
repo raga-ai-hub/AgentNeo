@@ -1,0 +1,4 @@
+py-cpuinfo
+openai
+litellm
+sqlalchemy
