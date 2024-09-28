@@ -1,7 +1,7 @@
 from agentneo.data import LLMCall
 from agentneo.utils import calculate_cost, convert_usage_to_dict
 import json
-import yaml
+
 
 # Load the Json configuration
 with open("agentneo/configs/model_costs.json", "r") as file:
