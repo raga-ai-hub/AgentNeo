@@ -465,7 +465,7 @@ class Tracer:
             self.process_llm_result(
                 result,
                 name,
-                str(sanitized_args) + str(sanitized_kwargs),
+                self._extract_input(sanitized_args,sanitized_kwargs),
                 start_time,
                 end_time,
                 memory_used,
@@ -570,7 +570,7 @@ class Tracer:
             self.process_llm_result(
                 result,
                 "async_call",
-                str(sanitized_args) + str(sanitized_kwargs),
+                self._extract_input(sanitized_args,sanitized_kwargs),
                 start_time,
                 end_time,
                 memory_used,
@@ -592,12 +592,25 @@ class Tracer:
         self.process_llm_result(
             result,
             "sync_call",
-            str(sanitized_args) + str(sanitized_kwargs),
+            self._extract_input(sanitized_args,sanitized_kwargs),
             start_time,
             end_time,
             memory_used,
         )
         return result
+    
+    def _extract_model_name(self, sanitized_kwargs):
+        if isinstance(sanitized_kwargs, dict):
+            if 'model' in sanitized_kwargs.keys():
+                return str(sanitized_kwargs['model'])
+        return ''
+
+    def _extract_input(self, sanitized_args,sanitized_kwargs):
+        if isinstance(sanitized_kwargs, dict):
+            if 'messages' in sanitized_kwargs.keys():
+                return str(sanitized_kwargs['messages'])
+        return str(sanitized_args) if str(sanitized_args) != '()' else ''
+
 
     def _sanitize_api_keys(self, data):
         if isinstance(data, dict):
