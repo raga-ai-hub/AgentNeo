@@ -465,7 +465,8 @@ class Tracer:
             self.process_llm_result(
                 result,
                 name,
-                str(sanitized_args) + str(sanitized_kwargs),
+                self._extract_model_name(sanitized_kwargs),
+                self._extract_input(sanitized_args,sanitized_kwargs),
                 start_time,
                 end_time,
                 memory_used,
@@ -570,7 +571,8 @@ class Tracer:
             self.process_llm_result(
                 result,
                 "async_call",
-                str(sanitized_args) + str(sanitized_kwargs),
+                self._extract_model_name(sanitized_kwargs),
+                self._extract_input(sanitized_args,sanitized_kwargs),
                 start_time,
                 end_time,
                 memory_used,
@@ -592,12 +594,26 @@ class Tracer:
         self.process_llm_result(
             result,
             "sync_call",
-            str(sanitized_args) + str(sanitized_kwargs),
+            self._extract_model_name(sanitized_kwargs),
+            self._extract_input(sanitized_args,sanitized_kwargs),
             start_time,
             end_time,
             memory_used,
         )
         return result
+    
+    def _extract_model_name(self, sanitized_kwargs):
+        if isinstance(sanitized_kwargs, dict):
+            if 'model' in sanitized_kwargs.keys():
+                return str(sanitized_kwargs['model'])
+        return ''
+
+    def _extract_input(self, sanitized_args,sanitized_kwargs):
+        if isinstance(sanitized_kwargs, dict):
+            if 'messages' in sanitized_kwargs.keys():
+                return str(sanitized_kwargs['messages'])
+        return str(sanitized_args) if str(sanitized_args) != '()' else ''
+
 
     def _sanitize_api_keys(self, data):
         if isinstance(data, dict):
@@ -647,7 +663,7 @@ class Tracer:
         return wrapper
 
     def process_llm_result(
-        self, result, name, prompt, start_time, end_time, memory_used
+        self, result, name, model, prompt, start_time, end_time, memory_used
     ):
         provider = result.__module__.split(".")[0]
         if provider == "openai":
@@ -661,6 +677,7 @@ class Tracer:
             project_id=self.project_id,
             trace_id=self.trace_id,
             name=name,
+            model=model,
             input_prompt=prompt,
             output=llm_data.output_response,
             start_time=start_time,
@@ -677,6 +694,7 @@ class Tracer:
         self.trace_data["llm_calls"].append(
             {
                 "name": name,
+                "model": model,
                 "input_prompt": prompt,
                 "output": llm_data.output_response,
                 "start_time": start_time,

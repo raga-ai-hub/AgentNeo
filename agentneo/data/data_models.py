@@ -74,6 +74,7 @@ class LLMCallModel(Base):
     id = Column(Integer, primary_key=True)
     project_id = Column(Integer, ForeignKey("project_info.id"), nullable=False)
     name = Column(String, nullable=False)
+    model = Column(String, nullable=True)
     input_prompt = Column(String, nullable=False)
     output = Column(String, nullable=False)
     start_time = Column(DateTime, default=datetime.now)
