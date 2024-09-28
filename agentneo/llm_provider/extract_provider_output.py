@@ -1,11 +1,16 @@
 from agentneo.data import LLMCall
 from agentneo.utils import calculate_cost, convert_usage_to_dict
+from importlib import resources
 import json
 
 
 # Load the Json configuration
-with open("agentneo/configs/model_costs.json", "r") as file:
-    config = json.load(file)
+try:
+    with open("agentneo/configs/model_costs.json", "r") as file:
+        config = json.load(file)
+except FileNotFoundError:
+    with resources.open_text("agentneo.configs", "model_costs.json") as file:
+        config = json.load(file)
 
 
 def extract_openai_output(result):

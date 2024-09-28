@@ -11,13 +11,22 @@ class AgentNeo:
         self.session_name = (
             session_name or f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         )
-        self.db_path = "sqlite:///agentneo/ui/public/trace_data.db"
+        self.db_path = self.get_db_path()
         self.engine = create_engine(self.db_path)
         Base.metadata.create_all(self.engine)
         self.Session = sessionmaker(bind=self.engine)
         self.project_id = None
         self.project_name = None
         self.created_on = datetime.now()
+
+    @staticmethod
+    def get_db_path():
+        # Save the database in the 'ui/public' folder of the package
+        package_dir = os.path.dirname(os.path.abspath(__file__))
+        public_dir = os.path.join(package_dir, "ui", "public")
+        db_filename = "trace_data.db"
+        db_path = os.path.join(public_dir, db_filename)
+        return f"sqlite:///{db_path}"
 
     def create_project(self, project_name: str):
         with self.Session() as session:
@@ -56,7 +65,8 @@ class AgentNeo:
 
     @staticmethod
     def list_projects(num_projects: int = None):
-        engine = create_engine("sqlite:///agentneo/ui/public/trace_data.db")
+        db_path = AgentNeo.get_db_path()
+        engine = create_engine(db_path)
         Session = sessionmaker(bind=engine)
         with Session() as session:
             query = session.query(ProjectInfoModel).order_by(
