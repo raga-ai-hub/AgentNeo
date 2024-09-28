@@ -61,16 +61,35 @@ def launch_dashboard(port=3000):
         logging.error(f"Error: UI folder not found at {ui_folder}")
         return
 
-    # Check if npm is installed
-    try:
-        subprocess.run(
-            ["npm", "--version"],
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+    # Check if Node.js and npm are installed
+    if not check_node_npm():
+        logging.error("Error: Node.js and npm are required but not installed.")
+        logging.info("Please install Node.js and npm to continue:")
+        logging.info("1. Visit https://nodejs.org/")
+        logging.info("2. Download and install the LTS version")
+        logging.info("3. Restart your terminal/command prompt after installation")
+        logging.info("4. Run this command again")
+        logging.info(
+            "If the issue persists, please raise an issue at: https://github.com/raga-ai-hub/agentneo/issues"
         )
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        logging.error("Error: npm is not installed or not found in PATH.")
+        return
+
+    # Try to install React dependencies
+    logging.info("Attempting to install React dependencies...")
+    if not install_react_dependencies(ui_folder):
+        logging.error("Error: Failed to install React dependencies.")
+        logging.info("Please try the following steps manually:")
+        logging.info("1. Navigate to the UI folder: cd " + ui_folder)
+        logging.info("2. Run: npm install")
+        logging.info(
+            "3. If you encounter any errors, try deleting the node_modules folder and package-lock.json file, then run npm install again"
+        )
+        logging.info(
+            "4. If problems persist, please check your internet connection and npm configuration"
+        )
+        logging.info(
+            "If you're still experiencing issues, please raise an issue at: https://github.com/raga-ai-hub/agentneo/issues"
+        )
         return
 
     # Attempt to use the specified port
