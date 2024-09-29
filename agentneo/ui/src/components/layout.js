@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, FileText, Layers, BookOpen } from 'lucide-react';
+import { Home, FileText, Layers, BookOpen, Clock } from 'lucide-react';
 
 const Layout = ({ children }) => {
     return (
@@ -30,6 +30,12 @@ const Layout = ({ children }) => {
                                 <NavLink to="/trace-analysis" className={({ isActive }) => `flex items-center p-2 rounded-lg hover:bg-white hover:bg-opacity-20 transition-all duration-200 ${isActive ? 'bg-white bg-opacity-20' : ''}`}>
                                     <FileText size={20} className="mr-3" />
                                     Trace Analysis
+                                </NavLink>
+                            </li>
+                            <li>
+                                <NavLink to="/trace-history" className={({ isActive }) => `flex items-center p-2 rounded-lg hover:bg-white hover:bg-opacity-20 transition-all duration-200 ${isActive ? 'bg-white bg-opacity-20' : ''}`}>
+                                    <Clock size={20} className="mr-3" />
+                                    Trace History
                                 </NavLink>
                             </li>
                             <li>
