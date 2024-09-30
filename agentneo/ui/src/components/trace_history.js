@@ -123,6 +123,7 @@ const TraceHistory = () => {
     const [traces, setTraces] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [searchPlaceholder, setSearchPlaceholder] = useState('Search by Trace ID...');
+    const [noResultsMessage, setNoResultsMessage] = useState('');
     const [expandedTrace, setExpandedTrace] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -167,9 +168,17 @@ const TraceHistory = () => {
 
             setTraces(traceResults);
             setTotalPages(Math.ceil(total_traces / tracesPerPage));
+
+            // In case noe search results found, show this: No results found
+            if (traceResults.length === 0) {
+                setNoResultsMessage('No traces found for the given ID(s).');
+            } else {
+                setNoResultsMessage('');
+            }
         } catch (err) {
             console.error('Error fetching traces:', err);
             setError('Failed to fetch traces. Please try again later.');
+            setNoResultsMessage('');
         }
     }, [worker, selectedProject, currentPage, searchTerm, tracesPerPage, setError]);
 
@@ -245,10 +254,13 @@ const TraceHistory = () => {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full max-w-sm mr-4"
                 />
-                <Button onClick={() => fetchTraces()} className="flex items-center">
+                <Button onClick={handleSearch} className="flex items-center">
                     <Search className="w-4 h-4 mr-2" /> Search
                 </Button>
             </div>
+            {noResultsMessage && (
+                <div className="mb-4 text-red-600 font-medium">{noResultsMessage}</div>
+            )}
             <div className="overflow-x-auto">
                 <table className="w-full bg-white shadow-md rounded-lg">
                     <thead className="bg-gray-100">
@@ -306,7 +318,7 @@ const TraceHistory = () => {
                     </div>
                 )}
             </Modal>
-        </div>
+        </div >
     );
 };
 
