@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from './ui/card';
-import { Search, ChevronDown, ChevronUp, X, Clock, Database, User, AlertTriangle, Cog } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { useProject } from '../contexts/ProjectContext';
 import CustomDropdown from './ui/dropdown';
 
@@ -122,6 +122,7 @@ const TraceHistory = () => {
     const { selectedProject, setSelectedProject, projects, worker, setError } = useProject();
     const [traces, setTraces] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [searchPlaceholder, setSearchPlaceholder] = useState('Search by Trace ID...');
     const [expandedTrace, setExpandedTrace] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -142,14 +143,13 @@ const TraceHistory = () => {
                     (SELECT COUNT(*) FROM errors WHERE trace_id = t.id) as error_count,
                     (SELECT GROUP_CONCAT(id) FROM errors WHERE trace_id = t.id) as error_ids
                 FROM traces t
-                WHERE t.project_id = ? AND (t.id LIKE ? OR t.start_time LIKE ?)
+                WHERE t.project_id = ? AND t.id LIKE ?
                 ORDER BY t.start_time DESC
                 LIMIT ? OFFSET ?
             `;
 
             const traceResults = await worker.db.query(tracesQuery, [
                 selectedProject,
-                `%${searchTerm}%`,
                 `%${searchTerm}%`,
                 tracesPerPage,
                 offset
@@ -161,23 +161,13 @@ const TraceHistory = () => {
             const totalCountQuery = `
                 SELECT COUNT(*) as total_traces
                 FROM traces
-                WHERE project_id = ? AND (id LIKE ? OR start_time LIKE ?)
+                WHERE project_id = ? AND id LIKE ?
             `;
             const [{ total_traces }] = await worker.db.query(totalCountQuery, [
                 selectedProject,
-                `%${searchTerm}%`,
                 `%${searchTerm}%`
             ]);
             console.log('Total traces:', total_traces);
-
-            // Fetch total error count for debugging
-            const totalErrorCountQuery = `
-                SELECT COUNT(*) as total_errors
-                FROM errors
-                WHERE trace_id IN (SELECT id FROM traces WHERE project_id = ?)
-            `;
-            const [{ total_errors }] = await worker.db.query(totalErrorCountQuery, [selectedProject]);
-            console.log('Total errors in project:', total_errors);
 
             setTraces(traceResults);
             setTotalPages(Math.ceil(total_traces / tracesPerPage));
@@ -231,6 +221,11 @@ const TraceHistory = () => {
         setIsLoading(false);
     };
 
+    const handleSearch = () => {
+        setCurrentPage(1);
+        fetchTraces();
+    };
+
     return (
         <div className="container mx-auto p-8 bg-gray-50 min-h-screen">
             <div className="flex justify-between items-center mb-8">
@@ -249,7 +244,7 @@ const TraceHistory = () => {
             <div className="mb-6 flex">
                 <Input
                     type="text"
-                    placeholder="Search traces..."
+                    placeholder={searchPlaceholder}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full max-w-sm mr-4"
