@@ -135,6 +135,9 @@ const TraceHistory = () => {
 
         try {
             const offset = (currentPage - 1) * tracesPerPage;
+            const traceIds = searchTerm.split(',').map(id => id.trim()).filter(id => id !== '');
+            const placeholders = traceIds.map(() => '?').join(',');
+
             const tracesQuery = `
                 SELECT t.*, 
                     (SELECT COUNT(*) FROM llm_call WHERE trace_id = t.id) as llm_call_count,
@@ -143,17 +146,13 @@ const TraceHistory = () => {
                     (SELECT COUNT(*) FROM errors WHERE trace_id = t.id) as error_count,
                     (SELECT GROUP_CONCAT(id) FROM errors WHERE trace_id = t.id) as error_ids
                 FROM traces t
-                WHERE t.project_id = ? AND t.id LIKE ?
+                WHERE t.project_id = ? AND (${traceIds.length > 0 ? `t.id IN (${placeholders})` : '1=1'})
                 ORDER BY t.start_time DESC
                 LIMIT ? OFFSET ?
             `;
 
-            const traceResults = await worker.db.query(tracesQuery, [
-                selectedProject,
-                `%${searchTerm}%`,
-                tracesPerPage,
-                offset
-            ]);
+            const queryParams = [selectedProject, ...traceIds, tracesPerPage, offset];
+            const traceResults = await worker.db.query(tracesQuery, queryParams);
 
             console.log('Trace results:', traceResults);
 
@@ -161,12 +160,9 @@ const TraceHistory = () => {
             const totalCountQuery = `
                 SELECT COUNT(*) as total_traces
                 FROM traces
-                WHERE project_id = ? AND id LIKE ?
+                WHERE project_id = ? AND (${traceIds.length > 0 ? `id IN (${placeholders})` : '1=1'})
             `;
-            const [{ total_traces }] = await worker.db.query(totalCountQuery, [
-                selectedProject,
-                `%${searchTerm}%`
-            ]);
+            const [{ total_traces }] = await worker.db.query(totalCountQuery, [selectedProject, ...traceIds]);
             console.log('Total traces:', total_traces);
 
             setTraces(traceResults);
