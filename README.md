@@ -208,5 +208,4 @@ We warmly welcome contributions from the community! Whether it's reporting bugs,
 
 Join us in making AgentNeo even better!
 
-## 📄 License (TO Be Updated)
 
