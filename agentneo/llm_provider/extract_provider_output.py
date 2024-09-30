@@ -63,12 +63,12 @@ def extract_litellm_output(result):
         model_name=model_name,
         input_prompt="",
         output_response=output_response,
-        token_usage=token_usage,
-        cost=cost,
         tool_call=(
             {"arguments": json.loads(tool_call.arguments), "name": tool_call.name}
             if tool_call
             else None
         ),
+        token_usage=token_usage,
+        cost=cost,
     )
     return llm_data
