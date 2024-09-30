@@ -410,22 +410,14 @@ class Tracer:
 
                 return result
 
-            # def sync_wrapper(*args, **kwargs):
-            #     if asyncio.get_event_loop().is_running():
-            #         return async_wrapper(*args, **kwargs)
-            #     else:
-            #         return asyncio.run(async_wrapper(*args, **kwargs))
             def sync_wrapper(*args, **kwargs):
                 try:
                     loop = asyncio.get_event_loop()
                     if loop.is_running():
-                        # If the event loop is already running, use it
                         return async_wrapper(*args, **kwargs)
                     else:
-                        # If there's an event loop but it's not running, start it with asyncio.run
                         return asyncio.run(async_wrapper(*args, **kwargs))
                 except RuntimeError:
-                    # If we're in a thread without an event loop, run the async function with asyncio.run
                     return asyncio.run(async_wrapper(*args, **kwargs))
 
             return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
@@ -680,6 +672,7 @@ class Tracer:
             model=model,
             input_prompt=prompt,
             output=llm_data.output_response,
+            tool_call=str(llm_data.tool_call) if llm_data.tool_call else llm_data.tool_call,
             start_time=start_time,
             end_time=end_time,
             duration=(end_time - start_time).total_seconds(),
@@ -697,6 +690,7 @@ class Tracer:
                 "model": model,
                 "input_prompt": prompt,
                 "output": llm_data.output_response,
+                "tool_call":llm_data.tool_call,
                 "start_time": start_time,
                 "end_time": end_time,
                 "duration": end_time - start_time,

@@ -77,6 +77,7 @@ class LLMCallModel(Base):
     model = Column(String, nullable=True)
     input_prompt = Column(String, nullable=False)
     output = Column(String, nullable=False)
+    tool_call = Column(String, nullable=True)
     start_time = Column(DateTime, default=datetime.now)
     end_time = Column(DateTime, nullable=True)
     duration = Column(Float, nullable=True)
