@@ -106,7 +106,7 @@ class ToolCallModel(Base):
     duration = Column(Float, nullable=True)
     memory_used = Column(Integer, nullable=False)
     trace_id = Column(Integer, ForeignKey("traces.id"), nullable=False)
-
+    network_calls=Column(String, nullable=True)
     trace = relationship("TraceModel", back_populates="tool_calls")
     project = relationship("ProjectInfoModel", back_populates="tool_calls")
     agent = relationship("AgentCallModel", back_populates="tool_calls")

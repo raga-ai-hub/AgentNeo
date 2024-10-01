@@ -32,6 +32,15 @@ from .data import (
 )
 
 
+from .network_tracer import(
+    NetworkTracer,
+    monkey_patch_urllib, restore_urllib,
+    monkey_patch_requests, restore_requests,
+    monkey_patch_http_client, restore_http_client,
+    monkey_patch_socket, restore_socket,
+    patch_aiohttp_trace_config,
+) 
+
 class Tool:
     def __init__(self, func: Callable, name: str, description: str):
         self.func = func
@@ -48,10 +57,11 @@ class Tracer:
     ):
         self.user_session = session
         project_name = session.project_name
-        # Set the SQLite DB Path
-        db_path = "sqlite:///agentneo/ui/public/trace_data.db"
 
-        self.engine = create_engine(db_path)
+        # Setup DB
+        self.db_path = session.db_path
+        self.engine = create_engine(self.db_path)
+
         Base.metadata.create_all(self.engine)
         self.Session = sessionmaker(bind=self.engine)
 
@@ -250,6 +260,42 @@ class Tracer:
             json.dump(self.trace_data, f, indent=2, default=default_converter)
 
     def trace_tool(self, name: str, description: str = ""):
+        self.network_tracer = NetworkTracer()
+        def decorator(func):
+            @functools.wraps(func)
+            async def async_wrapper(*args, **kwargs):
+                self.network_tracer.activate_patches()  # Activate patches before execution
+                try:
+                    return await self._trace_tool_call_async(func, name, description, *args, **kwargs)
+                finally:
+                    self.network_tracer.deactivate_patches()  # Deactivate patches after execution
+
+            @functools.wraps(func)
+            def sync_wrapper(*args, **kwargs):
+                self.network_tracer.activate_patches()  # Activate patches before execution
+                try:
+                    return self._trace_tool_call_sync(func, name, description, *args, **kwargs)
+                finally:
+                    self.network_tracer.deactivate_patches()  # Deactivate patches after execution
+
+            return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
+
+        return decorator
+
+    async def _trace_tool_call_async(self, func, name, description, *args, **kwargs):
+        start_time = datetime.now()
+        start_memory = psutil.Process().memory_info().rss
+
+        try:
+            if asyncio.iscoroutinefunction(func):
+                trace_config = await patch_aiohttp_trace_config(self.network_tracer)
+                result = await func(*args, **kwargs, trace_config=trace_config)
+            else:
+                result = await asyncio.to_thread(func, *args, **kwargs)
+
+            end_time = datetime.now()
+            end_memory = psutil.Process().memory_info().rss
+            memory_used = end_memory - start_memory
         def decorator(func_or_class):
             if isinstance(func_or_class, type):
                 # If it's a class, wrap all its methods
@@ -276,60 +322,90 @@ class Tracer:
                         end_memory = psutil.Process().memory_info().rss
                         memory_used = end_memory - start_memory
 
-                        tool_call = ToolCallModel(
-                            project_id=self.project_id,
-                            trace_id=self.trace_id,
-                            name=name,
-                            # description=description,
-                            input_parameters=json.dumps(kwargs),
-                            output=str(result),
-                            start_time=start_time,
-                            end_time=end_time,
-                            duration=(end_time - start_time).total_seconds(),
-                            memory_used=memory_used,
-                        )
-                        with self.Session() as session:
-                            session.add(tool_call)
-                            session.commit()
+            tool_call = ToolCallModel(
+                project_id=self.project_id,
+                trace_id=self.trace_id,
+                name=name,
+                # description=description,
+                input_parameters=json.dumps(args) if args else json.dumps(kwargs),
+                output=str(result),
+                start_time=start_time,
+                end_time=end_time,
+                duration=(end_time - start_time).total_seconds(),
+                memory_used=memory_used,
+                network_calls=str(self.network_tracer.network_calls)
+            )
+            with self.Session() as session:
+                session.add(tool_call)
+                session.commit()
 
-                        self.trace_data["tool_calls"].append(
-                            {
-                                "name": name,
-                                "description": description,
-                                "input_parameters": kwargs,
-                                "output": str(result),
-                                "start_time": start_time,
-                                "end_time": end_time,
-                                "duration": end_time - start_time,
-                                "memory_used": memory_used,
-                            }
-                        )
-                    except Exception as e:
-                        self._log_error(e, "tool", name)
-                        raise
+            tool_call = {
+                "name": name,
+                "description": description,
+                "input_parameters": json.dumps(args) if args else json.dumps(kwargs),
+                "output": str(result),
+                "start_time": start_time.isoformat(),
+                "end_time": end_time.isoformat(),
+                "duration": (end_time - start_time).total_seconds(),
+                "memory_used": memory_used,
+                "network_calls": self.network_tracer.network_calls,
+            }
 
-                    return result
+            self.trace_data["tool_calls"].append(tool_call)
 
-                def sync_wrapper(*args, **kwargs):
-                    try:
-                        loop = asyncio.get_event_loop()
-                        if loop.is_running():
-                            # If the event loop is already running, use it
-                            return async_wrapper(*args, **kwargs)
-                        else:
-                            # If there's an event loop but it's not running, start it with asyncio.run
-                            return asyncio.run(async_wrapper(*args, **kwargs))
-                    except RuntimeError:
-                        # If we're in a thread without an event loop, run the async function with asyncio.run
-                        return asyncio.run(async_wrapper(*args, **kwargs))
+            return result
+        except Exception as e:
+            self._log_error(e, "tool", name)
+            raise
 
-                return (
-                    async_wrapper
-                    if asyncio.iscoroutinefunction(func_or_class)
-                    else sync_wrapper
-                )
 
-        return decorator
+    def _trace_tool_call_sync(self, func, name, description, *args, **kwargs):
+        start_time = datetime.now()
+        start_memory = psutil.Process().memory_info().rss
+
+        try:
+            result = func(*args, **kwargs)
+
+            end_time = datetime.now()
+            end_memory = psutil.Process().memory_info().rss
+            memory_used = end_memory - start_memory
+
+            tool_call = ToolCallModel(
+                project_id=self.project_id,
+                trace_id=self.trace_id,
+                name=name,
+                # description=description,
+                input_parameters=json.dumps(args) if args else json.dumps(kwargs),
+                output=str(result),
+                start_time=start_time,
+                end_time=end_time,
+                duration=(end_time - start_time).total_seconds(),
+                memory_used=memory_used,
+                network_calls=str(self.network_tracer.network_calls)
+            )
+            with self.Session() as session:
+                session.add(tool_call)
+                session.commit()
+
+            tool_call = {
+                "name": name,
+                "description": description,
+                "input_parameters": json.dumps(args) if args else json.dumps(kwargs),
+                "output": str(result),
+                "start_time": start_time.isoformat(),
+                "end_time": end_time.isoformat(),
+                "duration": (end_time - start_time).total_seconds(),
+                "memory_used": memory_used,
+                "network_calls": self.network_tracer.network_calls,
+            }
+
+            self.trace_data["tool_calls"].append(tool_call)
+
+            return result
+        except Exception as e:
+            self._log_error(e, "tool", name)
+            raise
+
 
     def trace_agent(self, name: str):
         def decorator(func_or_class):
@@ -542,8 +618,9 @@ class Tracer:
                 )
 
         return decorator
+    
 
-    async def _trace_llm_call(self, func, name, *args, **kwargs):
+    async def _trace_llm_call_async(self, func, name, *args, **kwargs):
         start_time = datetime.now()
         start_memory = psutil.Process().memory_info().rss
 
@@ -559,6 +636,16 @@ class Tracer:
 
             sanitized_args = self._sanitize_api_keys(args)
             sanitized_kwargs = self._sanitize_api_keys(kwargs)
+            if not self.auto_instrument_llm:
+                self.process_llm_result(
+                    result,
+                    name,
+                    self._extract_model_name(sanitized_kwargs),
+                    self._extract_input(sanitized_args,sanitized_kwargs),
+                    start_time,
+                    end_time,
+                    memory_used,
+                )
             self.process_llm_result(
                 result,
                 name,
@@ -573,6 +660,39 @@ class Tracer:
         except Exception as e:
             self._log_error(e, "llm", name)
             raise
+
+
+    def _trace_llm_call_sync(self, func, name, *args, **kwargs):
+        # Synchronous version of the method
+        start_time = datetime.now()
+        start_memory = psutil.Process().memory_info().rss
+
+        try:
+            result = func(*args, **kwargs)
+
+            end_time = datetime.now()
+            end_memory = psutil.Process().memory_info().rss
+            memory_used = end_memory - start_memory
+
+            sanitized_args = self._sanitize_api_keys(args)
+            sanitized_kwargs = self._sanitize_api_keys(kwargs)
+            if not self.auto_instrument_llm:
+                self.process_llm_result(
+                    result,
+                    name,
+                    self._extract_model_name(sanitized_kwargs),
+                    self._extract_input(sanitized_args, sanitized_kwargs),
+                    start_time,
+                    end_time,
+                    memory_used,
+                )
+
+            return result
+        except Exception as e:
+            self._log_error(e, "llm", name)
+            raise
+
+
 
     def _log_error(self, error: Exception, call_type: str, call_name: str):
         error_info = {
@@ -667,7 +787,7 @@ class Tracer:
 
             self.process_llm_result(
                 result,
-                "async_call",
+                "auto_async_call",
                 self._extract_model_name(sanitized_kwargs),
                 self._extract_input(sanitized_args, sanitized_kwargs),
                 start_time,
@@ -690,8 +810,9 @@ class Tracer:
 
         self.process_llm_result(
             result,
-            "sync_call",
+            "auto_sync_call",
             self._extract_model_name(sanitized_kwargs),
+            self._extract_input(sanitized_args, sanitized_kwargs),
             self._extract_input(sanitized_args, sanitized_kwargs),
             start_time,
             end_time,
@@ -699,14 +820,22 @@ class Tracer:
         )
         return result
 
+
     def _extract_model_name(self, sanitized_kwargs):
         if isinstance(sanitized_kwargs, dict):
             if "model" in sanitized_kwargs.keys():
                 return str(sanitized_kwargs["model"])
         return ""
+            if "model" in sanitized_kwargs.keys():
+                return str(sanitized_kwargs["model"])
+        return ""
 
     def _extract_input(self, sanitized_args, sanitized_kwargs):
+    def _extract_input(self, sanitized_args, sanitized_kwargs):
         if isinstance(sanitized_kwargs, dict):
+            if "messages" in sanitized_kwargs.keys():
+                return str(sanitized_kwargs["messages"])
+        return str(sanitized_args) if str(sanitized_args) != "()" else ""
             if "messages" in sanitized_kwargs.keys():
                 return str(sanitized_kwargs["messages"])
         return str(sanitized_args) if str(sanitized_args) != "()" else ""
@@ -725,49 +854,50 @@ class Tracer:
         else:
             return data
 
-    def trace_decorator(self, func):
-        def get_func_name(f):
-            return getattr(f, "__qualname__", getattr(f, "__name__", repr(f)))
+    # def trace_decorator(self, func):
+    #     def get_func_name(f):
+    #         return getattr(f, "__qualname__", getattr(f, "__name__", repr(f)))
 
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            depth = self.call_depth.get()
-            indent = "  " * depth
-            func_name = get_func_name(func)
-            # print(f"{indent}Calling {func_name} with args: {args} and kwargs: {kwargs}")
-            self.call_depth.set(depth + 1)
-            start_time = datetime.now()
-            try:
-                if asyncio.iscoroutinefunction(func):
-                    result = asyncio.get_event_loop().run_until_complete(
-                        func(*args, **kwargs)
-                    )
-                else:
-                    result = func(*args, **kwargs)
-            except Exception as e:
-                print(f"{indent}Error in {func_name}: {e}")
-                self.call_depth.set(depth)
-                raise
-            end_time = datetime.now()
-            duration = (end_time - start_time).total_seconds()
-            self.call_depth.set(depth)
-            # print(
-            #     f"{indent}{func_name} returned {result} (Time taken: {duration:.4f}s)"
-            # )
-            return result
+    #     @functools.wraps(func)
+    #     def wrapper(*args, **kwargs):
+    #         depth = self.call_depth.get()
+    #         indent = "  " * depth
+    #         func_name = get_func_name(func)
+    #         # print(f"{indent}Calling {func_name} with args: {args} and kwargs: {kwargs}")
+    #         self.call_depth.set(depth + 1)
+    #         start_time = datetime.now()
+    #         try:
+    #             if asyncio.iscoroutinefunction(func):
+    #                 result = asyncio.get_event_loop().run_until_complete(
+    #                     func(*args, **kwargs)
+    #                 )
+    #             else:
+    #                 result = func(*args, **kwargs)
+    #         except Exception as e:
+    #             print(f"{indent}Error in {func_name}: {e}")
+    #             self.call_depth.set(depth)
+    #             raise
+    #         end_time = datetime.now()
+    #         duration = (end_time - start_time).total_seconds()
+    #         self.call_depth.set(depth)
+    #         # print(
+    #         #     f"{indent}{func_name} returned {result} (Time taken: {duration:.4f}s)"
+    #         # )
+    #         return result
 
-        return wrapper
+    #     return wrapper
 
     def process_llm_result(
         self, result, name, model, prompt, start_time, end_time, memory_used
     ):
-        provider = result.__module__.split(".")[0]
-        if provider == "openai":
-            llm_data = extract_openai_output(result)
-        elif provider == "litellm":
-            llm_data = extract_litellm_output(result)
-        else:
-            raise ValueError("Provider not supported.")
+        # provider = result.__module__.split(".")[0]
+        # if provider == "openai":
+        #     llm_data = extract_openai_output(result)
+        # elif provider == "litellm":
+        #     llm_data = extract_litellm_output(result)
+        # else:
+        #     raise ValueError("Provider not supported.")
+        llm_data = extract_openai_output(result)
 
         llm_call = LLMCallModel(
             project_id=self.project_id,
@@ -776,6 +906,9 @@ class Tracer:
             model=model,
             input_prompt=prompt,
             output=llm_data.output_response,
+            tool_call=(
+                str(llm_data.tool_call) if llm_data.tool_call else llm_data.tool_call
+            ),
             tool_call=(
                 str(llm_data.tool_call) if llm_data.tool_call else llm_data.tool_call
             ),
@@ -796,6 +929,7 @@ class Tracer:
                 "model": model,
                 "input_prompt": prompt,
                 "output": llm_data.output_response,
+                "tool_call": llm_data.tool_call,
                 "tool_call": llm_data.tool_call,
                 "start_time": start_time,
                 "end_time": end_time,
