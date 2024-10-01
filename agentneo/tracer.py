@@ -300,22 +300,14 @@ class Tracer:
 
                 return result
 
-            # def sync_wrapper(*args, **kwargs):
-            #     if asyncio.get_event_loop().is_running():
-            #         return async_wrapper(*args, **kwargs)
-            #     else:
-            #         return asyncio.run(async_wrapper(*args, **kwargs))
             def sync_wrapper(*args, **kwargs):
                 try:
                     loop = asyncio.get_event_loop()
                     if loop.is_running():
-                        # If the event loop is already running, use it
                         return async_wrapper(*args, **kwargs)
                     else:
-                        # If there's an event loop but it's not running, start it with asyncio.run
                         return asyncio.run(async_wrapper(*args, **kwargs))
                 except RuntimeError:
-                    # If we're in a thread without an event loop, run the async function with asyncio.run
                     return asyncio.run(async_wrapper(*args, **kwargs))
 
             return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
@@ -429,17 +421,18 @@ class Tracer:
         def decorator(func):
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs):
-                return await self._trace_llm_call(func, name, *args, **kwargs)
+                return await self._trace_llm_call_async(func, name, *args, **kwargs)
 
             @functools.wraps(func)
             def sync_wrapper(*args, **kwargs):
-                return self._trace_llm_call(func, name, *args, **kwargs)
+                return self._trace_llm_call_sync(func, name, *args, **kwargs)
 
             return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
 
         return decorator
+    
 
-    async def _trace_llm_call(self, func, name, *args, **kwargs):
+    async def _trace_llm_call_async(self, func, name, *args, **kwargs):
         start_time = datetime.now()
         start_memory = psutil.Process().memory_info().rss
 
@@ -455,20 +448,54 @@ class Tracer:
 
             sanitized_args = self._sanitize_api_keys(args)
             sanitized_kwargs = self._sanitize_api_keys(kwargs)
-            self.process_llm_result(
-                result,
-                name,
-                self._extract_model_name(sanitized_kwargs),
-                self._extract_input(sanitized_args, sanitized_kwargs),
-                start_time,
-                end_time,
-                memory_used,
-            )
+            if not self.auto_instrument_llm:
+                self.process_llm_result(
+                    result,
+                    name,
+                    self._extract_model_name(sanitized_kwargs),
+                    self._extract_input(sanitized_args,sanitized_kwargs),
+                    start_time,
+                    end_time,
+                    memory_used,
+                )
 
             return result
         except Exception as e:
             self._log_error(e, "llm", name)
             raise
+
+
+    def _trace_llm_call_sync(self, func, name, *args, **kwargs):
+        # Synchronous version of the method
+        start_time = datetime.now()
+        start_memory = psutil.Process().memory_info().rss
+
+        try:
+            result = func(*args, **kwargs)
+
+            end_time = datetime.now()
+            end_memory = psutil.Process().memory_info().rss
+            memory_used = end_memory - start_memory
+
+            sanitized_args = self._sanitize_api_keys(args)
+            sanitized_kwargs = self._sanitize_api_keys(kwargs)
+            if not self.auto_instrument_llm:
+                self.process_llm_result(
+                    result,
+                    name,
+                    self._extract_model_name(sanitized_kwargs),
+                    self._extract_input(sanitized_args, sanitized_kwargs),
+                    start_time,
+                    end_time,
+                    memory_used,
+                )
+
+            return result
+        except Exception as e:
+            self._log_error(e, "llm", name)
+            raise
+
+
 
     def _log_error(self, error: Exception, call_type: str, call_name: str):
         error_info = {
@@ -563,7 +590,7 @@ class Tracer:
 
             self.process_llm_result(
                 result,
-                "async_call",
+                "auto_async_call",
                 self._extract_model_name(sanitized_kwargs),
                 self._extract_input(sanitized_args, sanitized_kwargs),
                 start_time,
@@ -586,7 +613,7 @@ class Tracer:
 
         self.process_llm_result(
             result,
-            "sync_call",
+            "auto_sync_call",
             self._extract_model_name(sanitized_kwargs),
             self._extract_input(sanitized_args, sanitized_kwargs),
             start_time,
@@ -621,49 +648,50 @@ class Tracer:
         else:
             return data
 
-    def trace_decorator(self, func):
-        def get_func_name(f):
-            return getattr(f, "__qualname__", getattr(f, "__name__", repr(f)))
+    # def trace_decorator(self, func):
+    #     def get_func_name(f):
+    #         return getattr(f, "__qualname__", getattr(f, "__name__", repr(f)))
 
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            depth = self.call_depth.get()
-            indent = "  " * depth
-            func_name = get_func_name(func)
-            # print(f"{indent}Calling {func_name} with args: {args} and kwargs: {kwargs}")
-            self.call_depth.set(depth + 1)
-            start_time = datetime.now()
-            try:
-                if asyncio.iscoroutinefunction(func):
-                    result = asyncio.get_event_loop().run_until_complete(
-                        func(*args, **kwargs)
-                    )
-                else:
-                    result = func(*args, **kwargs)
-            except Exception as e:
-                print(f"{indent}Error in {func_name}: {e}")
-                self.call_depth.set(depth)
-                raise
-            end_time = datetime.now()
-            duration = (end_time - start_time).total_seconds()
-            self.call_depth.set(depth)
-            # print(
-            #     f"{indent}{func_name} returned {result} (Time taken: {duration:.4f}s)"
-            # )
-            return result
+    #     @functools.wraps(func)
+    #     def wrapper(*args, **kwargs):
+    #         depth = self.call_depth.get()
+    #         indent = "  " * depth
+    #         func_name = get_func_name(func)
+    #         # print(f"{indent}Calling {func_name} with args: {args} and kwargs: {kwargs}")
+    #         self.call_depth.set(depth + 1)
+    #         start_time = datetime.now()
+    #         try:
+    #             if asyncio.iscoroutinefunction(func):
+    #                 result = asyncio.get_event_loop().run_until_complete(
+    #                     func(*args, **kwargs)
+    #                 )
+    #             else:
+    #                 result = func(*args, **kwargs)
+    #         except Exception as e:
+    #             print(f"{indent}Error in {func_name}: {e}")
+    #             self.call_depth.set(depth)
+    #             raise
+    #         end_time = datetime.now()
+    #         duration = (end_time - start_time).total_seconds()
+    #         self.call_depth.set(depth)
+    #         # print(
+    #         #     f"{indent}{func_name} returned {result} (Time taken: {duration:.4f}s)"
+    #         # )
+    #         return result
 
-        return wrapper
+    #     return wrapper
 
     def process_llm_result(
         self, result, name, model, prompt, start_time, end_time, memory_used
     ):
-        provider = result.__module__.split(".")[0]
-        if provider == "openai":
-            llm_data = extract_openai_output(result)
-        elif provider == "litellm":
-            llm_data = extract_litellm_output(result)
-        else:
-            raise ValueError("Provider not supported.")
+        # provider = result.__module__.split(".")[0]
+        # if provider == "openai":
+        #     llm_data = extract_openai_output(result)
+        # elif provider == "litellm":
+        #     llm_data = extract_litellm_output(result)
+        # else:
+        #     raise ValueError("Provider not supported.")
+        llm_data = extract_openai_output(result)
 
         llm_call = LLMCallModel(
             project_id=self.project_id,
