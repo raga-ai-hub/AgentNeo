@@ -17,9 +17,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta
 import pkg_resources
 import functools
-from unittest.mock import patch
 
-from .llm_provider import extract_openai_output, extract_litellm_output
+from .utils import calculate_cost, convert_usage_to_dict, load_model_costs
+from .llm_provider import extract_llm_output
 from .data import (
     Base,
     ProjectInfoModel,
@@ -428,8 +428,8 @@ class Tracer:
                         start_time=start_time,
                         end_time=None,
                         duration=None,
-                        tool_calls="[]",
-                        llm_calls="[]",
+                        tool_calls=[],
+                        llm_calls=[],
                         memory_used=0,
                     )
                     with self.Session() as session:
@@ -438,7 +438,13 @@ class Tracer:
                         agent_id = agent_call.id
 
                     async def wrapped_tool_call(tool_name: str, **tool_kwargs):
+                        start_time = datetime.now()
+                        start_memory = psutil.Process().memory_info().rss
                         tool_result = await self.tools[tool_name].func(**tool_kwargs)
+                        end_time = datetime.now()
+                        end_memory = psutil.Process().memory_info().rss
+                        duration = (end_time - start_time).total_seconds()
+                        memory_used = end_memory - start_memory
                         tool_call = ToolCallModel(
                             project_id=self.project_id,
                             trace_id=self.trace_id,
@@ -446,10 +452,10 @@ class Tracer:
                             name=tool_name,
                             input_parameters=json.dumps(tool_kwargs),
                             output=str(tool_result),
-                            start_time=datetime.now(),
-                            end_time=datetime.now(),
-                            duration=0,  # You might want to measure this more accurately
-                            memory_used=0,  # You might want to measure this more accurately
+                            start_time=start_time,
+                            end_time=end_time,
+                            duration=duration,
+                            memory_used=memory_used,
                         )
                         with self.Session() as session:
                             session.add(tool_call)
@@ -470,22 +476,37 @@ class Tracer:
                         llm_result = await self.async_client.chat.completions.create(
                             **llm_kwargs
                         )
+                        start_time = datetime.now()
+                        start_memory = psutil.Process().memory_info().rss
+
+                        end_time = datetime.now()
+                        end_memory = psutil.Process().memory_info().rss
+                        duration = (end_time - start_time).total_seconds()
+                        memory_used = end_memory - start_memory
+
+                        model_name = llm_kwargs.get("model", "")
+                        cost = (
+                            calculate_cost(model_name, llm_result.usage)
+                            if model_name
+                            else "0"
+                        )
+
                         llm_call = LLMCallModel(
                             project_id=self.project_id,
                             trace_id=self.trace_id,
                             agent_id=agent_id,
                             name="agent_llm_call",
-                            model=llm_kwargs.get("model", ""),
+                            model=model_name,
                             input_prompt=json.dumps(llm_kwargs.get("messages", [])),
                             output=str(llm_result),
-                            start_time=datetime.now(),
-                            end_time=datetime.now(),
-                            duration=0,  # You might want to measure this more accurately
+                            start_time=start_time,
+                            end_time=end_time,
+                            duration=duration,
                             token_usage=json.dumps(
                                 llm_result.usage.dict() if llm_result.usage else {}
                             ),
-                            cost="0",  # You might want to calculate this based on the model and usage
-                            memory_used=0,  # You might want to measure this more accurately
+                            cost=cost,
+                            memory_used=memory_used,
                         )
                         with self.Session() as session:
                             session.add(llm_call)
@@ -500,10 +521,6 @@ class Tracer:
                             }
                         )
                         return llm_result
-
-                    # Inject wrapped calls into the agent function
-                    kwargs["tool_call"] = wrapped_tool_call
-                    kwargs["llm_call"] = wrapped_llm_call
 
                     try:
                         if asyncio.iscoroutinefunction(func_or_class):
@@ -525,12 +542,8 @@ class Tracer:
                             agent_call.duration = (
                                 end_time - start_time
                             ).total_seconds()
-                            agent_call.tool_calls = json.dumps(
-                                agent_context["tool_calls"]
-                            )
-                            agent_call.llm_calls = json.dumps(
-                                agent_context["llm_calls"]
-                            )
+                            agent_call.tool_calls = agent_context["tool_calls"]
+                            agent_call.llm_calls = agent_context["llm_calls"]
                             agent_call.memory_used = memory_used
                             session.commit()
 
@@ -831,18 +844,15 @@ class Tracer:
     def process_llm_result(
         self, result, name, model, prompt, start_time, end_time, memory_used
     ):
-        llm_data = extract_openai_output(result)
+        llm_data = extract_llm_output(result)
 
         llm_call = LLMCallModel(
             project_id=self.project_id,
             trace_id=self.trace_id,
             name=name,
-            model=model,
+            model=llm_data.model_name,
             input_prompt=prompt,
             output=llm_data.output_response,
-            tool_call=(
-                str(llm_data.tool_call) if llm_data.tool_call else llm_data.tool_call
-            ),
             tool_call=(
                 str(llm_data.tool_call) if llm_data.tool_call else llm_data.tool_call
             ),
@@ -860,7 +870,7 @@ class Tracer:
         self.trace_data["llm_calls"].append(
             {
                 "name": name,
-                "model": model,
+                "model": llm_data.model_name,
                 "input_prompt": prompt,
                 "output": llm_data.output_response,
                 "tool_call": llm_data.tool_call,

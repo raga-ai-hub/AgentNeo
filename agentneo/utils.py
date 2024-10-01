@@ -1,28 +1,72 @@
 from typing import Dict, Any, Optional
 from dataclasses import dataclass, field, asdict
-import json 
+import json
+from importlib import resources
 
 
-def calculate_cost(token_usage: Dict[str, int],
-                input_cost_per_token: float,
-                completion_cost_per_token: float,
-                reasoning_cost_per_token: float=0) -> Dict[str, float]:
+def convert_usage_to_dict(usage):
+    # Initialize the token_usage dictionary with default values
+    token_usage = {
+        "input": 0,
+        "completion": 0,
+        "reasoning": 0,  # Default reasoning tokens to 0 unless specified
+    }
 
-        cost = {
-            'input': token_usage['input']*input_cost_per_token,
-            'completion': token_usage['completion']*completion_cost_per_token,
-            'reasoning': token_usage['reasoning']*reasoning_cost_per_token
-        }
-        return cost
+    if usage:
+        if isinstance(usage, dict):
+            # Access usage data as dictionary keys
+            token_usage["input"] = usage.get("prompt_tokens", 0)
+            token_usage["completion"] = usage.get("completion_tokens", 0)
+            # If reasoning tokens are provided, adjust accordingly
+            token_usage["reasoning"] = usage.get("reasoning_tokens", 0)
+        else:
+            # Handle the case where usage is not a dictionary
+            # This could be an object with attributes, or something else
+            try:
+                token_usage["input"] = getattr(usage, "prompt_tokens", 0)
+                token_usage["completion"] = getattr(usage, "completion_tokens", 0)
+                token_usage["reasoning"] = getattr(usage, "reasoning_tokens", 0)
+            except AttributeError:
+                # If attributes are not found, log or handle the error as needed
+                print(f"Warning: Unexpected usage type: {type(usage)}")
+
+    return token_usage
+
+
+def calculate_cost(
+    token_usage,
+    input_cost_per_token=0.0,
+    output_cost_per_token=0.0,
+    reasoning_cost_per_token=0.0,
+):
+    input_tokens = token_usage.get("prompt_tokens", 0)
+    output_tokens = token_usage.get("completion_tokens", 0)
+    reasoning_tokens = token_usage.get("reasoning_tokens", 0)
+
+    input_cost = input_tokens * input_cost_per_token
+    output_cost = output_tokens * output_cost_per_token
+    reasoning_cost = reasoning_tokens * reasoning_cost_per_token
+
+    total_cost = input_cost + output_cost + reasoning_cost
+
+    return {
+        "input": input_cost,
+        "completion": output_cost,
+        "reasoning": reasoning_cost,
+        "total": total_cost,
+    }
+
+
+def load_model_costs():
+    try:
+        with open("agentneo/configs/model_costs.json", "r") as file:
+            return json.load(file)
+    except FileNotFoundError:
+        with resources.open_text("agentneo.configs", "model_costs.json") as file:
+            return json.load(file)
+
 
 def log_event(event_data, log_file_path):
     event_data = asdict(event_data)
-    with open(log_file_path, 'a') as f:
-        f.write(json.dumps(event_data) + '\n')
-
-def convert_usage_to_dict(token_usage):
-    return {
-        'input': token_usage.prompt_tokens,
-        'completion': token_usage.completion_tokens,
-        'reasoning': 0 #TODO:#token_usage.completion_tokens_details
-    }
+    with open(log_file_path, "a") as f:
+        f.write(json.dumps(event_data) + "\n")
