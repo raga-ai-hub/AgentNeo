@@ -177,23 +177,28 @@ class Tracer:
             trace.duration = (trace.end_time - trace.start_time).total_seconds()
 
             project.end_time = trace.end_time
-            project.duration = (project.end_time - project.start_time).total_seconds()
+            project.duration += trace.duration  # accumulate duration
 
             llm_calls = (
                 session.query(LLMCallModel).filter_by(trace_id=self.trace_id).all()
             )
-            project.total_cost = sum(
+            trace_cost = sum(
                 json.loads(llm_call.cost)["input"]
                 + json.loads(llm_call.cost)["completion"]
                 + json.loads(llm_call.cost)["reasoning"]
                 for llm_call in llm_calls
             )
-            project.total_tokens = sum(
+            trace_tokens = sum(
                 json.loads(llm_call.token_usage)["input"]
                 + json.loads(llm_call.token_usage)["completion"]
                 + json.loads(llm_call.token_usage)["reasoning"]
                 for llm_call in llm_calls
             )
+
+            # Accumulate costs and tokens instead of overwriting
+            project.total_cost += trace_cost
+            project.total_tokens += trace_tokens
+
             session.commit()
 
             end_time = trace.end_time
