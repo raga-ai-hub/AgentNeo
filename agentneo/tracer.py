@@ -353,10 +353,53 @@ class Tracer:
                         "llm_calls": [],
                     }
 
+                    # Create the agent call record first
+                    agent_call = AgentCallModel(
+                        project_id=self.project_id,
+                        trace_id=self.trace_id,
+                        name=name,
+                        input_parameters=json.dumps(
+                            {
+                                k: str(v)
+                                for k, v in kwargs.items()
+                                if k not in ["tool_call", "llm_call"]
+                            }
+                        ),
+                        output="",  # We'll update this later
+                        start_time=start_time,
+                        end_time=None,
+                        duration=None,
+                        tool_calls="[]",
+                        llm_calls="[]",
+                        memory_used=0,
+                    )
+                    with self.Session() as session:
+                        session.add(agent_call)
+                        session.commit()
+                        agent_id = agent_call.id
+
                     async def wrapped_tool_call(tool_name: str, **tool_kwargs):
                         tool_result = await self.tools[tool_name].func(**tool_kwargs)
+                        tool_call = ToolCallModel(
+                            project_id=self.project_id,
+                            trace_id=self.trace_id,
+                            agent_id=agent_id,
+                            name=tool_name,
+                            input_parameters=json.dumps(tool_kwargs),
+                            output=str(tool_result),
+                            start_time=datetime.now(),
+                            end_time=datetime.now(),
+                            duration=0,  # You might want to measure this more accurately
+                            memory_used=0,  # You might want to measure this more accurately
+                        )
+                        with self.Session() as session:
+                            session.add(tool_call)
+                            session.commit()
+                            tool_call_id = tool_call.id
+
                         agent_context["tool_calls"].append(
                             {
+                                "id": tool_call_id,
                                 "name": tool_name,
                                 "input": tool_kwargs,
                                 "output": str(tool_result),
@@ -368,8 +411,34 @@ class Tracer:
                         llm_result = await self.async_client.chat.completions.create(
                             **llm_kwargs
                         )
+                        llm_call = LLMCallModel(
+                            project_id=self.project_id,
+                            trace_id=self.trace_id,
+                            agent_id=agent_id,
+                            name="agent_llm_call",
+                            model=llm_kwargs.get("model", ""),
+                            input_prompt=json.dumps(llm_kwargs.get("messages", [])),
+                            output=str(llm_result),
+                            start_time=datetime.now(),
+                            end_time=datetime.now(),
+                            duration=0,  # You might want to measure this more accurately
+                            token_usage=json.dumps(
+                                llm_result.usage.dict() if llm_result.usage else {}
+                            ),
+                            cost="0",  # You might want to calculate this based on the model and usage
+                            memory_used=0,  # You might want to measure this more accurately
+                        )
+                        with self.Session() as session:
+                            session.add(llm_call)
+                            session.commit()
+                            llm_call_id = llm_call.id
+
                         agent_context["llm_calls"].append(
-                            {"input": llm_kwargs, "output": str(llm_result)}
+                            {
+                                "id": llm_call_id,
+                                "input": llm_kwargs,
+                                "output": str(llm_result),
+                            }
                         )
                         return llm_result
 
@@ -387,36 +456,28 @@ class Tracer:
                         end_memory = psutil.Process().memory_info().rss
                         memory_used = end_memory - start_memory
 
-                        # Convert non-serializable objects to strings
-                        serializable_kwargs = {
-                            k: (str(v) if callable(v) else v) for k, v in kwargs.items()
-                        }
-
-                        # Remove tool_call and llm_call from serializable_kwargs
-                        serializable_kwargs.pop("tool_call", None)
-                        serializable_kwargs.pop("llm_call", None)
-
-                        agent_call = AgentCallModel(
-                            project_id=self.project_id,
-                            trace_id=self.trace_id,
-                            name=name,
-                            input_parameters=json.dumps(serializable_kwargs),
-                            output=str(result),
-                            start_time=start_time,
-                            end_time=end_time,
-                            duration=(end_time - start_time).total_seconds(),
-                            tool_calls=json.dumps(agent_context["tool_calls"]),
-                            llm_calls=json.dumps(agent_context["llm_calls"]),
-                            memory_used=memory_used,
-                        )
+                        # Update the agent call record
                         with self.Session() as session:
-                            session.add(agent_call)
+                            agent_call = session.query(AgentCallModel).get(agent_id)
+                            agent_call.output = str(result)
+                            agent_call.end_time = end_time
+                            agent_call.duration = (
+                                end_time - start_time
+                            ).total_seconds()
+                            agent_call.tool_calls = json.dumps(
+                                agent_context["tool_calls"]
+                            )
+                            agent_call.llm_calls = json.dumps(
+                                agent_context["llm_calls"]
+                            )
+                            agent_call.memory_used = memory_used
                             session.commit()
 
                         self.trace_data["agent_calls"].append(
                             {
+                                "id": agent_id,
                                 "name": name,
-                                "input_parameters": serializable_kwargs,
+                                "input_parameters": kwargs,
                                 "output": str(result),
                                 "start_time": start_time,
                                 "end_time": end_time,
@@ -459,7 +520,7 @@ class Tracer:
                         setattr(
                             func_or_class,
                             attr_name,
-                            self._wrap_llm_method(attr_value, name),
+                            self.trace_llm(f"{name}.{attr_name}")(attr_value),
                         )
                 return func_or_class
             else:

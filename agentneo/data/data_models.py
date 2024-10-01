@@ -73,6 +73,7 @@ class LLMCallModel(Base):
 
     id = Column(Integer, primary_key=True)
     project_id = Column(Integer, ForeignKey("project_info.id"), nullable=False)
+    agent_id = Column(Integer, ForeignKey("agent_call.id"), nullable=True)
     name = Column(String, nullable=False)
     model = Column(String, nullable=True)
     input_prompt = Column(String, nullable=False)
@@ -88,6 +89,7 @@ class LLMCallModel(Base):
 
     trace = relationship("TraceModel", back_populates="llm_calls")
     project = relationship("ProjectInfoModel", back_populates="llm_calls")
+    agent = relationship("AgentCallModel", back_populates="llm_calls")
 
 
 class ToolCallModel(Base):
@@ -95,6 +97,7 @@ class ToolCallModel(Base):
 
     id = Column(Integer, primary_key=True)
     project_id = Column(Integer, ForeignKey("project_info.id"), nullable=False)
+    agent_id = Column(Integer, ForeignKey("agent_call.id"), nullable=True)
     name = Column(String, nullable=False)
     input_parameters = Column(String, nullable=False)
     output = Column(String, nullable=False)
@@ -106,6 +109,7 @@ class ToolCallModel(Base):
 
     trace = relationship("TraceModel", back_populates="tool_calls")
     project = relationship("ProjectInfoModel", back_populates="tool_calls")
+    agent = relationship("AgentCallModel", back_populates="tool_calls")
 
 
 class AgentCallModel(Base):
@@ -126,6 +130,8 @@ class AgentCallModel(Base):
 
     trace = relationship("TraceModel", back_populates="agent_calls")
     project = relationship("ProjectInfoModel", back_populates="agent_calls")
+    llm_calls = relationship("LLMCallModel", back_populates="agent")
+    tool_calls = relationship("ToolCallModel", back_populates="agent")
 
 
 # Establish relationships
