@@ -21,12 +21,22 @@ class AgentNeo:
 
     @staticmethod
     def get_db_path():
-        # Save the database in the 'ui/public' folder of the package
+        db_filename = "trace_data.db"
+
+        # First, try the local directory
+        local_db_path = os.path.join(os.getcwd(), db_filename)
+        if os.path.exists(os.path.dirname(local_db_path)):
+            return f"sqlite:///{local_db_path}"
+
+        # If local directory doesn't exist, use the package directory
         package_dir = os.path.dirname(os.path.abspath(__file__))
         public_dir = os.path.join(package_dir, "ui", "public")
-        db_filename = "trace_data.db"
-        db_path = os.path.join(public_dir, db_filename)
-        return f"sqlite:///{db_path}"
+        package_db_path = os.path.join(public_dir, db_filename)
+
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(package_db_path), exist_ok=True)
+
+        return f"sqlite:///{package_db_path}"
 
     def create_project(self, project_name: str):
         with self.Session() as session:
