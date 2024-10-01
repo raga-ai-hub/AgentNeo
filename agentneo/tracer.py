@@ -250,191 +250,235 @@ class Tracer:
             json.dump(self.trace_data, f, indent=2, default=default_converter)
 
     def trace_tool(self, name: str, description: str = ""):
-        def decorator(func):
-            self.tools[name] = Tool(func, name, description)
+        def decorator(func_or_class):
+            if isinstance(func_or_class, type):
+                # If it's a class, wrap all its methods
+                for attr_name, attr_value in func_or_class.__dict__.items():
+                    if callable(attr_value) and not attr_name.startswith("__"):
+                        setattr(
+                            func_or_class,
+                            attr_name,
+                            self.trace_tool(name, description)(attr_value),
+                        )
+                return func_or_class
+            else:
+                self.tools[name] = Tool(func_or_class, name, description)
 
-            async def async_wrapper(*args, **kwargs):
-                start_time = datetime.now()
-                start_memory = psutil.Process().memory_info().rss
-                try:
-                    if asyncio.iscoroutinefunction(func):
-                        result = await func(*args, **kwargs)
-                    else:
-                        result = await asyncio.to_thread(func, *args, **kwargs)
-                    end_time = datetime.now()
-                    end_memory = psutil.Process().memory_info().rss
-                    memory_used = end_memory - start_memory
+                async def async_wrapper(*args, **kwargs):
+                    start_time = datetime.now()
+                    start_memory = psutil.Process().memory_info().rss
+                    try:
+                        if asyncio.iscoroutinefunction(func):
+                            result = await func(*args, **kwargs)
+                        else:
+                            result = await asyncio.to_thread(func, *args, **kwargs)
+                        end_time = datetime.now()
+                        end_memory = psutil.Process().memory_info().rss
+                        memory_used = end_memory - start_memory
 
-                    tool_call = ToolCallModel(
-                        project_id=self.project_id,
-                        trace_id=self.trace_id,
-                        name=name,
-                        # description=description,
-                        input_parameters=json.dumps(kwargs),
-                        output=str(result),
-                        start_time=start_time,
-                        end_time=end_time,
-                        duration=(end_time - start_time).total_seconds(),
-                        memory_used=memory_used,
-                    )
-                    with self.Session() as session:
-                        session.add(tool_call)
-                        session.commit()
+                        tool_call = ToolCallModel(
+                            project_id=self.project_id,
+                            trace_id=self.trace_id,
+                            name=name,
+                            # description=description,
+                            input_parameters=json.dumps(kwargs),
+                            output=str(result),
+                            start_time=start_time,
+                            end_time=end_time,
+                            duration=(end_time - start_time).total_seconds(),
+                            memory_used=memory_used,
+                        )
+                        with self.Session() as session:
+                            session.add(tool_call)
+                            session.commit()
 
-                    self.trace_data["tool_calls"].append(
-                        {
-                            "name": name,
-                            "description": description,
-                            "input_parameters": kwargs,
-                            "output": str(result),
-                            "start_time": start_time,
-                            "end_time": end_time,
-                            "duration": end_time - start_time,
-                            "memory_used": memory_used,
-                        }
-                    )
-                except Exception as e:
-                    self._log_error(e, "tool", name)
-                    raise
+                        self.trace_data["tool_calls"].append(
+                            {
+                                "name": name,
+                                "description": description,
+                                "input_parameters": kwargs,
+                                "output": str(result),
+                                "start_time": start_time,
+                                "end_time": end_time,
+                                "duration": end_time - start_time,
+                                "memory_used": memory_used,
+                            }
+                        )
+                    except Exception as e:
+                        self._log_error(e, "tool", name)
+                        raise
 
-                return result
+                    return result
 
-            # def sync_wrapper(*args, **kwargs):
-            #     if asyncio.get_event_loop().is_running():
-            #         return async_wrapper(*args, **kwargs)
-            #     else:
-            #         return asyncio.run(async_wrapper(*args, **kwargs))
-            def sync_wrapper(*args, **kwargs):
-                try:
-                    loop = asyncio.get_event_loop()
-                    if loop.is_running():
-                        # If the event loop is already running, use it
-                        return async_wrapper(*args, **kwargs)
-                    else:
-                        # If there's an event loop but it's not running, start it with asyncio.run
+                def sync_wrapper(*args, **kwargs):
+                    try:
+                        loop = asyncio.get_event_loop()
+                        if loop.is_running():
+                            # If the event loop is already running, use it
+                            return async_wrapper(*args, **kwargs)
+                        else:
+                            # If there's an event loop but it's not running, start it with asyncio.run
+                            return asyncio.run(async_wrapper(*args, **kwargs))
+                    except RuntimeError:
+                        # If we're in a thread without an event loop, run the async function with asyncio.run
                         return asyncio.run(async_wrapper(*args, **kwargs))
-                except RuntimeError:
-                    # If we're in a thread without an event loop, run the async function with asyncio.run
-                    return asyncio.run(async_wrapper(*args, **kwargs))
 
-            return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
+                return (
+                    async_wrapper
+                    if asyncio.iscoroutinefunction(func_or_class)
+                    else sync_wrapper
+                )
 
         return decorator
 
     def trace_agent(self, name: str):
-        def decorator(func):
-            async def async_wrapper(*args, **kwargs):
-                start_time = datetime.now()
-                start_memory = psutil.Process().memory_info().rss
-                agent_context = {
-                    "tool_calls": [],
-                    "llm_calls": [],
-                }
+        def decorator(func_or_class):
+            if isinstance(func_or_class, type):
+                # If it's a class, wrap all its methods
+                for attr_name, attr_value in func_or_class.__dict__.items():
+                    if callable(attr_value) and not attr_name.startswith("__"):
+                        setattr(
+                            func_or_class,
+                            attr_name,
+                            self.trace_agent(f"{name}.{attr_name}")(attr_value),
+                        )
+                return func_or_class
+            else:
 
-                async def wrapped_tool_call(tool_name: str, **tool_kwargs):
-                    tool_result = await self.tools[tool_name].func(**tool_kwargs)
-                    agent_context["tool_calls"].append(
-                        {
-                            "name": tool_name,
-                            "input": tool_kwargs,
-                            "output": str(tool_result),
-                        }
-                    )
-                    return tool_result
-
-                async def wrapped_llm_call(**llm_kwargs):
-                    llm_result = await self.async_client.chat.completions.create(
-                        **llm_kwargs
-                    )
-                    agent_context["llm_calls"].append(
-                        {"input": llm_kwargs, "output": str(llm_result)}
-                    )
-                    return llm_result
-
-                # Inject wrapped calls into the agent function
-                kwargs["tool_call"] = wrapped_tool_call
-                kwargs["llm_call"] = wrapped_llm_call
-
-                try:
-                    if asyncio.iscoroutinefunction(func):
-                        result = await func(*args, **kwargs)
-                    else:
-                        result = await asyncio.to_thread(func, *args, **kwargs)
-
-                    end_time = datetime.now()
-                    end_memory = psutil.Process().memory_info().rss
-                    memory_used = end_memory - start_memory
-
-                    # Convert non-serializable objects to strings
-                    serializable_kwargs = {
-                        k: (str(v) if callable(v) else v) for k, v in kwargs.items()
+                async def async_wrapper(*args, **kwargs):
+                    start_time = datetime.now()
+                    start_memory = psutil.Process().memory_info().rss
+                    agent_context = {
+                        "tool_calls": [],
+                        "llm_calls": [],
                     }
 
-                    # Remove tool_call and llm_call from serializable_kwargs
-                    serializable_kwargs.pop("tool_call", None)
-                    serializable_kwargs.pop("llm_call", None)
+                    async def wrapped_tool_call(tool_name: str, **tool_kwargs):
+                        tool_result = await self.tools[tool_name].func(**tool_kwargs)
+                        agent_context["tool_calls"].append(
+                            {
+                                "name": tool_name,
+                                "input": tool_kwargs,
+                                "output": str(tool_result),
+                            }
+                        )
+                        return tool_result
 
-                    agent_call = AgentCallModel(
-                        project_id=self.project_id,
-                        trace_id=self.trace_id,
-                        name=name,
-                        input_parameters=json.dumps(serializable_kwargs),
-                        output=str(result),
-                        start_time=start_time,
-                        end_time=end_time,
-                        duration=(end_time - start_time).total_seconds(),
-                        tool_calls=json.dumps(agent_context["tool_calls"]),
-                        llm_calls=json.dumps(agent_context["llm_calls"]),
-                        memory_used=memory_used,
-                    )
-                    with self.Session() as session:
-                        session.add(agent_call)
-                        session.commit()
+                    async def wrapped_llm_call(**llm_kwargs):
+                        llm_result = await self.async_client.chat.completions.create(
+                            **llm_kwargs
+                        )
+                        agent_context["llm_calls"].append(
+                            {"input": llm_kwargs, "output": str(llm_result)}
+                        )
+                        return llm_result
 
-                    self.trace_data["agent_calls"].append(
-                        {
-                            "name": name,
-                            "input_parameters": serializable_kwargs,
-                            "output": str(result),
-                            "start_time": start_time,
-                            "end_time": end_time,
-                            "duration": end_time - start_time,
-                            "tool_calls": agent_context["tool_calls"],
-                            "llm_calls": agent_context["llm_calls"],
-                            "memory_used": memory_used,
+                    # Inject wrapped calls into the agent function
+                    kwargs["tool_call"] = wrapped_tool_call
+                    kwargs["llm_call"] = wrapped_llm_call
+
+                    try:
+                        if asyncio.iscoroutinefunction(func):
+                            result = await func(*args, **kwargs)
+                        else:
+                            result = await asyncio.to_thread(func, *args, **kwargs)
+
+                        end_time = datetime.now()
+                        end_memory = psutil.Process().memory_info().rss
+                        memory_used = end_memory - start_memory
+
+                        # Convert non-serializable objects to strings
+                        serializable_kwargs = {
+                            k: (str(v) if callable(v) else v) for k, v in kwargs.items()
                         }
-                    )
-                except Exception as e:
-                    self._log_error(e, "agent", name)
-                    raise
 
-                return result
+                        # Remove tool_call and llm_call from serializable_kwargs
+                        serializable_kwargs.pop("tool_call", None)
+                        serializable_kwargs.pop("llm_call", None)
 
-            def sync_wrapper(*args, **kwargs):
-                try:
-                    loop = asyncio.get_event_loop()
-                    if loop.is_running():
-                        return async_wrapper(*args, **kwargs)
-                    else:
+                        agent_call = AgentCallModel(
+                            project_id=self.project_id,
+                            trace_id=self.trace_id,
+                            name=name,
+                            input_parameters=json.dumps(serializable_kwargs),
+                            output=str(result),
+                            start_time=start_time,
+                            end_time=end_time,
+                            duration=(end_time - start_time).total_seconds(),
+                            tool_calls=json.dumps(agent_context["tool_calls"]),
+                            llm_calls=json.dumps(agent_context["llm_calls"]),
+                            memory_used=memory_used,
+                        )
+                        with self.Session() as session:
+                            session.add(agent_call)
+                            session.commit()
+
+                        self.trace_data["agent_calls"].append(
+                            {
+                                "name": name,
+                                "input_parameters": serializable_kwargs,
+                                "output": str(result),
+                                "start_time": start_time,
+                                "end_time": end_time,
+                                "duration": end_time - start_time,
+                                "tool_calls": agent_context["tool_calls"],
+                                "llm_calls": agent_context["llm_calls"],
+                                "memory_used": memory_used,
+                            }
+                        )
+                    except Exception as e:
+                        self._log_error(e, "agent", name)
+                        raise
+
+                    return result
+
+                def sync_wrapper(*args, **kwargs):
+                    try:
+                        loop = asyncio.get_event_loop()
+                        if loop.is_running():
+                            return async_wrapper(*args, **kwargs)
+                        else:
+                            return asyncio.run(async_wrapper(*args, **kwargs))
+                    except RuntimeError:
                         return asyncio.run(async_wrapper(*args, **kwargs))
-                except RuntimeError:
-                    return asyncio.run(async_wrapper(*args, **kwargs))
 
-            return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
+                return (
+                    async_wrapper
+                    if asyncio.iscoroutinefunction(func_or_class)
+                    else sync_wrapper
+                )
 
         return decorator
 
     def trace_llm(self, name: str):
-        def decorator(func):
-            @functools.wraps(func)
-            async def async_wrapper(*args, **kwargs):
-                return await self._trace_llm_call(func, name, *args, **kwargs)
+        def decorator(func_or_class):
+            if isinstance(func_or_class, type):
+                # If it's a class, wrap all its methods
+                for attr_name, attr_value in func_or_class.__dict__.items():
+                    if callable(attr_value) and not attr_name.startswith("__"):
+                        setattr(
+                            func_or_class,
+                            attr_name,
+                            self._wrap_llm_method(attr_value, name),
+                        )
+                return func_or_class
+            else:
 
-            @functools.wraps(func)
-            def sync_wrapper(*args, **kwargs):
-                return self._trace_llm_call(func, name, *args, **kwargs)
+                @functools.wraps(func_or_class)
+                async def async_wrapper(*args, **kwargs):
+                    return await self._trace_llm_call(
+                        func_or_class, name, *args, **kwargs
+                    )
 
-            return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
+                @functools.wraps(func_or_class)
+                def sync_wrapper(*args, **kwargs):
+                    return self._trace_llm_call(func_or_class, name, *args, **kwargs)
+
+                return (
+                    async_wrapper
+                    if asyncio.iscoroutinefunction(func_or_class)
+                    else sync_wrapper
+                )
 
         return decorator
 
@@ -458,7 +502,7 @@ class Tracer:
                 result,
                 name,
                 self._extract_model_name(sanitized_kwargs),
-                self._extract_input(sanitized_args,sanitized_kwargs),
+                self._extract_input(sanitized_args, sanitized_kwargs),
                 start_time,
                 end_time,
                 memory_used,
@@ -564,7 +608,7 @@ class Tracer:
                 result,
                 "async_call",
                 self._extract_model_name(sanitized_kwargs),
-                self._extract_input(sanitized_args,sanitized_kwargs),
+                self._extract_input(sanitized_args, sanitized_kwargs),
                 start_time,
                 end_time,
                 memory_used,
@@ -587,25 +631,24 @@ class Tracer:
             result,
             "sync_call",
             self._extract_model_name(sanitized_kwargs),
-            self._extract_input(sanitized_args,sanitized_kwargs),
+            self._extract_input(sanitized_args, sanitized_kwargs),
             start_time,
             end_time,
             memory_used,
         )
         return result
-    
+
     def _extract_model_name(self, sanitized_kwargs):
         if isinstance(sanitized_kwargs, dict):
-            if 'model' in sanitized_kwargs.keys():
-                return str(sanitized_kwargs['model'])
-        return ''
+            if "model" in sanitized_kwargs.keys():
+                return str(sanitized_kwargs["model"])
+        return ""
 
-    def _extract_input(self, sanitized_args,sanitized_kwargs):
+    def _extract_input(self, sanitized_args, sanitized_kwargs):
         if isinstance(sanitized_kwargs, dict):
-            if 'messages' in sanitized_kwargs.keys():
-                return str(sanitized_kwargs['messages'])
-        return str(sanitized_args) if str(sanitized_args) != '()' else ''
-
+            if "messages" in sanitized_kwargs.keys():
+                return str(sanitized_kwargs["messages"])
+        return str(sanitized_args) if str(sanitized_args) != "()" else ""
 
     def _sanitize_api_keys(self, data):
         if isinstance(data, dict):
@@ -672,7 +715,9 @@ class Tracer:
             model=model,
             input_prompt=prompt,
             output=llm_data.output_response,
-            tool_call=str(llm_data.tool_call) if llm_data.tool_call else llm_data.tool_call,
+            tool_call=(
+                str(llm_data.tool_call) if llm_data.tool_call else llm_data.tool_call
+            ),
             start_time=start_time,
             end_time=end_time,
             duration=(end_time - start_time).total_seconds(),
@@ -690,7 +735,7 @@ class Tracer:
                 "model": model,
                 "input_prompt": prompt,
                 "output": llm_data.output_response,
-                "tool_call":llm_data.tool_call,
+                "tool_call": llm_data.tool_call,
                 "start_time": start_time,
                 "end_time": end_time,
                 "duration": end_time - start_time,
