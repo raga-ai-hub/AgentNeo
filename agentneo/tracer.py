@@ -48,10 +48,11 @@ class Tracer:
     ):
         self.user_session = session
         project_name = session.project_name
-        # Set the SQLite DB Path
-        db_path = "sqlite:///agentneo/ui/public/trace_data.db"
 
-        self.engine = create_engine(db_path)
+        # Setup DB
+        self.db_path = session.db_path
+        self.engine = create_engine(self.db_path)
+
         Base.metadata.create_all(self.engine)
         self.Session = sessionmaker(bind=self.engine)
 
@@ -458,7 +459,7 @@ class Tracer:
                 result,
                 name,
                 self._extract_model_name(sanitized_kwargs),
-                self._extract_input(sanitized_args,sanitized_kwargs),
+                self._extract_input(sanitized_args, sanitized_kwargs),
                 start_time,
                 end_time,
                 memory_used,
@@ -564,7 +565,7 @@ class Tracer:
                 result,
                 "async_call",
                 self._extract_model_name(sanitized_kwargs),
-                self._extract_input(sanitized_args,sanitized_kwargs),
+                self._extract_input(sanitized_args, sanitized_kwargs),
                 start_time,
                 end_time,
                 memory_used,
@@ -587,25 +588,24 @@ class Tracer:
             result,
             "sync_call",
             self._extract_model_name(sanitized_kwargs),
-            self._extract_input(sanitized_args,sanitized_kwargs),
+            self._extract_input(sanitized_args, sanitized_kwargs),
             start_time,
             end_time,
             memory_used,
         )
         return result
-    
+
     def _extract_model_name(self, sanitized_kwargs):
         if isinstance(sanitized_kwargs, dict):
-            if 'model' in sanitized_kwargs.keys():
-                return str(sanitized_kwargs['model'])
-        return ''
+            if "model" in sanitized_kwargs.keys():
+                return str(sanitized_kwargs["model"])
+        return ""
 
-    def _extract_input(self, sanitized_args,sanitized_kwargs):
+    def _extract_input(self, sanitized_args, sanitized_kwargs):
         if isinstance(sanitized_kwargs, dict):
-            if 'messages' in sanitized_kwargs.keys():
-                return str(sanitized_kwargs['messages'])
-        return str(sanitized_args) if str(sanitized_args) != '()' else ''
-
+            if "messages" in sanitized_kwargs.keys():
+                return str(sanitized_kwargs["messages"])
+        return str(sanitized_args) if str(sanitized_args) != "()" else ""
 
     def _sanitize_api_keys(self, data):
         if isinstance(data, dict):
@@ -672,7 +672,9 @@ class Tracer:
             model=model,
             input_prompt=prompt,
             output=llm_data.output_response,
-            tool_call=str(llm_data.tool_call) if llm_data.tool_call else llm_data.tool_call,
+            tool_call=(
+                str(llm_data.tool_call) if llm_data.tool_call else llm_data.tool_call
+            ),
             start_time=start_time,
             end_time=end_time,
             duration=(end_time - start_time).total_seconds(),
@@ -690,7 +692,7 @@ class Tracer:
                 "model": model,
                 "input_prompt": prompt,
                 "output": llm_data.output_response,
-                "tool_call":llm_data.tool_call,
+                "tool_call": llm_data.tool_call,
                 "start_time": start_time,
                 "end_time": end_time,
                 "duration": end_time - start_time,
