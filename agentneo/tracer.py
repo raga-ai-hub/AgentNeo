@@ -177,6 +177,8 @@ class Tracer:
             trace.duration = (trace.end_time - trace.start_time).total_seconds()
 
             project.end_time = trace.end_time
+            if project.duration is None:
+                project.duration = 0
             project.duration += trace.duration  # accumulate duration
 
             llm_calls = (
@@ -196,7 +198,12 @@ class Tracer:
             )
 
             # Accumulate costs and tokens instead of overwriting
+            if project.total_cost is None:
+                project.total_cost = 0
             project.total_cost += trace_cost
+
+            if project.total_tokens is None:
+                project.total_tokens = 0
             project.total_tokens += trace_tokens
 
             session.commit()
