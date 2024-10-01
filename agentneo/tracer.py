@@ -32,6 +32,15 @@ from .data import (
 )
 
 
+from .network_tracer import(
+    NetworkTracer,
+    monkey_patch_urllib, restore_urllib,
+    monkey_patch_requests, restore_requests,
+    monkey_patch_http_client, restore_http_client,
+    monkey_patch_socket, restore_socket,
+    patch_aiohttp_trace_config,
+) 
+
 class Tool:
     def __init__(self, func: Callable, name: str, description: str):
         self.func = func
@@ -250,68 +259,127 @@ class Tracer:
             json.dump(self.trace_data, f, indent=2, default=default_converter)
 
     def trace_tool(self, name: str, description: str = ""):
+        self.network_tracer = NetworkTracer()
         def decorator(func):
-            self.tools[name] = Tool(func, name, description)
-
+            @functools.wraps(func)
             async def async_wrapper(*args, **kwargs):
-                start_time = datetime.now()
-                start_memory = psutil.Process().memory_info().rss
+                self.network_tracer.activate_patches()  # Activate patches before execution
                 try:
-                    if asyncio.iscoroutinefunction(func):
-                        result = await func(*args, **kwargs)
-                    else:
-                        result = await asyncio.to_thread(func, *args, **kwargs)
-                    end_time = datetime.now()
-                    end_memory = psutil.Process().memory_info().rss
-                    memory_used = end_memory - start_memory
+                    return await self._trace_tool_call_async(func, name, description, *args, **kwargs)
+                finally:
+                    self.network_tracer.deactivate_patches()  # Deactivate patches after execution
 
-                    tool_call = ToolCallModel(
-                        project_id=self.project_id,
-                        trace_id=self.trace_id,
-                        name=name,
-                        # description=description,
-                        input_parameters=json.dumps(kwargs),
-                        output=str(result),
-                        start_time=start_time,
-                        end_time=end_time,
-                        duration=(end_time - start_time).total_seconds(),
-                        memory_used=memory_used,
-                    )
-                    with self.Session() as session:
-                        session.add(tool_call)
-                        session.commit()
-
-                    self.trace_data["tool_calls"].append(
-                        {
-                            "name": name,
-                            "description": description,
-                            "input_parameters": kwargs,
-                            "output": str(result),
-                            "start_time": start_time,
-                            "end_time": end_time,
-                            "duration": end_time - start_time,
-                            "memory_used": memory_used,
-                        }
-                    )
-                except Exception as e:
-                    self._log_error(e, "tool", name)
-                    raise
-
-                return result
-
+            @functools.wraps(func)
             def sync_wrapper(*args, **kwargs):
+                self.network_tracer.activate_patches()  # Activate patches before execution
                 try:
-                    loop = asyncio.get_event_loop()
-                    if loop.is_running():
-                        return async_wrapper(*args, **kwargs)
-                    else:
-                        return asyncio.run(async_wrapper(*args, **kwargs))
-                except RuntimeError:
-                    return asyncio.run(async_wrapper(*args, **kwargs))
+                    return self._trace_tool_call_sync(func, name, description, *args, **kwargs)
+                finally:
+                    self.network_tracer.deactivate_patches()  # Deactivate patches after execution
 
             return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
 
         return decorator
+
+    async def _trace_tool_call_async(self, func, name, description, *args, **kwargs):
+        start_time = datetime.now()
+        start_memory = psutil.Process().memory_info().rss
+
+        try:
+            if asyncio.iscoroutinefunction(func):
+                trace_config = await patch_aiohttp_trace_config(self.network_tracer)
+                result = await func(*args, **kwargs, trace_config=trace_config)
+            else:
+                result = await asyncio.to_thread(func, *args, **kwargs)
+
+            end_time = datetime.now()
+            end_memory = psutil.Process().memory_info().rss
+            memory_used = end_memory - start_memory
+
+            tool_call = ToolCallModel(
+                project_id=self.project_id,
+                trace_id=self.trace_id,
+                name=name,
+                # description=description,
+                input_parameters=json.dumps(args) if args else json.dumps(kwargs),
+                output=str(result),
+                start_time=start_time,
+                end_time=end_time,
+                duration=(end_time - start_time).total_seconds(),
+                memory_used=memory_used,
+                network_calls=str(self.network_tracer.network_calls)
+            )
+            with self.Session() as session:
+                session.add(tool_call)
+                session.commit()
+
+            tool_call = {
+                "name": name,
+                "description": description,
+                "input_parameters": json.dumps(args) if args else json.dumps(kwargs),
+                "output": str(result),
+                "start_time": start_time.isoformat(),
+                "end_time": end_time.isoformat(),
+                "duration": (end_time - start_time).total_seconds(),
+                "memory_used": memory_used,
+                "network_calls": self.network_tracer.network_calls,
+            }
+
+            self.trace_data["tool_calls"].append(tool_call)
+
+            return result
+        except Exception as e:
+            self._log_error(e, "tool", name)
+            raise
+
+
+    def _trace_tool_call_sync(self, func, name, description, *args, **kwargs):
+        start_time = datetime.now()
+        start_memory = psutil.Process().memory_info().rss
+
+        try:
+            result = func(*args, **kwargs)
+
+            end_time = datetime.now()
+            end_memory = psutil.Process().memory_info().rss
+            memory_used = end_memory - start_memory
+
+            tool_call = ToolCallModel(
+                project_id=self.project_id,
+                trace_id=self.trace_id,
+                name=name,
+                # description=description,
+                input_parameters=json.dumps(args) if args else json.dumps(kwargs),
+                output=str(result),
+                start_time=start_time,
+                end_time=end_time,
+                duration=(end_time - start_time).total_seconds(),
+                memory_used=memory_used,
+                network_calls=str(self.network_tracer.network_calls)
+            )
+            with self.Session() as session:
+                session.add(tool_call)
+                session.commit()
+
+            tool_call = {
+                "name": name,
+                "description": description,
+                "input_parameters": json.dumps(args) if args else json.dumps(kwargs),
+                "output": str(result),
+                "start_time": start_time.isoformat(),
+                "end_time": end_time.isoformat(),
+                "duration": (end_time - start_time).total_seconds(),
+                "memory_used": memory_used,
+                "network_calls": self.network_tracer.network_calls,
+            }
+
+            self.trace_data["tool_calls"].append(tool_call)
+
+            return result
+        except Exception as e:
+            self._log_error(e, "tool", name)
+            raise
+
 
     def trace_agent(self, name: str):
         def decorator(func):
