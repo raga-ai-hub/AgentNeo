@@ -1,5 +1,5 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -82,8 +82,8 @@ class LLMCallModel(Base):
     start_time = Column(DateTime, default=datetime.now)
     end_time = Column(DateTime, nullable=True)
     duration = Column(Float, nullable=True)
-    token_usage = Column(String, nullable=False)
-    cost = Column(String, nullable=False)
+    token_usage = Column(JSON, nullable=False)
+    cost = Column(JSON, nullable=False)
     memory_used = Column(Integer, nullable=False)
     trace_id = Column(Integer, ForeignKey("traces.id"), nullable=False)
 
@@ -106,7 +106,7 @@ class ToolCallModel(Base):
     duration = Column(Float, nullable=True)
     memory_used = Column(Integer, nullable=False)
     trace_id = Column(Integer, ForeignKey("traces.id"), nullable=False)
-    network_calls = Column(String, nullable=True)
+    network_calls = Column(JSON, nullable=True)
     trace = relationship("TraceModel", back_populates="tool_calls")
     project = relationship("ProjectInfoModel", back_populates="tool_calls")
     agent = relationship("AgentCallModel", back_populates="tool_calls")
@@ -123,8 +123,6 @@ class AgentCallModel(Base):
     start_time = Column(DateTime, default=datetime.now)
     end_time = Column(DateTime, nullable=True)
     duration = Column(Float, nullable=True)
-    tool_calls = Column(String, nullable=False)
-    llm_calls = Column(String, nullable=False)
     memory_used = Column(Integer, nullable=False)
     trace_id = Column(Integer, ForeignKey("traces.id"), nullable=False)
 

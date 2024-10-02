@@ -16,36 +16,37 @@ const TraceAnalysis = () => {
 
             try {
                 const llmCallsQuery = `
-          SELECT name, COUNT(*) as count, 
-                 SUM(JSON_EXTRACT(token_usage, '$.input')) as input_tokens,
-                 SUM(JSON_EXTRACT(token_usage, '$.completion')) as output_tokens,
-                 SUM(JSON_EXTRACT(cost, '$.input')) as input_cost,
-                 SUM(JSON_EXTRACT(cost, '$.completion')) as output_cost
-          FROM llm_call
-          WHERE project_id = ?
-          GROUP BY name
-        `;
+                    SELECT name, COUNT(*) as count, 
+                           SUM(JSON_EXTRACT(token_usage, '$.input')) as input_tokens,
+                           SUM(JSON_EXTRACT(token_usage, '$.completion')) as output_tokens,
+                           SUM(JSON_EXTRACT(cost, '$.input')) as input_cost,
+                           SUM(JSON_EXTRACT(cost, '$.completion')) as output_cost
+                    FROM llm_call
+                    WHERE project_id = ?
+                    GROUP BY name
+                `;
                 const toolCallsQuery = `
-          SELECT name, COUNT(*) as count, AVG(duration) as avgDuration
-          FROM tool_call
-          WHERE project_id = ?
-          GROUP BY name
-        `;
+                    SELECT name, COUNT(*) as count, AVG(duration) as avgDuration
+                    FROM tool_call
+                    WHERE project_id = ?
+                    GROUP BY name
+                `;
                 const agentCallsQuery = `
-          SELECT name, COUNT(*) as count, AVG(duration) as avgDuration,
-                 AVG(JSON_ARRAY_LENGTH(tool_calls)) as avgToolCalls,
-                 AVG(JSON_ARRAY_LENGTH(llm_calls)) as avgLLMCalls
-          FROM agent_call
-          WHERE project_id = ?
-          GROUP BY name
-        `;
-
+                    SELECT ac.name, 
+                           COUNT(*) as count, 
+                           AVG(ac.duration) as avgDuration,
+                           AVG((SELECT COUNT(*) FROM tool_call tc WHERE tc.agent_id = ac.id)) as avgToolCalls,
+                           AVG((SELECT COUNT(*) FROM llm_call lc WHERE lc.agent_id = ac.id)) as avgLLMCalls
+                    FROM agent_call ac
+                    WHERE ac.project_id = ?
+                    GROUP BY ac.name
+                `;
                 const errorsQuery = `
-          SELECT error_type, COUNT(*) as count, error_message
-          FROM errors
-          WHERE project_id = ?
-          GROUP BY error_type, error_message
-        `;
+                    SELECT error_type, COUNT(*) as count, error_message
+                    FROM errors
+                    WHERE project_id = ?
+                    GROUP BY error_type, error_message
+                `;
 
                 const llmCalls = await worker.db.query(llmCallsQuery, [selectedProject]);
                 const toolCalls = await worker.db.query(toolCallsQuery, [selectedProject]);
@@ -62,7 +63,11 @@ const TraceAnalysis = () => {
                         total_cost: Number(call.input_cost) + Number(call.output_cost)
                     })),
                     toolCalls,
-                    agentCalls,
+                    agentCalls: agentCalls.map(call => ({
+                        ...call,
+                        avgToolCalls: Number(call.avgToolCalls),
+                        avgLLMCalls: Number(call.avgLLMCalls)
+                    })),
                     errors
                 });
             } catch (err) {

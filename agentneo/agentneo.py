@@ -24,7 +24,9 @@ class AgentNeo:
         db_filename = "trace_data.db"
 
         # First, try the local directory
-        local_db_path = os.path.join(os.getcwd(), "ui", "public", db_filename)
+        local_db_path = os.path.join(
+            os.getcwd(), "agentneo", "ui", "public", db_filename
+        )
         if os.path.exists(os.path.dirname(local_db_path)):
             return f"sqlite:///{local_db_path}"
 

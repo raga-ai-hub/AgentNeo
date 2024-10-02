@@ -64,13 +64,15 @@ const Dashboard = () => {
           GROUP BY name
         `;
                 const agentCallsQuery = `
-          SELECT name, COUNT(*) as count, AVG(duration) as avgDuration,
-                 AVG(JSON_ARRAY_LENGTH(tool_calls)) as avgToolCalls,
-                 AVG(JSON_ARRAY_LENGTH(llm_calls)) as avgLLMCalls
-          FROM agent_call
-          WHERE project_id = ?
-          GROUP BY name
-        `;
+        SELECT ac.name, 
+               COUNT(*) as count, 
+               AVG(ac.duration) as avgDuration,
+               AVG((SELECT COUNT(*) FROM tool_call tc WHERE tc.agent_id = ac.id)) as avgToolCalls,
+               AVG((SELECT COUNT(*) FROM llm_call lc WHERE lc.agent_id = ac.id)) as avgLLMCalls
+        FROM agent_call ac
+        WHERE ac.project_id = ?
+        GROUP BY ac.name
+    `;
 
                 const errorsQuery = `
           SELECT error_type, COUNT(*) as count, error_message
@@ -83,8 +85,8 @@ const Dashboard = () => {
                 const [systemInfo] = await worker.db.query(systemInfoQuery, [selectedProject]);
                 const llmCalls = await worker.db.query(llmCallsQuery, [selectedProject]);
                 const toolCalls = await worker.db.query(toolCallsQuery, [selectedProject]);
-                const agentCalls = await worker.db.query(agentCallsQuery, [selectedProject]);
                 const errors = await worker.db.query(errorsQuery, [selectedProject]);
+                const agentCalls = await worker.db.query(agentCallsQuery, [selectedProject]);
 
                 setProjectData({
                     projectInfo: projectInfo || null,
@@ -98,7 +100,11 @@ const Dashboard = () => {
                         total_cost: Number(call.input_cost) + Number(call.output_cost)
                     })),
                     toolCalls,
-                    agentCalls,
+                    agentCalls: agentCalls.map(call => ({
+                        ...call,
+                        avgToolCalls: Number(call.avgToolCalls),
+                        avgLLMCalls: Number(call.avgLLMCalls)
+                    })),
                     errors
                 });
             } catch (err) {
@@ -127,8 +133,6 @@ const Dashboard = () => {
             start_time,
             end_time,
             duration,
-            tool_calls,
-            llm_calls,
             memory_used,
             NULL as token_usage
           FROM agent_call
@@ -143,8 +147,6 @@ const Dashboard = () => {
             start_time,
             end_time,
             duration,
-            '[]' as tool_calls,
-            '[]' as llm_calls,
             memory_used,
             token_usage
           FROM llm_call
@@ -159,8 +161,6 @@ const Dashboard = () => {
             start_time,
             end_time,
             duration,
-            '[]' as tool_calls,
-            '[]' as llm_calls,
             memory_used,
             NULL as token_usage
           FROM tool_call
@@ -183,8 +183,6 @@ const Dashboard = () => {
                         duration: parseFloat(item.duration).toFixed(2),
                         input_parameters: item.input_parameters,
                         output: item.output,
-                        tool_calls: JSON.parse(item.tool_calls),
-                        llm_calls: JSON.parse(item.llm_calls),
                         memory_used: parseFloat(item.memory_used).toFixed(2),
                         token_usage: item.token_usage ? JSON.parse(item.token_usage) : null,
                     }
@@ -497,6 +495,36 @@ const Dashboard = () => {
                     </CardContent>
                 </Card>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    {/* Agent Calls Widget */}
+                    <Card className="bg-white">
+                        <CardHeader>
+                            <h2 className="text-xl font-bold">Agent Calls</h2>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Name</TableHead>
+                                        <TableHead>Count</TableHead>
+                                        <TableHead>Avg Duration (s)</TableHead>
+                                        <TableHead>Avg Tool Calls</TableHead>
+                                        <TableHead>Avg LLM Calls</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {projectData.agentCalls.map((call, index) => (
+                                        <TableRow key={index}>
+                                            <TableCell>{call.name}</TableCell>
+                                            <TableCell>{call.count}</TableCell>
+                                            <TableCell>{call.avgDuration.toFixed(2)}</TableCell>
+                                            <TableCell>{call.avgToolCalls.toFixed(2)}</TableCell>
+                                            <TableCell>{call.avgLLMCalls.toFixed(2)}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
                     {/* Installed Packages Widget */}
                     <Card className="bg-white">
                         <CardHeader>

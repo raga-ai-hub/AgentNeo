@@ -436,12 +436,10 @@ class Tracer:
                                 if k not in ["tool_call", "llm_call"]
                             }
                         ),
-                        output="",  # We'll update this later
+                        output="",
                         start_time=start_time,
                         end_time=None,
                         duration=None,
-                        tool_calls=[],
-                        llm_calls=[],
                         memory_used=0,
                     )
                     with self.Session() as session:
@@ -554,8 +552,6 @@ class Tracer:
                             agent_call.duration = (
                                 end_time - start_time
                             ).total_seconds()
-                            agent_call.tool_calls = agent_context["tool_calls"]
-                            agent_call.llm_calls = agent_context["llm_calls"]
                             agent_call.memory_used = memory_used
                             session.commit()
 
@@ -863,8 +859,8 @@ class Tracer:
             trace_id=self.trace_id,
             name=name,
             model=llm_data.model_name,
-            input_prompt=prompt,
-            output=llm_data.output_response,
+            input_prompt=str(prompt),
+            output=str(llm_data.output_response),
             tool_call=(
                 str(llm_data.tool_call) if llm_data.tool_call else llm_data.tool_call
             ),
