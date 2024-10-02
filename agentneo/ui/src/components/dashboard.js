@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from './ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { FileText } from 'lucide-react';
+import { FileText, } from 'lucide-react';
 import { ReactFlowProvider } from 'reactflow';
 import { Chart } from "react-google-charts";
 import ErrorBoundary from './error_boundary';
 import ExecutionGraph from './execution_graph';
 import CustomDropdown from './ui/dropdown';
-import { Clock, DollarSign, Cpu, Database, Disc, Computer } from 'lucide-react';
+import { Clock, DollarSign, Cpu, Database, Disc, Computer, AlertTriangle } from 'lucide-react';
 import 'reactflow/dist/style.css';
 import { useProject } from '../contexts/ProjectContext';
 
@@ -42,8 +42,13 @@ const Dashboard = () => {
 
             try {
                 const projectInfoQuery = `
-          SELECT * FROM project_info WHERE id = ?
-        `;
+                SELECT 
+                    pi.*,
+                    (SELECT COUNT(*) FROM traces WHERE project_id = pi.id) as total_traces,
+                    (SELECT COUNT(*) FROM errors WHERE project_id = pi.id) as total_errors
+                FROM project_info pi
+                WHERE pi.id = ?
+            `;
                 const systemInfoQuery = `
           SELECT * FROM system_info WHERE project_id = ?
         `;
@@ -377,30 +382,30 @@ const Dashboard = () => {
                                     />
                                     <InfoItem
                                         icon={<Clock className="h-5 w-5 text-gray-400" />}
-                                        label="Start Time"
-                                        value={projectInfo?.start_time ? new Date(projectInfo.start_time).toLocaleString() : 'N/A'}
-                                    />
-                                    <InfoItem
-                                        icon={<Clock className="h-5 w-5 text-gray-400" />}
-                                        label="End Time"
-                                        value={projectInfo?.end_time ? new Date(projectInfo.end_time).toLocaleString() : 'N/A'}
-                                    />
-                                </div>
-                                <div className="space-y-3">
-                                    <InfoItem
-                                        icon={<DollarSign className="h-5 w-5 text-gray-400" />}
-                                        label="Total Cost"
-                                        value={projectInfo?.total_cost ? `$${projectInfo.total_cost.toFixed(2)}` : 'N/A'}
+                                        label="Duration"
+                                        value={projectInfo?.duration ? `${projectInfo.duration.toFixed(2)} seconds` : 'N/A'}
                                     />
                                     <InfoItem
                                         icon={<Database className="h-5 w-5 text-gray-400" />}
                                         label="Total Tokens"
                                         value={projectInfo?.total_tokens ? projectInfo.total_tokens.toLocaleString() : 'N/A'}
                                     />
+                                </div>
+                                <div className="space-y-3">
                                     <InfoItem
-                                        icon={<Clock className="h-5 w-5 text-gray-400" />}
-                                        label="Duration"
-                                        value={projectInfo?.duration ? `${projectInfo.duration.toFixed(2)} seconds` : 'N/A'}
+                                        icon={<DollarSign className="h-5 w-5 text-gray-400" />}
+                                        label="Total Cost"
+                                        value={formatCost(projectInfo?.total_cost)}
+                                    />
+                                    <InfoItem
+                                        icon={<FileText className="h-5 w-5 text-gray-400" />}
+                                        label="Total Traces"
+                                        value={projectInfo?.total_traces !== undefined ? projectInfo.total_traces : 'N/A'}
+                                    />
+                                    <InfoItem
+                                        icon={<AlertTriangle className="h-5 w-5 text-gray-400" />}
+                                        label="Total Errors"
+                                        value={projectInfo?.total_errors !== undefined ? projectInfo.total_errors : 'N/A'}
                                     />
                                 </div>
                             </div>
@@ -562,6 +567,15 @@ const InfoItem = ({ icon, label, value }) => (
         <span className="ml-1 text-sm font-medium">{value}</span>
     </div>
 );
+
+const formatCost = (cost) => {
+    if (cost === undefined || cost === null) return 'N/A';
+    if (cost === 0) return '$0.00';
+    if (cost < 0.01) {
+        return `$${cost.toExponential(2)}`;
+    }
+    return `$${cost.toFixed(2)}`;
+};
 
 
 export default Dashboard;
