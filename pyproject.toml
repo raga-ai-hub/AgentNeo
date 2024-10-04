@@ -29,7 +29,11 @@ dependencies = [
     "sqlalchemy~=2.0.35",
     "psutil~=6.0.0",
     "py-cpuinfo~=9.0.0",
-    "requests~=2.32.3"
+    "requests~=2.32.3",
+    "setuptools~=72.1.0",
+    "openai~=1.44.1",
+    "litellm~=1.44.5",
+    "aiohttp~=3.10.5",
 ]
 
 [project.optional-dependencies]
