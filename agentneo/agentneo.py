@@ -3,7 +3,8 @@ from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from .data.data_models import Base, ProjectInfoModel
-from .tracer import Tracer
+from .tracing import Tracer
+from .dashboard import launch_dashboard as _launch_dashboard
 
 
 class AgentNeo:
@@ -91,3 +92,12 @@ class AgentNeo:
             {"id": p.id, "name": p.project_name, "start_time": p.start_time}
             for p in projects
         ]
+
+    @staticmethod
+    def launch_dashboard(port=3000):
+        """
+        Launches the AgentNeo dashboard.
+
+        :param port: The port to run the dashboard on (default is 3000)
+        """
+        _launch_dashboard(port)
