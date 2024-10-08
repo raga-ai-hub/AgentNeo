@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from './ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { FileText } from 'lucide-react';
+import { FileText, } from 'lucide-react';
 import { ReactFlowProvider } from 'reactflow';
 import { Chart } from "react-google-charts";
 import ErrorBoundary from './error_boundary';
 import ExecutionGraph from './execution_graph';
 import CustomDropdown from './ui/dropdown';
-import { Clock, DollarSign, Cpu, Database, Disc, Computer } from 'lucide-react';
+import { Clock, DollarSign, Cpu, Database, Disc, Computer, AlertTriangle } from 'lucide-react';
 import 'reactflow/dist/style.css';
 import { useProject } from '../contexts/ProjectContext';
 
@@ -42,8 +42,13 @@ const Dashboard = () => {
 
             try {
                 const projectInfoQuery = `
-          SELECT * FROM project_info WHERE id = ?
-        `;
+                SELECT 
+                    pi.*,
+                    (SELECT COUNT(*) FROM traces WHERE project_id = pi.id) as total_traces,
+                    (SELECT COUNT(*) FROM errors WHERE project_id = pi.id) as total_errors
+                FROM project_info pi
+                WHERE pi.id = ?
+            `;
                 const systemInfoQuery = `
           SELECT * FROM system_info WHERE project_id = ?
         `;
@@ -64,13 +69,15 @@ const Dashboard = () => {
           GROUP BY name
         `;
                 const agentCallsQuery = `
-          SELECT name, COUNT(*) as count, AVG(duration) as avgDuration,
-                 AVG(JSON_ARRAY_LENGTH(tool_calls)) as avgToolCalls,
-                 AVG(JSON_ARRAY_LENGTH(llm_calls)) as avgLLMCalls
-          FROM agent_call
-          WHERE project_id = ?
-          GROUP BY name
-        `;
+        SELECT ac.name, 
+               COUNT(*) as count, 
+               AVG(ac.duration) as avgDuration,
+               AVG((SELECT COUNT(*) FROM tool_call tc WHERE tc.agent_id = ac.id)) as avgToolCalls,
+               AVG((SELECT COUNT(*) FROM llm_call lc WHERE lc.agent_id = ac.id)) as avgLLMCalls
+        FROM agent_call ac
+        WHERE ac.project_id = ?
+        GROUP BY ac.name
+    `;
 
                 const errorsQuery = `
           SELECT error_type, COUNT(*) as count, error_message
@@ -83,8 +90,8 @@ const Dashboard = () => {
                 const [systemInfo] = await worker.db.query(systemInfoQuery, [selectedProject]);
                 const llmCalls = await worker.db.query(llmCallsQuery, [selectedProject]);
                 const toolCalls = await worker.db.query(toolCallsQuery, [selectedProject]);
-                const agentCalls = await worker.db.query(agentCallsQuery, [selectedProject]);
                 const errors = await worker.db.query(errorsQuery, [selectedProject]);
+                const agentCalls = await worker.db.query(agentCallsQuery, [selectedProject]);
 
                 setProjectData({
                     projectInfo: projectInfo || null,
@@ -98,7 +105,11 @@ const Dashboard = () => {
                         total_cost: Number(call.input_cost) + Number(call.output_cost)
                     })),
                     toolCalls,
-                    agentCalls,
+                    agentCalls: agentCalls.map(call => ({
+                        ...call,
+                        avgToolCalls: Number(call.avgToolCalls),
+                        avgLLMCalls: Number(call.avgLLMCalls)
+                    })),
                     errors
                 });
             } catch (err) {
@@ -127,8 +138,6 @@ const Dashboard = () => {
             start_time,
             end_time,
             duration,
-            tool_calls,
-            llm_calls,
             memory_used,
             NULL as token_usage
           FROM agent_call
@@ -143,8 +152,6 @@ const Dashboard = () => {
             start_time,
             end_time,
             duration,
-            '[]' as tool_calls,
-            '[]' as llm_calls,
             memory_used,
             token_usage
           FROM llm_call
@@ -159,8 +166,6 @@ const Dashboard = () => {
             start_time,
             end_time,
             duration,
-            '[]' as tool_calls,
-            '[]' as llm_calls,
             memory_used,
             NULL as token_usage
           FROM tool_call
@@ -183,8 +188,6 @@ const Dashboard = () => {
                         duration: parseFloat(item.duration).toFixed(2),
                         input_parameters: item.input_parameters,
                         output: item.output,
-                        tool_calls: JSON.parse(item.tool_calls),
-                        llm_calls: JSON.parse(item.llm_calls),
                         memory_used: parseFloat(item.memory_used).toFixed(2),
                         token_usage: item.token_usage ? JSON.parse(item.token_usage) : null,
                     }
@@ -379,30 +382,30 @@ const Dashboard = () => {
                                     />
                                     <InfoItem
                                         icon={<Clock className="h-5 w-5 text-gray-400" />}
-                                        label="Start Time"
-                                        value={projectInfo?.start_time ? new Date(projectInfo.start_time).toLocaleString() : 'N/A'}
-                                    />
-                                    <InfoItem
-                                        icon={<Clock className="h-5 w-5 text-gray-400" />}
-                                        label="End Time"
-                                        value={projectInfo?.end_time ? new Date(projectInfo.end_time).toLocaleString() : 'N/A'}
-                                    />
-                                </div>
-                                <div className="space-y-3">
-                                    <InfoItem
-                                        icon={<DollarSign className="h-5 w-5 text-gray-400" />}
-                                        label="Total Cost"
-                                        value={projectInfo?.total_cost ? `$${projectInfo.total_cost.toFixed(2)}` : 'N/A'}
+                                        label="Duration"
+                                        value={projectInfo?.duration ? `${projectInfo.duration.toFixed(2)} seconds` : 'N/A'}
                                     />
                                     <InfoItem
                                         icon={<Database className="h-5 w-5 text-gray-400" />}
                                         label="Total Tokens"
                                         value={projectInfo?.total_tokens ? projectInfo.total_tokens.toLocaleString() : 'N/A'}
                                     />
+                                </div>
+                                <div className="space-y-3">
                                     <InfoItem
-                                        icon={<Clock className="h-5 w-5 text-gray-400" />}
-                                        label="Duration"
-                                        value={projectInfo?.duration ? `${projectInfo.duration.toFixed(2)} seconds` : 'N/A'}
+                                        icon={<DollarSign className="h-5 w-5 text-gray-400" />}
+                                        label="Total Cost"
+                                        value={formatCost(projectInfo?.total_cost)}
+                                    />
+                                    <InfoItem
+                                        icon={<FileText className="h-5 w-5 text-gray-400" />}
+                                        label="Total Traces"
+                                        value={projectInfo?.total_traces !== undefined ? projectInfo.total_traces : 'N/A'}
+                                    />
+                                    <InfoItem
+                                        icon={<AlertTriangle className="h-5 w-5 text-gray-400" />}
+                                        label="Total Errors"
+                                        value={projectInfo?.total_errors !== undefined ? projectInfo.total_errors : 'N/A'}
                                     />
                                 </div>
                             </div>
@@ -497,6 +500,36 @@ const Dashboard = () => {
                     </CardContent>
                 </Card>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    {/* Agent Calls Widget */}
+                    <Card className="bg-white">
+                        <CardHeader>
+                            <h2 className="text-xl font-bold">Agent Calls</h2>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Name</TableHead>
+                                        <TableHead>Count</TableHead>
+                                        <TableHead>Avg Duration (s)</TableHead>
+                                        <TableHead>Avg Tool Calls</TableHead>
+                                        <TableHead>Avg LLM Calls</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {projectData.agentCalls.map((call, index) => (
+                                        <TableRow key={index}>
+                                            <TableCell>{call.name}</TableCell>
+                                            <TableCell>{call.count}</TableCell>
+                                            <TableCell>{call.avgDuration.toFixed(2)}</TableCell>
+                                            <TableCell>{call.avgToolCalls.toFixed(2)}</TableCell>
+                                            <TableCell>{call.avgLLMCalls.toFixed(2)}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
                     {/* Installed Packages Widget */}
                     <Card className="bg-white">
                         <CardHeader>
@@ -534,6 +567,15 @@ const InfoItem = ({ icon, label, value }) => (
         <span className="ml-1 text-sm font-medium">{value}</span>
     </div>
 );
+
+const formatCost = (cost) => {
+    if (cost === undefined || cost === null) return 'N/A';
+    if (cost === 0) return '$0.00';
+    if (cost < 0.01) {
+        return `$${cost.toExponential(2)}`;
+    }
+    return `$${cost.toFixed(2)}`;
+};
 
 
 export default Dashboard;

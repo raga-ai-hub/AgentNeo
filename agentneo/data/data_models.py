@@ -1,9 +1,25 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
 Base = declarative_base()
+
+
+class UserInteractionModel(Base):
+    __tablename__ = "user_interactions"
+
+    id = Column(Integer, primary_key=True)
+    project_id = Column(Integer, ForeignKey("project_info.id"), nullable=False)
+    trace_id = Column(Integer, ForeignKey("traces.id"), nullable=False)
+    agent_id = Column(Integer, ForeignKey("agent_call.id"), nullable=True)
+    interaction_type = Column(String, nullable=False)  # 'input' or 'output'
+    content = Column(String, nullable=False)
+    timestamp = Column(DateTime, default=datetime.now)
+
+    trace = relationship("TraceModel", back_populates="user_interactions")
+    project = relationship("ProjectInfoModel", back_populates="user_interactions")
+    agent = relationship("AgentCallModel", back_populates="user_interactions")
 
 
 class TraceModel(Base):
@@ -21,6 +37,9 @@ class TraceModel(Base):
     llm_calls = relationship("LLMCallModel", back_populates="trace")
     tool_calls = relationship("ToolCallModel", back_populates="trace")
     agent_calls = relationship("AgentCallModel", back_populates="trace")
+    user_interactions = relationship(
+        "UserInteractionModel", order_by=UserInteractionModel.id, back_populates="trace"
+    )
 
 
 class ProjectInfoModel(Base):
@@ -35,6 +54,11 @@ class ProjectInfoModel(Base):
     total_tokens = Column(Integer, nullable=True)
 
     traces = relationship("TraceModel", back_populates="project")
+    user_interactions = relationship(
+        "UserInteractionModel",
+        order_by=UserInteractionModel.id,
+        back_populates="project",
+    )
 
 
 class SystemInfoModel(Base):
@@ -59,13 +83,19 @@ class ErrorModel(Base):
 
     id = Column(Integer, primary_key=True)
     project_id = Column(Integer, ForeignKey("project_info.id"), nullable=False)
+    trace_id = Column(Integer, ForeignKey("traces.id"), nullable=False)
+    agent_id = Column(Integer, ForeignKey("agent_call.id"), nullable=True)
+    tool_call_id = Column(Integer, ForeignKey("tool_call.id"), nullable=True)
+    llm_call_id = Column(Integer, ForeignKey("llm_call.id"), nullable=True)
     error_type = Column(String, nullable=False)  # 'LLM', 'Tool', or 'Agent'
     error_message = Column(String, nullable=False)
     timestamp = Column(DateTime, default=datetime.now)
-    trace_id = Column(Integer, ForeignKey("traces.id"), nullable=False)
 
     trace = relationship("TraceModel", back_populates="errors")
     project = relationship("ProjectInfoModel", back_populates="errors")
+    agent = relationship("AgentCallModel", back_populates="errors")
+    tool_call = relationship("ToolCallModel", back_populates="errors")
+    llm_call = relationship("LLMCallModel", back_populates="errors")
 
 
 class LLMCallModel(Base):
@@ -73,6 +103,7 @@ class LLMCallModel(Base):
 
     id = Column(Integer, primary_key=True)
     project_id = Column(Integer, ForeignKey("project_info.id"), nullable=False)
+    agent_id = Column(Integer, ForeignKey("agent_call.id"), nullable=True)
     name = Column(String, nullable=False)
     model = Column(String, nullable=True)
     input_prompt = Column(String, nullable=False)
@@ -81,13 +112,14 @@ class LLMCallModel(Base):
     start_time = Column(DateTime, default=datetime.now)
     end_time = Column(DateTime, nullable=True)
     duration = Column(Float, nullable=True)
-    token_usage = Column(String, nullable=False)
-    cost = Column(String, nullable=False)
+    token_usage = Column(JSON, nullable=False)
+    cost = Column(JSON, nullable=False)
     memory_used = Column(Integer, nullable=False)
     trace_id = Column(Integer, ForeignKey("traces.id"), nullable=False)
 
     trace = relationship("TraceModel", back_populates="llm_calls")
     project = relationship("ProjectInfoModel", back_populates="llm_calls")
+    agent = relationship("AgentCallModel", back_populates="llm_calls")
 
 
 class ToolCallModel(Base):
@@ -95,6 +127,7 @@ class ToolCallModel(Base):
 
     id = Column(Integer, primary_key=True)
     project_id = Column(Integer, ForeignKey("project_info.id"), nullable=False)
+    agent_id = Column(Integer, ForeignKey("agent_call.id"), nullable=True)
     name = Column(String, nullable=False)
     input_parameters = Column(String, nullable=False)
     output = Column(String, nullable=False)
@@ -103,9 +136,10 @@ class ToolCallModel(Base):
     duration = Column(Float, nullable=True)
     memory_used = Column(Integer, nullable=False)
     trace_id = Column(Integer, ForeignKey("traces.id"), nullable=False)
-    network_calls=Column(String, nullable=True)
+    network_calls = Column(JSON, nullable=True)
     trace = relationship("TraceModel", back_populates="tool_calls")
     project = relationship("ProjectInfoModel", back_populates="tool_calls")
+    agent = relationship("AgentCallModel", back_populates="tool_calls")
 
 
 class AgentCallModel(Base):
@@ -119,13 +153,16 @@ class AgentCallModel(Base):
     start_time = Column(DateTime, default=datetime.now)
     end_time = Column(DateTime, nullable=True)
     duration = Column(Float, nullable=True)
-    tool_calls = Column(String, nullable=False)
-    llm_calls = Column(String, nullable=False)
     memory_used = Column(Integer, nullable=False)
     trace_id = Column(Integer, ForeignKey("traces.id"), nullable=False)
 
     trace = relationship("TraceModel", back_populates="agent_calls")
     project = relationship("ProjectInfoModel", back_populates="agent_calls")
+    llm_calls = relationship("LLMCallModel", back_populates="agent")
+    tool_calls = relationship("ToolCallModel", back_populates="agent")
+    user_interactions = relationship(
+        "UserInteractionModel", order_by=UserInteractionModel.id, back_populates="agent"
+    )
 
 
 # Establish relationships
@@ -143,4 +180,16 @@ ProjectInfoModel.system_info = relationship(
 )
 ProjectInfoModel.errors = relationship(
     "ErrorModel", order_by=ErrorModel.id, back_populates="project"
+)
+
+AgentCallModel.errors = relationship(
+    "ErrorModel", order_by=ErrorModel.id, back_populates="agent"
+)
+
+ToolCallModel.errors = relationship(
+    "ErrorModel", order_by=ErrorModel.id, back_populates="tool_call"
+)
+
+LLMCallModel.errors = relationship(
+    "ErrorModel", order_by=ErrorModel.id, back_populates="llm_call"
 )
