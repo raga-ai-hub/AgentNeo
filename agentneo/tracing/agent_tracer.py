@@ -51,7 +51,7 @@ class AgentTracerMixin:
             project_id=self.project_id,
             trace_id=self.trace_id,
             name=name,
-            input_parameters=json.dumps({k: str(v) for k, v in kwargs.items()}),
+            input_parameters=json.dumps(self._serialize_params(args, kwargs)),
             output="",
             start_time=start_time,
             end_time=None,
@@ -100,7 +100,7 @@ class AgentTracerMixin:
                 {
                     "id": agent_id,
                     "name": name,
-                    "input_parameters": kwargs,
+                    "input_parameters": self._serialize_params(args, kwargs),
                     "output": str(result),
                     "start_time": start_time,
                     "end_time": end_time,
@@ -199,3 +199,16 @@ class AgentTracerMixin:
             self.current_tool_call_ids.reset(token_tool)
 
         return result
+
+    def _serialize_params(self, args, kwargs):
+        def _serialize(obj):
+            if isinstance(obj, (str, int, float, bool, type(None))):
+                return obj
+            return str(obj)
+
+        serialized_args = {f"arg_{i}": _serialize(arg) for i, arg in enumerate(args)}
+        serialized_kwargs = {k: _serialize(v) for k, v in kwargs.items()}
+        return {**serialized_args, **serialized_kwargs}
+
+    def _args_to_dict(self, args):
+        return {f"arg_{i}": arg for i, arg in enumerate(args)}
