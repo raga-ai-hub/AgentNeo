@@ -8,11 +8,14 @@ import contextvars
 from typing import Optional
 import traceback
 import psutil
+import GPUtil
 import pkg_resources
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta
+import logging
+
 
 from ..data import (
     Base,
@@ -186,6 +189,23 @@ class BaseTracer:
         else:
             os_version = platform.version()
 
+        # Get GPU information
+        try:
+            gpus = GPUtil.getGPUs()
+            gpu_info = [
+                {"name": gpu.name, "memory_total": gpu.memoryTotal} for gpu in gpus
+            ]
+        except Exception as e:
+            logging.warning(f"Failed to get GPU information: {e}")
+            gpu_info = None
+
+        # Get disk information
+        disk = psutil.disk_usage("/")
+        disk_info = {
+            "total": disk.total / (1024**3),  # GB
+            "available": disk.free / (1024**3),  # GB
+        }
+
         system_info = SystemInfoModel(
             project_id=self.project_id,
             trace_id=self.trace_id,
@@ -193,6 +213,8 @@ class BaseTracer:
             os_version=os_version,
             python_version=platform.python_version(),
             cpu_info=cpuinfo.get_cpu_info()["brand_raw"],
+            gpu_info=json.dumps(gpu_info) if gpu_info else None,
+            disk_info=json.dumps(disk_info),
             memory_total=psutil.virtual_memory().total / (1024**3),  # GB
             installed_packages=json.dumps(
                 {pkg.key: pkg.version for pkg in pkg_resources.working_set}
@@ -208,6 +230,10 @@ class BaseTracer:
                 "os_version": system_info.os_version,
                 "python_version": system_info.python_version,
                 "cpu_info": system_info.cpu_info,
+                "gpu_info": (
+                    json.loads(system_info.gpu_info) if system_info.gpu_info else None
+                ),
+                "disk_info": json.loads(system_info.disk_info),
                 "memory_total": system_info.memory_total,
                 "installed_packages": json.loads(system_info.installed_packages),
             }
