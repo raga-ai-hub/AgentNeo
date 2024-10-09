@@ -70,6 +70,8 @@ class SystemInfoModel(Base):
     os_version = Column(String, nullable=False)
     python_version = Column(String, nullable=False)
     cpu_info = Column(String, nullable=False)
+    gpu_info = Column(String, nullable=True)
+    disk_info = Column(String, nullable=True)
     memory_total = Column(Float, nullable=False)
     installed_packages = Column(String, nullable=False)
     trace_id = Column(Integer, ForeignKey("traces.id"), nullable=False)

@@ -29,7 +29,8 @@ dependencies = [
     "sqlalchemy~=2.0.35",
     "psutil~=6.0.0",
     "py-cpuinfo~=9.0.0",
-    "requests~=2.32.3"
+    "requests~=2.32.3",
+    "GPUtil~=1.4.0"
 ]
 
 [project.optional-dependencies]
