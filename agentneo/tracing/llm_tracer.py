@@ -4,6 +4,7 @@ import json
 import wrapt
 import functools
 from datetime import datetime
+import os
 
 from .user_interaction_tracer import UserInteractionTracer
 from .utils import calculate_cost, load_model_costs, convert_usage_to_dict
@@ -112,10 +113,19 @@ class LLMTracerMixin:
         sanitized_args = self._sanitize_api_keys(args)
         sanitized_kwargs = self._sanitize_api_keys(kwargs)
 
+        model_name = self._extract_model_name(sanitized_kwargs)
+        try:
+            provider = 'groq' if result.x_groq else None
+        except:
+            provider = None
+        model = os.path.join(provider, model_name) if provider else model_name
+
+
+
         self.process_llm_result(
             result,
             llm_call_name,
-            self._extract_model_name(sanitized_kwargs),
+            model,
             self._extract_input(sanitized_args, sanitized_kwargs),
             start_time,
             end_time,
@@ -132,10 +142,17 @@ class LLMTracerMixin:
         sanitized_args = self._sanitize_api_keys(args)
         sanitized_kwargs = self._sanitize_api_keys(kwargs)
 
+        model_name = self._extract_model_name(sanitized_kwargs)
+        try:
+            provider = 'groq' if result.x_groq else None
+        except:
+            provider = None
+        model = os.path.join(provider, model_name) if provider else model_name
+
         self.process_llm_result(
             result,
             llm_call_name,
-            self._extract_model_name(sanitized_kwargs),
+            model,
             self._extract_input(sanitized_args, sanitized_kwargs),
             start_time,
             end_time,
