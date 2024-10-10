@@ -40,12 +40,13 @@ class ToolTracerMixin:
             end_memory = psutil.Process().memory_info().rss
             memory_used = end_memory - start_memory
 
+            serialized_params = self._serialize_params(args, kwargs)
             tool_call = ToolCallModel(
                 project_id=self.project_id,
                 trace_id=self.trace_id,
                 agent_id=agent_id,
                 name=name,
-                input_parameters=json.dumps(args) if args else json.dumps(kwargs),
+                input_parameters=json.dumps(serialized_params),
                 output=str(result),
                 start_time=start_time,
                 end_time=end_time,
@@ -62,14 +63,13 @@ class ToolTracerMixin:
             tool_call_ids.append(tool_call_id)
             self.current_tool_call_ids.set(tool_call_ids)
 
+            serialized_params = self._serialize_params(args, kwargs)
             self.trace_data.setdefault("tool_calls", []).append(
                 {
                     "id": tool_call_id,
                     "name": name,
                     "description": description,
-                    "input_parameters": (
-                        json.dumps(args) if args else json.dumps(kwargs)
-                    ),
+                    "input_parameters": (json.dumps(serialized_params)),
                     "output": str(result),
                     "start_time": start_time.isoformat(),
                     "end_time": end_time.isoformat(),
@@ -104,18 +104,18 @@ class ToolTracerMixin:
             end_memory = psutil.Process().memory_info().rss
             memory_used = end_memory - start_memory
 
+            serialized_params = self._serialize_params(args, kwargs)
             tool_call = ToolCallModel(
                 project_id=self.project_id,
                 trace_id=self.trace_id,
-                agent_id=agent_id,  # Associate with agent if any
+                agent_id=agent_id,
                 name=name,
-                input_parameters=json.dumps(args) if args else json.dumps(kwargs),
+                input_parameters=json.dumps(serialized_params),
                 output=str(result),
                 start_time=start_time,
                 end_time=end_time,
                 duration=(end_time - start_time).total_seconds(),
                 memory_used=memory_used,
-                network_calls=str(self.network_tracer.network_calls),
             )
             with self.Session() as session:
                 session.add(tool_call)
@@ -149,3 +149,22 @@ class ToolTracerMixin:
             raise
         finally:
             self.network_tracer.deactivate_patches()  # Deactivate patches after execution
+
+    def _serialize_params(self, args, kwargs):
+        def _serialize(obj):
+            if isinstance(obj, (str, int, float, bool, type(None))):
+                return obj
+            elif isinstance(obj, (list, tuple)):
+                return [_serialize(item) for item in obj]
+            elif isinstance(obj, dict):
+                return {str(k): _serialize(v) for k, v in obj.items()}
+            else:
+                return str(obj)
+
+        # Handle 'self' argument for class methods
+        if args and isinstance(args[0], object) and hasattr(args[0], "__dict__"):
+            args = ("self (instance)",) + args[1:]
+
+        serialized_args = {f"arg_{i}": _serialize(arg) for i, arg in enumerate(args)}
+        serialized_kwargs = {k: _serialize(v) for k, v in kwargs.items()}
+        return {**serialized_args, **serialized_kwargs}

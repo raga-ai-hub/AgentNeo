@@ -4,21 +4,106 @@ import json
 import functools
 from datetime import datetime
 from .user_interaction_tracer import UserInteractionTracer
-from ..data import AgentCallModel
+from ..data import AgentCallModel, ToolCallModel
 
 
 class AgentTracerMixin:
     def trace_agent(self, name: str):
         def decorator(func_or_class):
             if isinstance(func_or_class, type):
-                # If it's a class, wrap all its methods
+                # If it's a class, wrap all its methods as tools
                 for attr_name, attr_value in func_or_class.__dict__.items():
                     if callable(attr_value) and not attr_name.startswith("__"):
                         setattr(
                             func_or_class,
                             attr_name,
-                            self.trace_agent(f"{name}.{attr_name}")(attr_value),
+                            self.trace_tool(f"{name}.{attr_name}")(attr_value),
                         )
+                # Wrap the class initialization
+                original_init = func_or_class.__init__
+
+                @functools.wraps(original_init)
+                def wrapped_init(self_instance, *args, **kwargs):
+                    self_instance._agent_name = name
+                    self_instance._agent_start_time = datetime.now()
+                    self_instance._agent_start_memory = (
+                        psutil.Process().memory_info().rss
+                    )
+                    self_instance._agent_tracer = (
+                        self  # Use the current tracer instance
+                    )
+                    self_instance._agent_id = self._start_agent_call(name, args, kwargs)
+                    original_init(self_instance, *args, **kwargs)
+
+                func_or_class.__init__ = wrapped_init
+
+                # Wrap the class destruction
+                original_del = (
+                    func_or_class.__del__ if hasattr(func_or_class, "__del__") else None
+                )
+
+                def wrapped_del(self_instance):
+                    if hasattr(self_instance, "_agent_name"):
+                        try:
+                            end_time = datetime.now()
+                            end_memory = psutil.Process().memory_info().rss
+                            memory_used = max(
+                                0, end_memory - self_instance._agent_start_memory
+                            )
+                            duration = (
+                                end_time - self_instance._agent_start_time
+                            ).total_seconds()
+
+                            # Use a new session to fetch and update the AgentCallModel
+                            with self.Session() as session:
+                                agent_call = session.query(AgentCallModel).get(
+                                    self_instance._agent_id
+                                )
+                                if agent_call:
+                                    agent_call.output = str(self_instance)
+                                    agent_call.end_time = end_time
+                                    agent_call.duration = duration
+                                    agent_call.memory_used = memory_used
+                                    session.commit()
+
+                                    # Add the agent call to the trace_data
+                                    self.trace_data.setdefault(
+                                        "agent_calls", []
+                                    ).append(
+                                        {
+                                            "id": agent_call.id,
+                                            "name": agent_call.name,
+                                            "input_parameters": json.loads(
+                                                agent_call.input_parameters
+                                            ),
+                                            "output": agent_call.output,
+                                            "start_time": agent_call.start_time,
+                                            "end_time": end_time,
+                                            "duration": duration,
+                                            "memory_used": memory_used,
+                                            "llm_calls": (
+                                                json.loads(agent_call.llm_calls)
+                                                if agent_call.llm_calls
+                                                else []
+                                            ),
+                                            "tool_calls": (
+                                                json.loads(agent_call.tool_calls)
+                                                if agent_call.tool_calls
+                                                else []
+                                            ),
+                                        }
+                                    )
+                                else:
+                                    print(
+                                        f"Warning: AgentCallModel with id {self_instance._agent_id} not found"
+                                    )
+                        except Exception as e:
+                            print(f"Error finalizing agent call: {e}")
+                    if original_del:
+                        original_del(self_instance)
+
+                func_or_class.__del__ = wrapped_del
+
                 return func_or_class
             else:
 
@@ -41,6 +126,129 @@ class AgentTracerMixin:
                 )
 
         return decorator
+
+    def trace_tool(self, name: str):
+        def decorator(func):
+            @functools.wraps(func)
+            async def async_wrapper(*args, **kwargs):
+                return await self._trace_tool_call_async(func, name, *args, **kwargs)
+
+            @functools.wraps(func)
+            def sync_wrapper(*args, **kwargs):
+                return self._trace_tool_call_sync(func, name, *args, **kwargs)
+
+            return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
+
+        return decorator
+
+    def _start_agent_call(self, name, args, kwargs):
+        start_time = datetime.now()
+        agent_call = AgentCallModel(
+            project_id=self.project_id,
+            trace_id=self.trace_id,
+            name=name,
+            input_parameters=json.dumps(self._serialize_params(args, kwargs)),
+            output="",
+            start_time=start_time,
+            end_time=None,
+            duration=None,
+            memory_used=0,
+        )
+        with self.Session() as session:
+            session.add(agent_call)
+            session.commit()
+            return agent_call.id
+
+    def _end_agent_call(self, agent_id, output, end_time, duration, memory_used):
+        with self.Session() as session:
+            agent_call = session.query(AgentCallModel).get(agent_id)
+            agent_call.output = output
+            agent_call.end_time = end_time
+            agent_call.duration = duration
+            agent_call.memory_used = memory_used
+            session.commit()
+
+        self.trace_data.setdefault("agent_calls", []).append(
+            {
+                "id": agent_id,
+                "name": agent_call.name,
+                "input_parameters": json.loads(agent_call.input_parameters),
+                "output": output,
+                "start_time": agent_call.start_time,
+                "end_time": end_time,
+                "duration": duration,
+                "memory_used": memory_used,
+                "llm_call_ids": [],
+                "tool_call_ids": [],
+            }
+        )
+
+    def _trace_tool_call_sync(self, func, name, *args, **kwargs):
+        start_time = datetime.now()
+        start_memory = psutil.Process().memory_info().rss
+
+        result = func(*args, **kwargs)
+
+        end_time = datetime.now()
+        end_memory = psutil.Process().memory_info().rss
+        memory_used = max(0, end_memory - start_memory)
+
+        serialized_params = self._serialize_params(args, kwargs)
+        self._record_tool_call(
+            name, serialized_params, str(result), start_time, end_time, memory_used
+        )
+
+        return result
+
+    async def _trace_tool_call_async(self, func, name, *args, **kwargs):
+        start_time = datetime.now()
+        start_memory = psutil.Process().memory_info().rss
+
+        result = await func(*args, **kwargs)
+
+        end_time = datetime.now()
+        end_memory = psutil.Process().memory_info().rss
+        memory_used = max(0, end_memory - start_memory)
+
+        serialized_params = self._serialize_params(args, kwargs)
+        self._record_tool_call(
+            name, serialized_params, str(result), start_time, end_time, memory_used
+        )
+
+        return result
+
+    def _record_tool_call(
+        self, name, serialized_params, output, start_time, end_time, memory_used
+    ):
+        tool_call = ToolCallModel(
+            project_id=self.project_id,
+            trace_id=self.trace_id,
+            name=name,
+            input_parameters=json.dumps(serialized_params),
+            output=output,
+            start_time=start_time,
+            end_time=end_time,
+            duration=(end_time - start_time).total_seconds(),
+            memory_used=memory_used,
+        )
+        with self.Session() as session:
+            session.add(tool_call)
+            session.commit()
+            tool_id = tool_call.id
+
+        self.trace_data.setdefault("tool_calls", []).append(
+            {
+                "id": tool_id,
+                "name": name,
+                "input_parameters": serialized_params,
+                "output": output,
+                "start_time": start_time,
+                "end_time": end_time,
+                "duration": (end_time - start_time).total_seconds(),
+                "memory_used": memory_used,
+            }
+        )
+        return tool_id
 
     def _trace_agent_call_sync(self, func, name, *args, **kwargs):
         start_time = datetime.now()
@@ -203,7 +411,16 @@ class AgentTracerMixin:
         def _serialize(obj):
             if isinstance(obj, (str, int, float, bool, type(None))):
                 return obj
-            return str(obj)
+            elif isinstance(obj, (list, tuple)):
+                return [_serialize(item) for item in obj]
+            elif isinstance(obj, dict):
+                return {str(k): _serialize(v) for k, v in obj.items()}
+            else:
+                return str(obj)
+
+        # Handle 'self' argument for class methods
+        if args and isinstance(args[0], object) and hasattr(args[0], "__dict__"):
+            args = ("self (instance)",) + args[1:]
 
         serialized_args = {f"arg_{i}": _serialize(arg) for i, arg in enumerate(args)}
         serialized_kwargs = {k: _serialize(v) for k, v in kwargs.items()}
