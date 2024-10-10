@@ -91,7 +91,6 @@ class AgentTracerMixin:
                 agent_call.end_time = end_time
                 agent_call.duration = (end_time - start_time).total_seconds()
                 agent_call.memory_used = memory_used
-                # Store LLM and tool call IDs as JSON strings
                 agent_call.llm_call_ids = json.dumps(llm_call_ids)
                 agent_call.tool_call_ids = json.dumps(tool_call_ids)
                 session.commit()
