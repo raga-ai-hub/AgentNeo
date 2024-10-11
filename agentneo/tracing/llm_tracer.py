@@ -64,103 +64,43 @@ class LLMTracerMixin:
         start_memory = psutil.Process().memory_info().rss
 
         agent_id = self.current_agent_id.get()
-        llm_call_id = None
-
         llm_call_name = self.current_llm_call_name.get() or original_func.__name__
 
-        user_interaction_tracer = UserInteractionTracer(self)
-
-        if asyncio.iscoroutinefunction(original_func):
-
-            async def async_wrapper():
-                try:
-                    async with user_interaction_tracer.async_capture():
-                        result = await original_func(*args, **kwargs)
-
-                    await self.handle_async_result(
-                        result, start_time, start_memory, args, kwargs, llm_call_name
-                    )
-                    return result
-                except Exception as e:
-                    self._log_error(e, "llm", llm_call_name, llm_call_id)
-                    raise
-
-            return async_wrapper()
-        else:
-
-            def sync_wrapper():
-                try:
-                    with user_interaction_tracer.capture():
-                        result = original_func(*args, **kwargs)
-
-                    self.handle_sync_result(
-                        result, start_time, start_memory, args, kwargs, llm_call_name
-                    )
-                    return result
-                except Exception as e:
-                    self._log_error(e, "llm", llm_call_name, llm_call_id)
-                    raise
-
-            return sync_wrapper()
-
-    async def handle_async_result(
-        self, result, start_time, start_memory, args, kwargs, llm_call_name
-    ):
-        end_time = datetime.now()
-        end_memory = psutil.Process().memory_info().rss
-        memory_used = max(0, end_memory - start_memory)
-
-        sanitized_args = self._sanitize_api_keys(args)
-        sanitized_kwargs = self._sanitize_api_keys(kwargs)
-
-        model_name = self._extract_model_name(sanitized_kwargs)
         try:
-            provider = 'groq' if result.x_groq else None
-        except:
-            provider = None
-        model = os.path.join(provider, model_name) if provider else model_name
+            result = original_func(*args, **kwargs)
 
+            end_time = datetime.now()
+            end_memory = psutil.Process().memory_info().rss
+            memory_used = max(0, end_memory - start_memory)
 
+            sanitized_args = self._sanitize_api_keys(args)
+            sanitized_kwargs = self._sanitize_api_keys(kwargs)
 
-        self.process_llm_result(
-            result,
-            llm_call_name,
-            model,
-            self._extract_input(sanitized_args, sanitized_kwargs),
-            start_time,
-            end_time,
-            memory_used,
-        )
+            llm_call = self.process_llm_result(
+                result,
+                llm_call_name,
+                self._extract_model_name(sanitized_kwargs),
+                self._extract_input(sanitized_args, sanitized_kwargs),
+                start_time,
+                end_time,
+                memory_used,
+                agent_id,
+            )
 
-    def handle_sync_result(
-        self, result, start_time, start_memory, args, kwargs, llm_call_name
-    ):
-        end_time = datetime.now()
-        end_memory = psutil.Process().memory_info().rss
-        memory_used = max(0, end_memory - start_memory)
+            # Append llm_call_id to current_llm_call_ids
+            llm_call_ids = self.current_llm_call_ids.get()
+            if llm_call_ids is None:
+                llm_call_ids = []
+                self.current_llm_call_ids.set(llm_call_ids)
+            llm_call_ids.append(llm_call.id)
 
-        sanitized_args = self._sanitize_api_keys(args)
-        sanitized_kwargs = self._sanitize_api_keys(kwargs)
-
-        model_name = self._extract_model_name(sanitized_kwargs)
-        try:
-            provider = 'groq' if result.x_groq else None
-        except:
-            provider = None
-        model = os.path.join(provider, model_name) if provider else model_name
-
-        self.process_llm_result(
-            result,
-            llm_call_name,
-            model,
-            self._extract_input(sanitized_args, sanitized_kwargs),
-            start_time,
-            end_time,
-            memory_used,
-        )
+            return result
+        except Exception as e:
+            self._log_error(e, "llm", llm_call_name)
+            raise
 
     def process_llm_result(
-        self, result, name, model, prompt, start_time, end_time, memory_used
+        self, result, name, model, prompt, start_time, end_time, memory_used, agent_id
     ):
         llm_data = extract_llm_output(result)
         agent_id = self.current_agent_id.get()
@@ -204,17 +144,15 @@ class LLMTracerMixin:
             cost=json.dumps(cost),
             memory_used=memory_used,
         )
+
         with self.Session() as session:
             session.add(llm_call)
             session.commit()
-            llm_call_id = llm_call.id
+            session.refresh(llm_call)
 
-        llm_call_ids = self.current_llm_call_ids.get(None)
-        if llm_call_ids is not None:
-            llm_call_ids.append(llm_call_id)
-
-        self.trace_data.setdefault("llm_calls", []).append(
-            {
+            # Create a dictionary with all the necessary information
+            llm_call_data = {
+                "id": llm_call.id,
                 "name": name,
                 "model": llm_data.model_name,
                 "input_prompt": prompt,
@@ -227,9 +165,19 @@ class LLMTracerMixin:
                 "cost": cost,
                 "memory_used": memory_used,
                 "agent_id": agent_id,
-                "llm_call_id": llm_call_id,
             }
-        )
+
+        if agent_id:
+            llm_call_ids = self.current_llm_call_ids.get()
+            if llm_call_ids is None:
+                llm_call_ids = []
+                self.current_llm_call_ids.set(llm_call_ids)
+            llm_call_ids.append(llm_call.id)
+
+        # Append the data to trace_data outside the session
+        self.trace_data.setdefault("llm_calls", []).append(llm_call_data)
+
+        return llm_call
 
     def _extract_model_name(self, kwargs):
         return kwargs.get("model", "unknown")

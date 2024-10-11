@@ -72,9 +72,13 @@ class BaseTracer:
         self.current_llm_call_name = contextvars.ContextVar(
             "current_llm_call_name", default=None
         )
+        self.current_user_interaction_ids = contextvars.ContextVar(
+            "current_user_interaction_ids", default=None
+        )
 
     def __enter__(self):
         # Start the tracer when entering the context
+
         self.start()
         return self
 
