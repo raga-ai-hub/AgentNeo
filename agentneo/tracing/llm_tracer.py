@@ -4,6 +4,7 @@ import json
 import wrapt
 import functools
 from datetime import datetime
+import os
 
 from .user_interaction_tracer import UserInteractionTracer
 from .utils import calculate_cost, load_model_costs, convert_usage_to_dict
