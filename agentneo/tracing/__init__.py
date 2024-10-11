@@ -16,7 +16,7 @@ class Tracer(LLMTracerMixin, ToolTracerMixin, AgentTracerMixin, BaseTracer):
         log_file_path: Optional[str] = None,
         auto_instrument_llm: bool = True,
     ):
-        super().__init__(session, log_file_path)
+        super().__init__(session)
         self.auto_instrument_llm = auto_instrument_llm
         self.tools: Dict[str, Tool] = {}
         self.call_depth = contextvars.ContextVar("call_depth", default=0)
