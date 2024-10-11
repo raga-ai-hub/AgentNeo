@@ -14,6 +14,7 @@ logging.basicConfig(
 )
 
 
+# TODO: Use a production server instead of the dev server
 def check_node_npm():
     """Check if Node.js and npm are installed."""
     try:
