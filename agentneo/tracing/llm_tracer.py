@@ -76,10 +76,17 @@ class LLMTracerMixin:
             sanitized_args = self._sanitize_api_keys(args)
             sanitized_kwargs = self._sanitize_api_keys(kwargs)
 
+            model_name = self._extract_model_name(sanitized_kwargs)
+            try:
+                model = os.path.join('groq', model_name) if result.x_groq else model_name
+            except:
+                model = model_name
+
+
             llm_call = self.process_llm_result(
                 result,
                 llm_call_name,
-                self._extract_model_name(sanitized_kwargs),
+                model,
                 self._extract_input(sanitized_args, sanitized_kwargs),
                 start_time,
                 end_time,

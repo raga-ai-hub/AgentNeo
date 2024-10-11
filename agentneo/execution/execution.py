@@ -127,7 +127,7 @@ class Execution:
             return json_data[0]
 
         except:
-            raise ValueError("Unable to laod the trace data.")
+            raise ValueError("Unable to load the trace data.")
 
 
     def serialize_trace(self, trace):
@@ -153,12 +153,15 @@ class Execution:
                 {
                     'id': agent_call.id,
                     'name': agent_call.name,
-                    'input_parameters': self.parse_json_field(agent_call.input_parameters),
-                    'output': self.parse_json_field(agent_call.output),
+                    # 'input_parameters': self.parse_json_field(agent_call.input_parameters),
+                    # 'output': self.parse_json_field(agent_call.output),
                     'start_time': agent_call.start_time.isoformat() if agent_call.start_time else None,
                     'end_time': agent_call.end_time.isoformat() if agent_call.end_time else None,
-                    'duration': agent_call.duration,
-                    'memory_used': agent_call.memory_used
+                    # 'duration': agent_call.duration,
+                    # 'memory_used': agent_call.memory_used
+                    'llm_call_ids': self.parse_json_field(agent_call.llm_call_ids),
+                    'tool_call_ids': self.parse_json_field(agent_call.tool_call_ids),
+                    'user_interaction_ids': self.parse_json_field(agent_call.user_interaction_ids),
                 } for agent_call in trace.agent_calls
             ],
             'llm_calls': [
