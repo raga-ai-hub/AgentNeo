@@ -87,56 +87,16 @@ class LLMTracerMixin:
             )
 
             # Append llm_call_id to current_llm_call_ids
-            llm_call_ids = self.current_llm_call_ids.get([])
+            llm_call_ids = self.current_llm_call_ids.get()
+            if llm_call_ids is None:
+                llm_call_ids = []
+                self.current_llm_call_ids.set(llm_call_ids)
             llm_call_ids.append(llm_call.id)
-            self.current_llm_call_ids.set(llm_call_ids)
 
             return result
         except Exception as e:
             self._log_error(e, "llm", llm_call_name)
             raise
-
-    # async def handle_async_result(
-    #     self, result, start_time, start_memory, args, kwargs, llm_call_name
-    # ):
-    #     end_time = datetime.now()
-    #     end_memory = psutil.Process().memory_info().rss
-    #     memory_used = max(0, end_memory - start_memory)
-
-    #     sanitized_args = self._sanitize_api_keys(args)
-    #     sanitized_kwargs = self._sanitize_api_keys(kwargs)
-
-    #     self.process_llm_result(
-    #         result,
-    #         llm_call_name,
-    #         self._extract_model_name(sanitized_kwargs),
-    #         self._extract_input(sanitized_args, sanitized_kwargs),
-    #         start_time,
-    #         end_time,
-    #         memory_used,
-    #         agent_id,
-    #     )
-
-    # def handle_sync_result(
-    #     self, result, start_time, start_memory, args, kwargs, llm_call_name
-    # ):
-    #     end_time = datetime.now()
-    #     end_memory = psutil.Process().memory_info().rss
-    #     memory_used = max(0, end_memory - start_memory)
-
-    #     sanitized_args = self._sanitize_api_keys(args)
-    #     sanitized_kwargs = self._sanitize_api_keys(kwargs)
-
-    #     self.process_llm_result(
-    #         result,
-    #         llm_call_name,
-    #         self._extract_model_name(sanitized_kwargs),
-    #         self._extract_input(sanitized_args, sanitized_kwargs),
-    #         start_time,
-    #         end_time,
-    #         memory_used,
-    #         agent_id,
-    #     )
 
     def process_llm_result(
         self, result, name, model, prompt, start_time, end_time, memory_used, agent_id
@@ -187,8 +147,6 @@ class LLMTracerMixin:
         with self.Session() as session:
             session.add(llm_call)
             session.commit()
-
-            # Refresh the instance to ensure all attributes are loaded
             session.refresh(llm_call)
 
             # Create a dictionary with all the necessary information
@@ -207,6 +165,13 @@ class LLMTracerMixin:
                 "memory_used": memory_used,
                 "agent_id": agent_id,
             }
+
+        if agent_id:
+            llm_call_ids = self.current_llm_call_ids.get()
+            if llm_call_ids is None:
+                llm_call_ids = []
+                self.current_llm_call_ids.set(llm_call_ids)
+            llm_call_ids.append(llm_call.id)
 
         # Append the data to trace_data outside the session
         self.trace_data.setdefault("llm_calls", []).append(llm_call_data)

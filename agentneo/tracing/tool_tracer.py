@@ -59,9 +59,11 @@ class ToolTracerMixin:
                 tool_call_id = tool_call.id
 
             # Append tool_call_id to current_tool_call_ids
-            tool_call_ids = self.current_tool_call_ids.get([])
+            tool_call_ids = self.current_tool_call_ids.get()
+            if tool_call_ids is None:
+                tool_call_ids = []
+                self.current_tool_call_ids.set(tool_call_ids)
             tool_call_ids.append(tool_call_id)
-            self.current_tool_call_ids.set(tool_call_ids)
 
             serialized_params = self._serialize_params(args, kwargs)
             self.trace_data.setdefault("tool_calls", []).append(

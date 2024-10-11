@@ -147,16 +147,15 @@ class ToolCallModel(Base):
 class AgentCallModel(Base):
     __tablename__ = "agent_call"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, unique=True)
     project_id = Column(Integer, ForeignKey("project_info.id"), nullable=False)
     name = Column(String, nullable=False)
-    input_parameters = Column(String, nullable=False)
-    output = Column(String, nullable=False)
     start_time = Column(DateTime, default=datetime.now)
     end_time = Column(DateTime, nullable=True)
-    duration = Column(Float, nullable=True)
-    memory_used = Column(Integer, nullable=False)
     trace_id = Column(Integer, ForeignKey("traces.id"), nullable=False)
+    llm_call_ids = Column(JSON, nullable=True)
+    tool_call_ids = Column(JSON, nullable=True)
+    user_interaction_ids = Column(JSON, nullable=True)
 
     trace = relationship("TraceModel", back_populates="agent_calls")
     project = relationship("ProjectInfoModel", back_populates="agent_calls")
