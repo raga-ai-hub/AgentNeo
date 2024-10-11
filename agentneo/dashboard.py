@@ -9,7 +9,9 @@ import socket
 import logging
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 
 def check_node_npm():
@@ -111,10 +113,10 @@ def launch_dashboard(port=3000):
         env = os.environ.copy()
         env["PORT"] = str(free_port)
 
-        # Launch npm start with the specified port
+        # Launch npm run dev with the specified port
         if sys.platform.startswith("win"):
             # For Windows, use 'set' command in shell
-            command = f"set PORT={free_port} && npm start"
+            command = f"set PORT={free_port} && npm run dev"
             process = subprocess.Popen(
                 command,
                 shell=True,
@@ -126,7 +128,7 @@ def launch_dashboard(port=3000):
         else:
             # For Unix-like systems, pass env variable
             process = subprocess.Popen(
-                ["npm", "start"],
+                ["npm", "run", "dev"],
                 start_new_session=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -137,7 +139,7 @@ def launch_dashboard(port=3000):
         # Wait for the server to start
         server_started = False
         start_time = time.time()
-        timeout = 30
+        timeout = 60  # Increased timeout to 60 seconds
         while time.time() - start_time < timeout:
             try:
                 response = requests.get(f"http://localhost:{free_port}", timeout=1)
@@ -145,9 +147,10 @@ def launch_dashboard(port=3000):
                     server_started = True
                     break
             except requests.ConnectionError:
-                pass
+                logging.debug(f"Connection not yet established on port {free_port}")
             except requests.Timeout:
-                pass
+                logging.debug(f"Request timed out on port {free_port}")
+
             # Check if process has terminated
             if process.poll() is not None:
                 # Process has terminated, get output and error
@@ -158,6 +161,12 @@ def launch_dashboard(port=3000):
                 if stderr:
                     logging.error(f"Standard Error:\n{stderr}")
                 return
+
+            # Log process output
+            output = process.stdout.readline()
+            if output:
+                logging.info(f"Dashboard output: {output.strip()}")
+
             time.sleep(1)
 
         if server_started:
@@ -193,7 +202,7 @@ def is_dashboard_process(proc, port=None):
     try:
         name = proc.name().lower()
         cmdline = " ".join(proc.cmdline())
-        if "node" in name and "react-scripts" in cmdline:
+        if "node" in name and "vite" in cmdline:
             if port is None:
                 return True
             else:
