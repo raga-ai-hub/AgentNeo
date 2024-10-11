@@ -105,8 +105,6 @@ class AgentTracerMixin:
         with self.Session() as session:
             agent_call = session.query(AgentCallModel).get(agent_id)
             if agent_call:
-                pdb.set_trace()
-
                 agent_call.end_time = datetime.now()
                 agent_call.llm_call_ids = json.dumps(
                     self.current_llm_call_ids.get() or []
