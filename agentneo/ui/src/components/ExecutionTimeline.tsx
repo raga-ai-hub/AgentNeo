@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import TimelineControls from './TimelineControls';
@@ -7,31 +7,69 @@ import TimelineLegend from './TimelineLegend';
 import TimelineRows from './TimelineRows';
 import TimelineContent from './TimelineContent';
 import { TimelineData } from '../types/timeline';
+import { fetchTracesForProject, fetchTimelineData } from '../utils/databaseUtils';
 
-const timelineData: TimelineData[] = [
-  { name: 'Main', start: 0, duration: 192, color: '#4285F4', type: 'Action', row: 'Main' },
-  { name: 'LLM Call 1', start: 10, duration: 40, color: '#34A853', type: 'LLM', row: 'LLM' },
-  { name: 'Web Search', start: 63, duration: 86, color: '#FBBC05', type: 'Tool', row: 'Tool 1', details: {
-    agent: 'Job Description Writer',
-    function: 'Search the internet',
-    input: 'AI job trends 2024',
-    output: '[Truncated result summary]'
-  }},
-  { name: 'LLM Call 2', start: 70, duration: 30, color: '#34A853', type: 'LLM', row: 'LLM' },
-  { name: 'Data Processing', start: 100, duration: 30, color: '#FBBC05', type: 'Tool', row: 'Tool 2' },
-  { name: 'API Timeout', start: 110, duration: 5, color: '#EA4335', type: 'Error', row: 'Error' },
-  { name: 'LLM Call 3', start: 130, duration: 50, color: '#34A853', type: 'LLM', row: 'LLM' },
-];
+interface ExecutionTimelineProps {
+  projectId: number | null;
+}
 
-const ExecutionTimeline: React.FC = () => {
+const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({ projectId }) => {
   const [selectedEvent, setSelectedEvent] = useState<TimelineData | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [zoom, setZoom] = useState(100);
-  const [selectedTrace, setSelectedTrace] = useState("trace1");
   const timelineRef = useRef<HTMLDivElement>(null);
+  const [selectedTrace, setSelectedTrace] = useState<string | null>(null);
+  const [traces, setTraces] = useState<{ id: string; name: string }[]>([]);
+  const [timelineData, setTimelineData] = useState<TimelineData[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const totalDuration = Math.max(...timelineData.map(event => event.start + event.duration));
-  const rows = ['Main', 'LLM', 'Tool 1', 'Tool 2', 'Error'];
+  useEffect(() => {
+    const fetchTraces = async () => {
+      if (projectId) {
+        setIsLoading(true);
+        try {
+          const fetchedTraces = await fetchTracesForProject(projectId);
+          setTraces(fetchedTraces);
+          if (fetchedTraces.length > 0 && !selectedTrace) {
+            setSelectedTrace(fetchedTraces[0].id);
+          }
+        } catch (error) {
+          console.error('Error fetching traces:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    fetchTraces();
+  }, [projectId]);
+
+  useEffect(() => {
+    const loadTimelineData = async () => {
+      if (projectId && selectedTrace) {
+        setIsLoading(true);
+        try {
+          console.log('Fetching timeline data for project:', projectId, 'and trace:', selectedTrace);
+          const fetchedTimelineData = await fetchTimelineData(projectId, selectedTrace);
+          console.log('Fetched timeline data:', fetchedTimelineData);
+          setTimelineData(fetchedTimelineData);
+        } catch (error) {
+          console.error('Error fetching timeline data:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    loadTimelineData();
+  }, [projectId, selectedTrace]);
+
+  const { totalDuration, rows } = useMemo(() => {
+    if (!timelineData) {
+      return { totalDuration: 0, rows: [] };
+    }
+    const duration = Math.max(...timelineData.map(event => event.start + event.duration));
+    const uniqueRows = Array.from(new Set(timelineData.map(event => event.row)));
+    return { totalDuration: duration, rows: uniqueRows };
+  }, [timelineData]);
 
   const handleEventClick = (event: TimelineData) => {
     setSelectedEvent(event);
@@ -46,18 +84,26 @@ const ExecutionTimeline: React.FC = () => {
     }
   }, [currentTime, zoom, totalDuration]);
 
+  if (isLoading) {
+    return <div>Loading timeline data...</div>;
+  }
+
+  if (!timelineData || timelineData.length === 0) {
+    return <div>No timeline data available.</div>;
+  }
+
   return (
     <Card className="mt-8 bg-white shadow-md">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-2xl font-bold">Execution Timeline</CardTitle>
-        <Select value={selectedTrace} onValueChange={setSelectedTrace}>
+        <Select value={selectedTrace || ''} onValueChange={(value) => setSelectedTrace(value)}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Select trace" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="trace1">Trace 1</SelectItem>
-            <SelectItem value="trace2">Trace 2</SelectItem>
-            <SelectItem value="trace3">Trace 3</SelectItem>
+            {traces.map((trace) => (
+              <SelectItem key={trace.id} value={trace.id}>{trace.name}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </CardHeader>

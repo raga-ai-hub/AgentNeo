@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "cp node_modules/sql.js/dist/sql-wasm.wasm public/",
     "build": "tsc -b && vite build",
     "build:dev": "tsc -b && vite build",
     "lint": "eslint .",
@@ -47,6 +48,7 @@
     "dagre": "^0.8.5",
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.3.0",
+    "express": "^4.21.1",
     "input-otp": "^1.2.4",
     "lucide-react": "^0.441.0",
     "next-themes": "^0.3.0",
@@ -62,6 +64,7 @@
     "reactflow": "^11.11.4",
     "recharts": "^2.12.7",
     "sonner": "^1.5.0",
+    "sql.js": "^1.11.0",
     "tailwind-merge": "^2.5.2",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.3",

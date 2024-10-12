@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSidebar } from '../contexts/SidebarContext';
 import Sidebar from '../components/Sidebar';
 import TraceDetails from '../components/TraceDetails';
@@ -9,24 +9,38 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Search, History, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useProject } from '../contexts/ProjectContext';
-
-// Dummy data for testing
-const dummyTraces = [
-  { id: 'trace-001', start_time: '2023-05-15T10:30:00Z', duration: 15.5, llm_call_count: 3, tool_call_count: 2, agent_call_count: 1, error_count: 0 },
-  { id: 'trace-002', start_time: '2023-05-15T11:45:00Z', duration: 8.2, llm_call_count: 2, tool_call_count: 1, agent_call_count: 1, error_count: 1 },
-  { id: 'trace-003', start_time: '2023-05-16T09:15:00Z', duration: 22.7, llm_call_count: 5, tool_call_count: 3, agent_call_count: 2, error_count: 0 },
-  { id: 'trace-004', start_time: '2023-05-16T14:20:00Z', duration: 12.3, llm_call_count: 4, tool_call_count: 2, agent_call_count: 1, error_count: 0 },
-  { id: 'trace-005', start_time: '2023-05-17T08:50:00Z', duration: 18.9, llm_call_count: 6, tool_call_count: 4, agent_call_count: 2, error_count: 1 },
-];
+import { fetchTraceHistory, TraceHistoryItem, fetchDetailedTraceComponents, DetailedTraceComponents } from '../utils/databaseUtils';
 
 const TraceHistory: React.FC = () => {
   const { isCollapsed } = useSidebar();
   const { selectedProject, setSelectedProject, projects } = useProject();
-  const [traces, setTraces] = useState(dummyTraces);
+  const [traces, setTraces] = useState<TraceHistoryItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedTrace, setExpandedTrace] = useState<string | null>(null);
+  const [expandedTraceData, setExpandedTraceData] = useState<DetailedTraceComponents | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [expandedTrace, setExpandedTrace] = useState<string | null>(null);
   const tracesPerPage = 10;
+
+  useEffect(() => {
+    const loadTraces = async () => {
+      if (selectedProject) {
+        setIsLoading(true);
+        try {
+          const fetchedTraces = await fetchTraceHistory(selectedProject);
+          setTraces(fetchedTraces);
+        } catch (error) {
+          console.error('Error loading traces:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        setTraces([]);
+      }
+    };
+
+    loadTraces();
+  }, [selectedProject]);
 
   const filteredTraces = traces.filter(trace =>
     trace.id.toLowerCase().includes(searchTerm.toLowerCase())
@@ -42,8 +56,15 @@ const TraceHistory: React.FC = () => {
     setCurrentPage(1);
   };
 
-  const handleExpandTrace = (traceId: string) => {
+  const handleExpandTrace = async (traceId: string) => {
     setExpandedTrace(traceId);
+    try {
+      const detailedData = await fetchDetailedTraceComponents(traceId);
+      setExpandedTraceData(detailedData);
+    } catch (error) {
+      console.error('Error fetching detailed trace data:', error);
+      setExpandedTraceData(null);
+    }
   };
 
   return (
@@ -100,21 +121,35 @@ const TraceHistory: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {paginatedTraces.map((trace) => (
-                <tr
-                  key={trace.id}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-150 ease-in-out"
-                  onClick={() => handleExpandTrace(trace.id)}
-                >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600 dark:text-indigo-400">{trace.id}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{new Date(trace.start_time).toLocaleString()}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{trace.duration.toFixed(2)}s</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{trace.llm_call_count}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{trace.tool_call_count}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{trace.agent_call_count}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{trace.error_count}</td>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-300">
+                    Loading traces...
+                  </td>
                 </tr>
-              ))}
+              ) : paginatedTraces.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-300">
+                    No traces found. {!selectedProject && "Please select a project."}
+                  </td>
+                </tr>
+              ) : (
+                paginatedTraces.map((trace) => (
+                  <tr
+                    key={trace.id}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-150 ease-in-out"
+                    onClick={() => handleExpandTrace(trace.id)}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600 dark:text-indigo-400">{trace.id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{new Date(trace.start_time).toLocaleString()}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{trace.duration.toFixed(2)}s</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{trace.llm_call_count}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{trace.tool_call_count}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{trace.agent_call_count}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{trace.error_count}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -141,12 +176,19 @@ const TraceHistory: React.FC = () => {
           </Button>
         </div>
 
-        <Dialog open={!!expandedTrace} onOpenChange={() => setExpandedTrace(null)}>
-          <DialogContent className="max-w-6xl w-11/12 max-h-[90vh] overflow-hidden">
+        <Dialog open={!!expandedTrace} onOpenChange={() => {
+          setExpandedTrace(null);
+          setExpandedTraceData(null);
+        }}>
+          <DialogContent className="max-w-6xl w-11/12 max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Trace Details: {expandedTrace}</DialogTitle>
             </DialogHeader>
-            {expandedTrace && <TraceDetails traceId={expandedTrace} />}
+            {expandedTraceData ? (
+              <TraceDetails traceData={expandedTraceData} />
+            ) : (
+              <div>Loading trace details...</div>
+            )}
           </DialogContent>
         </Dialog>
       </div>

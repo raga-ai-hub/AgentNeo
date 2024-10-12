@@ -2,7 +2,25 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Terminal, Monitor, Cpu, HardDrive, Microchip, Database } from 'lucide-react';
 
-const SystemInformation = () => {
+const SystemInformation = ({ systemData }) => {
+  if (!systemData) {
+    return <div>Loading system information...</div>;
+  }
+
+  const formatDiskSpace = (diskSpace) => {
+    if (typeof diskSpace === 'string') {
+      try {
+        const parsed = JSON.parse(diskSpace);
+        const available = (parsed.available).toFixed(2);
+        const total = (parsed.total).toFixed(2);
+        return `${available} GB free of ${total} GB`;
+      } catch (e) {
+        return diskSpace; // Return original string if parsing fails
+      }
+    }
+    return diskSpace; // Return as-is if it's not a string
+  };
+
   return (
     <Card className="h-full">
       <CardHeader>
@@ -10,12 +28,16 @@ const SystemInformation = () => {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <InfoItem icon={<Terminal className="w-5 h-5 text-green-600" />} label="Python Version" value="3.11.4" />
-          <InfoItem icon={<Monitor className="w-5 h-5 text-blue-600" />} label="OS" value="Darwin 15.0" />
-          <InfoItem icon={<Cpu className="w-5 h-5 text-purple-600" />} label="CPU" value="Apple M1 Pro" />
-          <InfoItem icon={<Microchip className="w-5 h-5 text-red-600" />} label="GPU" value="Apple M1 Pro (7-core)" />
-          <InfoItem icon={<HardDrive className="w-5 h-5 text-yellow-600" />} label="Total Memory" value="16.00 GB" />
-          <InfoItem icon={<Database className="w-5 h-5 text-indigo-600" />} label="Disk Space" value="512 GB (380 GB free)" />
+          <InfoItem icon={<Terminal className="w-5 h-5 text-green-600" />} label="Python Version" value={systemData.pythonVersion} />
+          <InfoItem icon={<Monitor className="w-5 h-5 text-blue-600" />} label="OS" value={systemData.os} />
+          <InfoItem icon={<Cpu className="w-5 h-5 text-purple-600" />} label="CPU" value={systemData.cpu} />
+          <InfoItem icon={<Microchip className="w-5 h-5 text-red-600" />} label="GPU" value={systemData.gpu} />
+          <InfoItem icon={<HardDrive className="w-5 h-5 text-yellow-600" />} label="Total Memory" value={systemData.totalMemory} />
+          <InfoItem
+            icon={<Database className="w-5 h-5 text-indigo-600" />}
+            label="Disk Space"
+            value={formatDiskSpace(systemData.diskSpace)}
+          />
         </div>
       </CardContent>
     </Card>

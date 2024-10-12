@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { fetchAllProjects } from '../utils/databaseUtils';
+
 
 interface Project {
   id: number;
@@ -10,10 +12,11 @@ interface ProjectContextType {
   setSelectedProject: (id: number | null) => void;
   selectedTraceId: string | null;
   setSelectedTraceId: (id: string | null) => void;
-  selectedTrace: any | null; // Add this line
-  setSelectedTrace: (trace: any | null) => void; // Add this line
+  selectedTrace: any | null;
+  setSelectedTrace: (trace: any | null) => void;
   projects: Project[];
-  worker: any; // Replace 'any' with the actual type of your worker
+  setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
+  worker: any;
   setError: (error: string) => void;
 }
 
@@ -34,27 +37,42 @@ interface ProjectProviderProps {
 export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) => {
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
-  const [selectedTrace, setSelectedTrace] = useState<any | null>(null); // Add this line
-  const [projects] = useState<Project[]>([
-    { id: 1, name: 'Project 1' },
-    { id: 2, name: 'Project 2' },
-  ]);
-  const [worker] = useState<any>(null); // Initialize with your actual worker
+  const [selectedTrace, setSelectedTrace] = useState<any | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [worker] = useState<any>(null);
   const setError = (error: string) => {
-    console.error(error); // For now, just log the error
+    console.error(error);
   };
 
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        const fetchedProjects = await fetchAllProjects();
+        setProjects(fetchedProjects);
+        if (fetchedProjects.length > 0 && !selectedProject) {
+          setSelectedProject(fetchedProjects[0].id);
+        }
+      } catch (error) {
+        console.error('Error loading projects:', error);
+        setError('Failed to load projects');
+      }
+    };
+
+    loadProjects();
+  }, []);
+
   return (
-    <ProjectContext.Provider value={{ 
-      selectedProject, 
-      setSelectedProject, 
+    <ProjectContext.Provider value={{
+      selectedProject,
+      setSelectedProject,
       selectedTraceId,
       setSelectedTraceId,
-      selectedTrace, // Add this line
-      setSelectedTrace, // Add this line
-      projects, 
-      worker, 
-      setError 
+      selectedTrace,
+      setSelectedTrace,
+      projects,
+      setProjects,
+      worker,
+      setError
     }}>
       {children}
     </ProjectContext.Provider>
