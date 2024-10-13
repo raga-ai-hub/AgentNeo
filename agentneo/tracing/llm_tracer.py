@@ -78,10 +78,11 @@ class LLMTracerMixin:
 
             model_name = self._extract_model_name(sanitized_kwargs)
             try:
-                model = os.path.join('groq', model_name) if result.x_groq else model_name
+                model = (
+                    os.path.join("groq", model_name) if result.x_groq else model_name
+                )
             except:
                 model = model_name
-
 
             llm_call = self.process_llm_result(
                 result,
@@ -112,11 +113,13 @@ class LLMTracerMixin:
         llm_data = extract_llm_output(result)
         agent_id = self.current_agent_id.get()
 
-        token_usage = {
-            "input": result.usage.prompt_tokens,
-            "completion": result.usage.completion_tokens,
-            "reasoning": getattr(result.usage, "reasoning_tokens", 0),
-        }
+        token_usage = {"input": 0, "completion": 0, "reasoning": 0}
+
+        if hasattr(result, "usage"):
+            usage = result.usage
+            token_usage["input"] = getattr(usage, "prompt_tokens", 0)
+            token_usage["completion"] = getattr(usage, "completion_tokens", 0)
+            token_usage["reasoning"] = getattr(usage, "reasoning_tokens", 0)
 
         # Default cost values if the model or default is not found
         default_cost = {"input": 0.0, "output": 0.0, "reasoning": 0.0}
