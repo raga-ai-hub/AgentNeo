@@ -483,6 +483,57 @@ export const fetchDetailedTraceComponents = async (traceId: string): Promise<Det
     };
 };
 
+export const fetchEvaluationData = async (projectId: number, traceId: string | null): Promise<any[]> => {
+    await initDatabase();
+  
+    let query = `
+      SELECT 
+        m.id,
+        t.id as trace_id,
+        m.metric_name,
+        m.score,
+        m.reason,
+        m.result_detail,
+        m.config,
+        t.start_time,
+        t.end_time,
+        (julianday(t.end_time) - julianday(t.start_time)) * 86400 as duration
+      FROM metrics m
+      JOIN traces t ON m.trace_id = t.id
+      WHERE t.project_id = ?
+    `;
+  
+    const params = [projectId];
+  
+    if (traceId && traceId !== 'all') {
+      query += ' AND t.id = ?';
+      params.push(traceId);
+    }
+  
+    query += ' ORDER BY t.start_time DESC';
+  
+    const result = db.exec(query, params);
+  
+    if (result[0] && result[0].values) {
+      return result[0].values.map(([id, trace_id, metric_name, score, reason, result_detail, config, start_time, end_time, duration]) => ({
+        id,
+        trace_id,
+        type: metric_name,
+        [metric_name.toLowerCase().replace(/ /g, '_')]: {
+          score: parseFloat(score),
+          reason,
+          result_detail: JSON.parse(result_detail),
+          config: JSON.parse(config),
+        },
+        start_time,
+        end_time,
+        duration: parseFloat(duration)
+      }));
+    }
+  
+    return [];
+  };
+
 export const fetchTracesForProject = async (projectId: number): Promise<{ id: string; name: string }[]> => {
     await initDatabase();
 
