@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import TimelineControls from './TimelineControls';
@@ -7,73 +7,45 @@ import TimelineLegend from './TimelineLegend';
 import TimelineRows from './TimelineRows';
 import TimelineContent from './TimelineContent';
 import { TimelineData } from '../types/timeline';
-import { fetchTracesForProject, fetchTimelineData } from '../utils/databaseUtils';
+import { fetchTimelineData } from '../api/traceApi';
+import { fetchTracesForProject } from '../utils/databaseUtils';
+import { useQuery } from '@tanstack/react-query';
+import { useProject } from '../contexts/ProjectContext';
 
-interface ExecutionTimelineProps {
-  projectId: number | null;
-}
-
-const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({ projectId }) => {
+const ExecutionTimeline: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<TimelineData | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [zoom, setZoom] = useState(100);
   const timelineRef = useRef<HTMLDivElement>(null);
-  const [selectedTrace, setSelectedTrace] = useState<string | null>(null);
-  const [traces, setTraces] = useState<{ id: string; name: string }[]>([]);
-  const [timelineData, setTimelineData] = useState<TimelineData[] | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { selectedProject } = useProject();
+  const [selectedTraceId, setSelectedTraceId] = useState<string>('');
+
+  const { data: traces = [] } = useQuery({
+    queryKey: ['traces', selectedProject],
+    queryFn: () => fetchTracesForProject(selectedProject || 0),
+    enabled: !!selectedProject,
+  });
+
+  const { data: timelineData = [], isLoading } = useQuery({
+    queryKey: ['timelineData', selectedProject, selectedTraceId],
+    queryFn: () => fetchTimelineData(selectedProject || 0, selectedTraceId),
+    enabled: !!selectedProject && !!selectedTraceId,
+  });
 
   useEffect(() => {
-    const fetchTraces = async () => {
-      if (projectId) {
-        setIsLoading(true);
-        try {
-          const fetchedTraces = await fetchTracesForProject(projectId);
-          setTraces(fetchedTraces);
-          if (fetchedTraces.length > 0 && !selectedTrace) {
-            setSelectedTrace(fetchedTraces[0].id);
-          }
-        } catch (error) {
-          console.error('Error fetching traces:', error);
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    };
-    fetchTraces();
-  }, [projectId]);
-
-  useEffect(() => {
-    const loadTimelineData = async () => {
-      if (projectId && selectedTrace) {
-        setIsLoading(true);
-        try {
-          console.log('Fetching timeline data for project:', projectId, 'and trace:', selectedTrace);
-          const fetchedTimelineData = await fetchTimelineData(projectId, selectedTrace);
-          console.log('Fetched timeline data:', fetchedTimelineData);
-          setTimelineData(fetchedTimelineData);
-        } catch (error) {
-          console.error('Error fetching timeline data:', error);
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    };
-    loadTimelineData();
-  }, [projectId, selectedTrace]);
-
-  const { totalDuration, rows } = useMemo(() => {
-    if (!timelineData) {
-      return { totalDuration: 0, rows: [] };
+    if (traces.length > 0 && !selectedTraceId) {
+      setSelectedTraceId(traces[0].id);
     }
-    const duration = Math.max(...timelineData.map(event => event.start + event.duration));
-    const uniqueRows = Array.from(new Set(timelineData.map(event => event.row)));
-    return { totalDuration: duration, rows: uniqueRows };
-  }, [timelineData]);
+  }, [traces, selectedTraceId]);
+
+  const totalDuration = timelineData.length > 0 ?
+    Math.max(...timelineData.map(event => new Date(event.end_time).getTime() - new Date(event.start_time).getTime())) / 1000 : 0;
+
+  const rows = ['LLM', 'Action', 'Tool', 'Error', 'UserInteraction'];
 
   const handleEventClick = (event: TimelineData) => {
     setSelectedEvent(event);
-    setCurrentTime(event.start);
+    setCurrentTime((new Date(event.start_time).getTime() - new Date(timelineData[0].start_time).getTime()) / 1000);
   };
 
   useEffect(() => {
@@ -85,24 +57,22 @@ const ExecutionTimeline: React.FC<ExecutionTimelineProps> = ({ projectId }) => {
   }, [currentTime, zoom, totalDuration]);
 
   if (isLoading) {
-    return <div>Loading timeline data...</div>;
-  }
-
-  if (!timelineData || timelineData.length === 0) {
-    return <div>No timeline data available.</div>;
+    return <div>Loading...</div>;
   }
 
   return (
     <Card className="mt-8 bg-white shadow-md">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-2xl font-bold">Execution Timeline</CardTitle>
-        <Select value={selectedTrace || ''} onValueChange={(value) => setSelectedTrace(value)}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select trace" />
+        <Select value={selectedTraceId} onValueChange={setSelectedTraceId}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Select Trace" />
           </SelectTrigger>
           <SelectContent>
             {traces.map((trace) => (
-              <SelectItem key={trace.id} value={trace.id}>{trace.name}</SelectItem>
+              <SelectItem key={trace.id} value={trace.id}>
+                {trace.name}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>

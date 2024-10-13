@@ -14,15 +14,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 const Analysis: React.FC = () => {
   const { isCollapsed } = useSidebar();
-  const { selectedProject, setSelectedProject, selectedTraceId, setSelectedTraceId, projects } = useProject();
-
-  // Dummy traces data (replace with actual data fetching logic)
-  const traces = [
-    { id: 'all', name: 'All Traces' },
-    { id: 'trace1', name: 'Trace 1' },
-    { id: 'trace2', name: 'Trace 2' },
-    { id: 'trace3', name: 'Trace 3' },
-  ];
+  const {
+    selectedProject,
+    setSelectedProject,
+    selectedTraceId,
+    setSelectedTraceId,
+    projects,
+    traces
+  } = useProject();
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
@@ -35,7 +34,10 @@ const Analysis: React.FC = () => {
               <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Analytics</h1>
             </div>
             <div className="flex space-x-4">
-              <Select value={selectedProject?.toString()} onValueChange={(value) => setSelectedProject(Number(value))}>
+              <Select
+                value={selectedProject?.toString() || ''}
+                onValueChange={(value) => setSelectedProject(Number(value))}
+              >
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
@@ -47,7 +49,10 @@ const Analysis: React.FC = () => {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={selectedTraceId || ''} onValueChange={setSelectedTraceId}>
+              <Select
+                value={selectedTraceId || ''}
+                onValueChange={setSelectedTraceId}
+              >
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="Select trace" />
                 </SelectTrigger>
@@ -64,7 +69,7 @@ const Analysis: React.FC = () => {
           <div className="space-y-6">
             <PerformanceMetrics />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <LLMUsageAnalysis />
+              <LLMUsageAnalysis projectId={selectedProject} />
               <ToolPerformanceAnalysis />
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
