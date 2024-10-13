@@ -17,6 +17,14 @@ export const initDatabase = async () => {
         db = new SQL.Database(new Uint8Array(arrayBuffer));
         console.log('Database loaded successfully');
     }
+    return db;
+};
+
+export const getDatabase = () => {
+    if (!db) {
+        throw new Error('Database not initialized. Call initDatabase() first.');
+    }
+    return db;
 };
 
 export const fetchAllProjects = async () => {
