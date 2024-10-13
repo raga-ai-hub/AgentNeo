@@ -43,65 +43,96 @@ export const fetchAllProjects = async () => {
     return [];
 };
 
-export const fetchTraceData = async (projectId) => {
+export const fetchProjectInfo = async (projectId: number) => {
     await initDatabase();
 
-    console.log(`Fetching data for project ID: ${projectId}`);
-
-    // Query to fetch project information
     const result = db.exec(`
-    SELECT 
-      id,
-      project_name,
-      start_time,
-      end_time,
-      duration,
-      total_cost,
-      total_tokens
-    FROM project_info 
-    WHERE id = ${projectId}
-  `);
-
-    console.log('Project info query result:', result);
+      SELECT id, project_name, start_time, end_time, duration, total_cost, total_tokens
+      FROM project_info
+      WHERE id = ?
+    `, [projectId]);
 
     if (result[0] && result[0].values[0]) {
         const [id, project_name, start_time, end_time, duration, total_cost, total_tokens] = result[0].values[0];
-
-        // Query to count total traces for the project
-        const tracesResult = db.exec(`
-      SELECT COUNT(*) as total_traces
-      FROM traces
-      WHERE project_id = ${projectId}
-    `);
-
-        // Query to count total errors for the project
-        const errorsResult = db.exec(`
-      SELECT COUNT(*) as total_errors
-      FROM errors
-      WHERE project_id = ${projectId}
-    `);
-
-        const totalTraces = tracesResult[0].values[0][0];
-        const totalErrors = errorsResult[0].values[0][0];
-
-        const projectInfo = {
+        return {
             id,
-            name: project_name,
-            startTime: new Date(start_time),
-            endTime: end_time ? new Date(end_time) : null,
-            duration: duration,
-            totalCost: total_cost,
-            totalTokens: total_tokens,
-            totalTraces: totalTraces,
-            totalErrors: totalErrors,
-        }
-
-        console.log('Processed project data:', projectInfo);
-        return { projectInfo };
+            project_name,
+            start_time,
+            end_time,
+            duration,
+            total_cost,
+            total_tokens
+        };
     }
 
-    console.log('No project data found');
-    return { projectInfo: null };
+    return null;
+};
+
+export const fetchTraceData = async (projectId) => {
+    await initDatabase();
+
+    try {
+        const traceResult = db.exec(`
+            SELECT id, start_time, end_time
+            FROM traces
+            WHERE project_id = ?
+            LIMIT 1
+        `, [projectId]);
+
+        if (!traceResult[0] || !traceResult[0].values[0]) {
+            throw new Error(`No trace found for project ID ${projectId}`);
+        }
+
+        const [traceId, traceStartTime, traceEndTime] = traceResult[0].values[0];
+
+        const llmCallsResult = db.exec(`
+            SELECT *
+            FROM llm_call
+            WHERE trace_id = ?
+        `, [traceId]);
+
+        const toolCallsResult = db.exec(`
+            SELECT *
+            FROM tool_call
+            WHERE trace_id = ?
+        `, [traceId]);
+
+        const agentCallsResult = db.exec(`
+            SELECT *
+            FROM agent_call
+            WHERE trace_id = ?
+        `, [traceId]);
+
+        const errorsResult = db.exec(`
+            SELECT *
+            FROM errors
+            WHERE trace_id = ?
+        `, [traceId]);
+
+        const formatResults = (result) => {
+            if (!result[0]) return [];
+            const columns = result[0].columns;
+            return result[0].values.map(row =>
+                columns.reduce((obj, col, index) => {
+                    obj[col] = row[index];
+                    return obj;
+                }, {})
+            );
+        };
+
+        return {
+            id: traceId,
+            start_time: traceStartTime,
+            end_time: traceEndTime,
+            llm_calls: formatResults(llmCallsResult),
+            tool_calls: formatResults(toolCallsResult),
+            agent_calls: formatResults(agentCallsResult),
+            errors: formatResults(errorsResult)
+        };
+    } catch (error) {
+        console.error('Error fetching trace data:', error);
+        throw error;
+    }
 };
 
 export const fetchSystemInfo = async (projectId) => {
@@ -268,25 +299,25 @@ export const fetchTimelineData = async (projectId: number, traceId: string): Pro
     return [];
 };
 
-export const fetchTracesForProject = async (projectId: number): Promise<{ id: string; name: string }[]> => {
-    await initDatabase();
+// export const fetchTracesForProject = async (projectId: number): Promise<{ id: string; name: string }[]> => {
+//     await initDatabase();
 
-    const result = db.exec(`
-      SELECT id, start_time
-      FROM traces
-      WHERE project_id = ${projectId}
-      ORDER BY start_time DESC
-    `);
+//     const result = db.exec(`
+//       SELECT id, start_time
+//       FROM traces
+//       WHERE project_id = ${projectId}
+//       ORDER BY start_time DESC
+//     `);
 
-    if (result[0] && result[0].values) {
-        return result[0].values.map(([id, start_time]) => ({
-            id: id.toString(),
-            name: `Trace ${id} (${new Date(start_time).toLocaleString()})`
-        }));
-    }
+//     if (result[0] && result[0].values) {
+//         return result[0].values.map(([id, start_time]) => ({
+//             id: id.toString(),
+//             name: `Trace ${id} (${new Date(start_time).toLocaleString()})`
+//         }));
+//     }
 
-    return [];
-};
+//     return [];
+// };
 
 // For Trace History Page
 export interface TraceHistoryItem {
@@ -397,4 +428,180 @@ export const fetchDetailedTraceComponents = async (traceId: string): Promise<Det
             }, {});
         }) || [],
     };
+};
+
+export const fetchTracesForProject = async (projectId: number): Promise<{ id: string; name: string }[]> => {
+    await initDatabase();
+
+    const result = db.exec(`
+        SELECT id, start_time
+        FROM traces
+        WHERE project_id = ${projectId}
+        ORDER BY start_time DESC
+      `);
+
+    if (result[0] && result[0].values) {
+        return result[0].values.map(([id, start_time]) => ({
+            id: id.toString(),
+            name: `Trace ${id} (${new Date(start_time).toLocaleString()})`
+        }));
+    }
+
+    return [];
+};
+
+
+// For the Execution graph in the Overview Page:
+export interface GraphNode {
+    id: string;
+    type: 'agent' | 'llm' | 'tool' | 'user_interaction' | 'error';
+    data: {
+        name: string;
+        start_time: string;
+        end_time: string;
+        duration: number;
+        memory_used?: number;
+        token_usage?: { input: number; completion: number };
+        error_message?: string;
+        content?: string;
+    };
+}
+
+export interface GraphEdge {
+    id: string;
+    source: string;
+    target: string;
+}
+
+export const fetchExecutionGraphData = async (projectId: number, traceId: string): Promise<{ nodes: GraphNode[], edges: GraphEdge[] }> => {
+    await initDatabase();
+
+    const result = db.exec(`
+      WITH RECURSIVE
+      agent_calls AS (
+        SELECT id, name, start_time, end_time, llm_call_ids, tool_call_ids
+        FROM agent_call
+        WHERE project_id = ? AND trace_id = ?
+      ),
+      llm_calls AS (
+        SELECT id, name, model, start_time, end_time, agent_id, token_usage, cost, input_prompt, output
+        FROM llm_call
+        WHERE project_id = ? AND trace_id = ?
+      ),
+      tool_calls AS (
+        SELECT id, name, start_time, end_time, agent_id, network_calls, input_parameters, output
+        FROM tool_call
+        WHERE project_id = ? AND trace_id = ?
+      ),
+      user_interaction_data AS (
+        SELECT id, interaction_type, timestamp as start_time, timestamp as end_time, content, agent_id
+        FROM user_interactions
+        WHERE project_id = ? AND trace_id = ?
+      ),
+      all_nodes AS (
+        SELECT 'agent' as type, id, name, start_time, end_time, NULL as parent_id,
+               json_object('llm_call_ids', llm_call_ids, 'tool_call_ids', tool_call_ids) as extra_data
+        FROM agent_calls
+        UNION ALL
+        SELECT 'llm' as type, id, name, start_time, end_time, agent_id as parent_id,
+               json_object('model', model, 'token_usage', token_usage, 'cost', cost, 'input_prompt', input_prompt, 'output', output) as extra_data
+        FROM llm_calls
+        UNION ALL
+        SELECT 'tool' as type, id, name, start_time, end_time, agent_id as parent_id,
+               json_object('network_calls', network_calls, 'input_parameters', input_parameters, 'output', output) as extra_data
+        FROM tool_calls
+        UNION ALL
+        SELECT 'user_interaction' as type, id, 'User Interaction' as name, start_time, end_time, agent_id as parent_id,
+               json_object('interaction_type', interaction_type, 'content', content) as extra_data
+        FROM user_interaction_data
+      )
+      SELECT * FROM all_nodes
+      ORDER BY start_time
+    `, [projectId, traceId, projectId, traceId, projectId, traceId, projectId, traceId]);
+
+    const nodes: GraphNode[] = [];
+    const edges: GraphEdge[] = [];
+    const nodeMap: { [key: string]: GraphNode } = {};
+
+    if (result[0] && result[0].values) {
+        result[0].values.forEach(([type, id, name, start_time, end_time, parent_id, extra_data]) => {
+            const nodeId = `${type}_${id}`;
+            let parsedExtraData;
+            try {
+                parsedExtraData = JSON.parse(extra_data);
+            } catch (error) {
+                console.error(`Failed to parse extra_data for node ${nodeId}:`, extra_data);
+                parsedExtraData = {};
+            }
+            const duration = new Date(end_time).getTime() - new Date(start_time).getTime();
+
+            const node: GraphNode = {
+                id: nodeId,
+                type: type as GraphNode['type'],
+                data: {
+                    name,
+                    start_time,
+                    end_time,
+                    duration,
+                    ...parsedExtraData,
+                }
+            };
+
+            nodes.push(node);
+            nodeMap[nodeId] = node;
+
+            if (parent_id) {
+                const parentNodeId = `agent_${parent_id}`;
+                const edgeId = `${parentNodeId}_to_${nodeId}`;
+                if (!edges.some(edge => edge.id === edgeId)) {
+                    edges.push({
+                        id: edgeId,
+                        source: parentNodeId,
+                        target: nodeId
+                    });
+                }
+            }
+        });
+
+        // Add edges for agent's llm_calls and tool_calls
+        nodes.forEach(node => {
+            if (node.type === 'agent') {
+                const llmCallIds = Array.isArray(node.data.llm_call_ids) ? node.data.llm_call_ids : JSON.parse(node.data.llm_call_ids || '[]');
+                const toolCallIds = Array.isArray(node.data.tool_call_ids) ? node.data.tool_call_ids : JSON.parse(node.data.tool_call_ids || '[]');
+
+                [...llmCallIds, ...toolCallIds].forEach(callId => {
+                    const callNodeId = `${callId.startsWith('llm') ? 'llm' : 'tool'}_${callId}`;
+                    const edgeId = `${node.id}_to_${callNodeId}`;
+                    if (!edges.some(edge => edge.id === edgeId)) {
+                        edges.push({
+                            id: edgeId,
+                            source: node.id,
+                            target: callNodeId
+                        });
+                    }
+                });
+            }
+        });
+
+        // Add edges based on execution order for nodes without parents
+        const rootNodes = nodes.filter(node => !edges.some(edge => edge.target === node.id));
+        for (let i = 1; i < rootNodes.length; i++) {
+            const prevNode = rootNodes[i - 1];
+            const currentNode = rootNodes[i];
+            const edgeId = `${prevNode.id}_to_${currentNode.id}`;
+
+            if (!edges.some(edge => edge.id === edgeId)) {
+                edges.push({
+                    id: edgeId,
+                    source: prevNode.id,
+                    target: currentNode.id
+                });
+            }
+        }
+    }
+
+    console.log('Fetched nodes:', nodes.map(node => ({ id: node.id, type: node.type, data: node.data })));
+    console.log('Fetched edges:', edges);
+
+    return { nodes, edges };
 };

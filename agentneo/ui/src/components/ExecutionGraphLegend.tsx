@@ -3,17 +3,22 @@ import { nodeStylesByType } from './ExecutionGraphNodes';
 
 export const Legend = () => {
   const legendItems = [
-    { label: 'Agent', color: nodeStylesByType.agent.color, icon: nodeStylesByType.agent.icon },
-    { label: 'LLM', color: nodeStylesByType.llm.color, icon: nodeStylesByType.llm.icon },
-    { label: 'Tool', color: nodeStylesByType.tool.color, icon: nodeStylesByType.tool.icon },
+    { label: 'Agent', color: nodeStylesByType.agent.backgroundColor, borderColor: nodeStylesByType.agent.borderColor },
+    { label: 'LLM', color: nodeStylesByType.llm.backgroundColor, borderColor: nodeStylesByType.llm.borderColor },
+    { label: 'Tool', color: nodeStylesByType.tool.backgroundColor, borderColor: nodeStylesByType.tool.borderColor },
+    { label: 'User Interaction', color: nodeStylesByType.user_interaction.backgroundColor, borderColor: nodeStylesByType.user_interaction.borderColor },
+    { label: 'Error', color: nodeStylesByType.error.backgroundColor, borderColor: nodeStylesByType.error.borderColor },
   ];
 
   return (
-    <div className="absolute bottom-4 left-4 bg-white p-2 border rounded shadow-md">
+    <div className="absolute top-4 right-4 bg-white p-2 border rounded shadow-md z-10">
       {legendItems.map((item) => (
         <div key={item.label} className="flex items-center mb-1">
-          <div className={`w-4 h-4 mr-2 ${item.color}`}></div>
-          <span>{item.icon} {item.label}</span>
+          <div
+            className="w-4 h-4 mr-2 rounded"
+            style={{ backgroundColor: item.color, borderColor: item.borderColor, borderWidth: '2px' }}
+          ></div>
+          <span className="text-sm">{item.label}</span>
         </div>
       ))}
     </div>
