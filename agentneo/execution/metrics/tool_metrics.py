@@ -71,7 +71,7 @@ def execute_tool_call_success_rate_metric(
         if not output:
             successful_calls += 1
         else:
-            if "error" not in output.lower() and "exception" not in output.lower():
+            if "error" not in str(output).lower() and "exception" not in str(output).lower():
                 successful_calls += 1
 
     success_rate = successful_calls / total_calls if total_calls > 0 else 0
