@@ -9,6 +9,7 @@ from .data_models import (
     ErrorModel,
     TraceModel,
     UserInteractionModel,
+    MetricModel,
 )
 
 __all__ = [
@@ -25,4 +26,5 @@ __all__ = [
     "ToolCall",
     "AgentCall",
     "UserInteractionModel",
+    "MetricModel",
 ]

@@ -166,6 +166,29 @@ class AgentCallModel(Base):
     )
 
 
+class MetricModel(Base):
+    __tablename__ = "metrics"
+
+    id = Column(Integer, primary_key=True)
+    trace_id = Column(Integer, ForeignKey("traces.id"), nullable=False)
+    metric_name = Column(String, nullable=False)
+    score = Column(Float, nullable=True)
+    reason = Column(String, nullable=True)
+    result_detail = Column(JSON, nullable=False)
+    config = Column(JSON, nullable=False)
+    start_time = Column(DateTime, default=datetime.now)
+    end_time = Column(DateTime, nullable=True)
+    duration = Column(Float, nullable=True)
+    timestamp = Column(DateTime, default=datetime.now)
+
+    trace = relationship("TraceModel", back_populates="metrics")
+
+TraceModel.metrics = relationship(
+    "MetricModel", order_by=MetricModel.id, back_populates="trace"
+)
+
+
+
 # Establish relationships
 ProjectInfoModel.llm_calls = relationship(
     "LLMCallModel", order_by=LLMCallModel.id, back_populates="project"
