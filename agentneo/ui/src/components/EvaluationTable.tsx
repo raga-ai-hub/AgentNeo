@@ -13,20 +13,8 @@ const EvaluationTable: React.FC<EvaluationTableProps> = ({ sortedData, requestSo
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [expandedDetails, setExpandedDetails] = useState<Set<string>>(new Set());
 
-  const toggleRowExpansion = (metric: string) => {
+  const toggleRowExpansion = (metricId: string) => {
     setExpandedRows(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(metric)) {
-        newSet.delete(metric);
-      } else {
-        newSet.add(metric);
-      }
-      return newSet;
-    });
-  };
-
-  const toggleDetailExpansion = (metricId: string) => {
-    setExpandedDetails(prev => {
       const newSet = new Set(prev);
       if (newSet.has(metricId)) {
         newSet.delete(metricId);
@@ -37,53 +25,38 @@ const EvaluationTable: React.FC<EvaluationTableProps> = ({ sortedData, requestSo
     });
   };
 
-  const renderCell = (cellData: any, field: string, metric: string, rowId: string) => {
+  const toggleDetailExpansion = (cellId: string) => {
+    setExpandedDetails(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(cellId)) {
+        newSet.delete(cellId);
+      } else {
+        newSet.add(cellId);
+      }
+      return newSet;
+    });
+  };
+
+  const renderCell = (cellData: any, field: string, metricId: string, resultIndex: number) => {
     if (cellData === undefined || cellData === null || cellData === '') return <TableCell>-</TableCell>;
 
+    const cellId = `${metricId}-${resultIndex}-${field}`;
     let content;
+
     switch (field) {
-      case 'trace_id':
-        content = cellData;
-        break;
       case 'score':
         content = typeof cellData === 'number' ? cellData.toFixed(2) : cellData;
         break;
       case 'reason':
-        const isReasonExpanded = expandedRows.has(metric);
-        const truncatedReason = cellData.length > 50 ? cellData.substring(0, 50) + '...' : cellData;
-        content = (
-          <div 
-            className="cursor-pointer text-blue-600 hover:underline"
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleRowExpansion(metric);
-            }}
-          >
-            {isReasonExpanded ? cellData : truncatedReason}
-          </div>
-        );
-        break;
       case 'result_detail':
-        const isDetailExpanded = expandedDetails.has(rowId);
-        let detailContent;
-        try {
-          const parsedData = JSON.parse(cellData);
-          detailContent = JSON.stringify(parsedData, null, 2);
-        } catch {
-          detailContent = cellData;
-        }
-        const truncatedDetail = detailContent.length > 50 ? detailContent.substring(0, 50) + '...' : detailContent;
+        const isExpanded = expandedDetails.has(cellId);
+        const truncatedContent = cellData.length > 50 ? cellData.substring(0, 50) + '...' : cellData;
         content = (
           <div 
             className="cursor-pointer text-blue-600 hover:underline"
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleDetailExpansion(rowId);
-            }}
+            onClick={() => toggleDetailExpansion(cellId)}
           >
-            <pre className="whitespace-pre-wrap overflow-hidden text-xs">
-              {isDetailExpanded ? detailContent : truncatedDetail}
-            </pre>
+            {isExpanded ? cellData : truncatedContent}
           </div>
         );
         break;
@@ -110,20 +83,15 @@ const EvaluationTable: React.FC<EvaluationTableProps> = ({ sortedData, requestSo
         content = String(cellData);
     }
 
-    return (
-      <TableCell className="relative">
-        {content}
-      </TableCell>
-    );
+    return <TableCell key={cellId}>{content}</TableCell>;
   };
-
-  const headers = ['Metric', ...resultFields];
 
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          {headers.map(header => (
+          <TableHead>Metric</TableHead>
+          {resultFields.map(header => (
             <TableHead key={header}>
               <Button variant="ghost" onClick={() => requestSort(header)}>
                 {header.charAt(0).toUpperCase() + header.slice(1).replace(/_/g, ' ')} <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -134,13 +102,21 @@ const EvaluationTable: React.FC<EvaluationTableProps> = ({ sortedData, requestSo
       </TableHeader>
       <TableBody>
         {sortedData.map((row) => (
-          <TableRow 
-            key={row.metric}
-            className="hover:bg-gray-100"
-          >
-            <TableCell>{row.metric}</TableCell>
-            {resultFields.map(field => renderCell(row.results[0]?.[field], field, row.metric, `${row.metric}-${row.results[0]?.trace_id}`))}
-          </TableRow>
+          <React.Fragment key={row.metric}>
+            <TableRow 
+              className="hover:bg-gray-100 cursor-pointer"
+              onClick={() => toggleRowExpansion(row.metric)}
+            >
+              <TableCell>{row.metric}</TableCell>
+              {resultFields.map(field => renderCell(row.results[0]?.[field], field, row.metric, 0))}
+            </TableRow>
+            {expandedRows.has(row.metric) && row.results.slice(1).map((result, index) => (
+              <TableRow key={`${row.metric}-${index + 1}`} className="bg-gray-50">
+                <TableCell></TableCell>
+                {resultFields.map(field => renderCell(result[field], field, row.metric, index + 1))}
+              </TableRow>
+            ))}
+          </React.Fragment>
         ))}
       </TableBody>
     </Table>

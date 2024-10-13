@@ -400,9 +400,6 @@ export const fetchDetailedTraceComponents = async (traceId: string): Promise<Det
 };
 
 
-// ... existing imports and code ...
-// ... existing imports and code ...
-
 export const fetchEvaluationData = async (projectId: number, traceId: string | null): Promise<any[]> => {
     await initDatabase();
   
@@ -425,7 +422,7 @@ export const fetchEvaluationData = async (projectId: number, traceId: string | n
   
     const params = [projectId];
   
-    if (traceId) {
+    if (traceId && traceId !== 'all') {
       query += ' AND t.id = ?';
       params.push(traceId);
     }
@@ -453,5 +450,3 @@ export const fetchEvaluationData = async (projectId: number, traceId: string | n
   
     return [];
   };
-  
-  // ... existing code ...

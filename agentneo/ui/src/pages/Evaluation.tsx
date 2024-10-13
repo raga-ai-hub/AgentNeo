@@ -22,34 +22,37 @@ const resultFields = ['trace_id', 'score', 'reason', 'result_detail', 'config', 
 
 const Evaluation: React.FC = () => {
   const { isCollapsed } = useSidebar();
-  const { selectedProject, setSelectedProject, selectedTraceId, setSelectedTraceId, projects } = useProject();
+  const { selectedProject, setSelectedProject, projects } = useProject();
+  const [selectedTraceId, setSelectedTraceId] = useState<string>('all');
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' } | null>(null);
   const [evaluationData, setEvaluationData] = useState<any[]>([]);
+  const [allTraces, setAllTraces] = useState<{id: string, name: string}[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
       if (selectedProject) {
-        const data = await fetchEvaluationData(selectedProject, selectedTraceId || null);
+        const data = await fetchEvaluationData(selectedProject, selectedTraceId === 'all' ? null : selectedTraceId);
         setEvaluationData(data);
+
+        // If we're fetching all traces, update the allTraces state
+        if (selectedTraceId === 'all') {
+          const uniqueTraces = new Set(data.map(item => item.trace_id));
+          setAllTraces([
+            { id: 'all', name: 'All Traces' },
+            ...Array.from(uniqueTraces).map(id => ({ id, name: `Trace ${id}` }))
+          ]);
+        }
       }
     };
     fetchData();
   }, [selectedProject, selectedTraceId]);
 
-  const traces = useMemo(() => {
-    const uniqueTraces = new Set(evaluationData.map(item => item.trace_id));
-    return [
-      { id: 'all', name: 'All Traces' },
-      ...Array.from(uniqueTraces).map(id => ({ id, name: `Trace ${id}` }))
-    ];
-  }, [evaluationData]);
-
   const prepareDataForTable = (data: any[]) => {
     const metricMap = new Map();
-  
+
     data.forEach(item => {
       metricNames.forEach(metric => {
         const metricKey = metric.toLowerCase().replace(/ /g, '_');
@@ -71,21 +74,17 @@ const Evaluation: React.FC = () => {
         }
       });
     });
-  
+
     return Array.from(metricMap.values());
   };
 
   const sortedData = useMemo(() => {
     const preparedData = prepareDataForTable(evaluationData);
     if (sortConfig !== null) {
-      preparedData.sort((a, b) => {
-        if (sortConfig.key === 'Metric') {
-          return sortConfig.direction === 'ascending' 
-            ? a.metric.localeCompare(b.metric)
-            : b.metric.localeCompare(a.metric);
-        } else {
-          const aValue = a.results[0]?.[sortConfig.key] || 0;
-          const bValue = b.results[0]?.[sortConfig.key] || 0;
+      preparedData.forEach(metricData => {
+        metricData.results.sort((a, b) => {
+          const aValue = a[sortConfig.key] || '';
+          const bValue = b[sortConfig.key] || '';
           if (aValue < bValue) {
             return sortConfig.direction === 'ascending' ? -1 : 1;
           }
@@ -93,7 +92,7 @@ const Evaluation: React.FC = () => {
             return sortConfig.direction === 'ascending' ? 1 : -1;
           }
           return 0;
-        }
+        });
       });
     }
     return preparedData;
@@ -109,9 +108,10 @@ const Evaluation: React.FC = () => {
 
   const metricsData = useMemo(() => {
     return metricNames.map(metric => {
+      const metricKey = metric.toLowerCase().replace(/ /g, '_');
       const scores = evaluationData
-        .filter(item => item[metric])
-        .map(item => item[metric].score || 0);
+        .filter(item => item[metricKey])
+        .map(item => item[metricKey].score || 0);
       return {
         name: metric,
         min: Math.min(...scores),
@@ -146,12 +146,12 @@ const Evaluation: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={selectedTraceId || ''} onValueChange={setSelectedTraceId}>
+            <Select value={selectedTraceId} onValueChange={setSelectedTraceId}>
               <SelectTrigger>
                 <SelectValue placeholder="Select Trace" />
               </SelectTrigger>
               <SelectContent>
-                {traces.map((trace) => (
+                {allTraces.map((trace) => (
                   <SelectItem key={trace.id} value={trace.id}>
                     {trace.name}
                   </SelectItem>
