@@ -1,5 +1,4 @@
 from sqlalchemy import create_engine
-# from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.exc import SQLAlchemyError
@@ -90,7 +89,6 @@ class Execution:
         )
         self.session.add(metric_entry)
 
-
     def get_results(self):
         results = self.session.query(MetricModel).filter_by(trace_id=self.trace_id).all()
         results_list = []
@@ -108,8 +106,6 @@ class Execution:
             results_list.append(result_dict)
         
         return results_list
-
-
 
     def get_trace_data(self):
         try:
