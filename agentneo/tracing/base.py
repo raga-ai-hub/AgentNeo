@@ -28,7 +28,7 @@ from ..data import (
 
 
 class BaseTracer:
-    def __init__(self, session, log_file_path: Optional[str] = None):
+    def __init__(self, session):
         self.user_session = session
         project_name = session.project_name
 
@@ -46,7 +46,6 @@ class BaseTracer:
             )
         self.project_id = self.project_info.id
 
-        self.log_file_path = log_file_path
         self.trace_data = {
             "project_info": {
                 "project_name": project_name,
@@ -163,9 +162,6 @@ class BaseTracer:
             }
         )
 
-        if self.log_file_path:
-            self._save_to_json()
-
         print(f"Tracing Completed.\nData saved to the database and JSON file.\n")
 
     def _get_project(self, project_name: str) -> Optional[ProjectInfoModel]:
@@ -242,7 +238,7 @@ class BaseTracer:
                 "installed_packages": json.loads(system_info.installed_packages),
             }
 
-    def _save_to_json(self):
+    def _save_to_json(self, log_file_path):
         def default_converter(o):
             if isinstance(o, datetime):
                 return o.isoformat()
@@ -252,7 +248,7 @@ class BaseTracer:
                 f"Object of type {o.__class__.__name__} is not JSON serializable"
             )
 
-        log_file = Path(self.log_file_path)
+        log_file = Path(log_file_path)
         log_file.parent.mkdir(parents=True, exist_ok=True)
         with log_file.open("w") as f:
             json.dump(self.trace_data, f, indent=2, default=default_converter)
