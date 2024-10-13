@@ -46,26 +46,71 @@ export const fetchAllProjects = async () => {
 export const fetchProjectInfo = async (projectId: number) => {
     await initDatabase();
 
-    const result = db.exec(`
-      SELECT id, project_name, start_time, end_time, duration, total_cost, total_tokens
-      FROM project_info
-      WHERE id = ?
+    console.log(`Fetching project info for project ID: ${projectId}`);
+
+    // Fetch basic project info
+    const projectInfoResult = db.exec(`
+        SELECT id, project_name, start_time, end_time, duration
+        FROM project_info
+        WHERE id = ?
     `, [projectId]);
 
-    if (result[0] && result[0].values[0]) {
-        const [id, project_name, start_time, end_time, duration, total_cost, total_tokens] = result[0].values[0];
-        return {
-            id,
-            project_name,
-            start_time,
-            end_time,
-            duration,
-            total_cost,
-            total_tokens
-        };
+    console.log('Project info result:', projectInfoResult);
+
+    if (!projectInfoResult[0] || !projectInfoResult[0].values[0]) {
+        console.log('No project info found');
+        return null;
     }
 
-    return null;
+    const [id, project_name, start_time, end_time, duration] = projectInfoResult[0].values[0];
+
+    // Fetch LLM calls for the project
+    const llmCallsResult = db.exec(`
+        SELECT token_usage, cost
+        FROM llm_call
+        WHERE project_id = ?
+    `, [projectId]);
+
+    console.log('LLM calls result:', llmCallsResult);
+
+    let total_tokens = 0;
+    let total_cost = 0;
+
+    if (llmCallsResult[0] && llmCallsResult[0].values) {
+        llmCallsResult[0].values.forEach(([token_usage, cost]) => {
+            console.log('Processing LLM call:', { token_usage, cost });
+
+            try {
+                // Parse the double-encoded JSON strings
+                const tokenUsageObj = JSON.parse(JSON.parse(token_usage));
+                const costObj = JSON.parse(JSON.parse(cost));
+
+                total_tokens += (tokenUsageObj.input || 0) + (tokenUsageObj.completion || 0) + (tokenUsageObj.reasoning || 0);
+                total_cost += (costObj.input || 0) + (costObj.output || 0) + (costObj.reasoning || 0);
+
+                console.log('Updated totals:', { total_tokens, total_cost });
+            } catch (error) {
+                console.error('Error parsing JSON:', error);
+            }
+        });
+    }
+
+    // Format total_cost
+    const formattedTotalCost = total_cost < 0.001 ? total_cost.toExponential(3) : total_cost.toFixed(3);
+
+    const result = {
+        id,
+        project_name,
+        start_time,
+        end_time,
+        duration: duration !== null ? Number(duration) : null,
+        total_tokens,
+        total_cost: formattedTotalCost
+    };
+
+    console.log('Final project info:', result);
+
+    return result;
 };
 
 export const fetchTraceData = async (projectId) => {
