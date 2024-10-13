@@ -14,7 +14,7 @@ interface ProjectInfoProps {
   } | null;
 }
 
-const ProjectInformation: React.FC<ProjectInfoProps> = ({ projectData }) => {
+const ProjectInformation: React.FC<ProjectInfoProps> = React.memo(({ projectData }) => {
   if (!projectData) {
     return <div>No project data available</div>;
   }
@@ -76,7 +76,7 @@ const ProjectInformation: React.FC<ProjectInfoProps> = ({ projectData }) => {
       </CardContent>
     </Card>
   );
-};
+});
 
 const InfoItem: React.FC<{ icon: React.ReactNode; label: string; value: string }> = ({ icon, label, value }) => (
   <div className="flex items-center space-x-3">

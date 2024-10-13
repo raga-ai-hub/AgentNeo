@@ -1,8 +1,7 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import ProjectInformation from '../components/ProjectInformation';
 import SystemInformation from '../components/SystemInformation';
 import ExecutionGraph from '../components/ExecutionGraph';
-import ExecutionTimeline from '../components/ExecutionTimeline';
 import AgentCalls from '../components/AgentCalls';
 import InstalledPackages from '../components/InstalledPackages';
 import Sidebar from '../components/Sidebar';
@@ -10,8 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LayoutDashboard } from 'lucide-react';
 import { useProject } from '../contexts/ProjectContext';
 
-import { TimelineData } from '../types/timeline';
-import { fetchTraceData, initDatabase, fetchSystemInfo, fetchInstalledPackages, fetchAgentCalls, fetchTracesForProject, fetchProjectInfo } from '../utils/databaseUtils';
+import { fetchTraceData, fetchSystemInfo, fetchInstalledPackages, fetchAgentCalls, fetchProjectInfo } from '../utils/databaseUtils';
 
 const Index = () => {
   const {
@@ -19,22 +17,16 @@ const Index = () => {
     setSelectedProject,
     selectedTraceId,
     setSelectedTraceId,
-    selectedTrace,
     setSelectedTrace,
     projects,
+    traces,
     setError
   } = useProject();
 
-  const [traceData, setTraceData] = useState(null);
   const [projectData, setProjectData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [systemInfo, setSystemInfo] = useState(null);
   const [installedPackages, setInstalledPackages] = useState(null);
   const [agentCalls, setAgentCalls] = useState(null);
-  const [traces, setTraces] = useState<{ id: string; name: string }[]>([]);
-
-  const prevProjectIdRef = useRef<number | null>(null);
-  const prevTraceIdRef = useRef<string | null>(null);
 
   const loadProjectData = useCallback(async (projectId: number) => {
     if (!projectId) return;
@@ -42,35 +34,28 @@ const Index = () => {
     console.log(`Loading data for project ${projectId}`);
 
     try {
-      const [projectInfo, projectTraces, sysInfo, packages, calls] = await Promise.all([
+      const [projectInfo, sysInfo, packages, calls] = await Promise.all([
         fetchProjectInfo(projectId),
-        fetchTracesForProject(projectId),
         fetchSystemInfo(projectId),
         fetchInstalledPackages(projectId),
         fetchAgentCalls(projectId)
       ]);
 
       setProjectData(projectInfo);
-      setTraces(projectTraces);
       setSystemInfo(sysInfo);
       setInstalledPackages(packages);
       setAgentCalls(calls);
-
-      if (projectTraces.length > 0 && !selectedTraceId) {
-        setSelectedTraceId(projectTraces[0].id);
-      }
     } catch (error) {
       console.error('Error loading project data:', error);
       setError('Failed to load project data');
     }
-  }, [setSelectedTraceId, setError]);
+  }, [setError]);
 
   const loadTraceData = useCallback(async (projectId: number, traceId: string) => {
     if (!projectId || !traceId) return;
 
     try {
       const data = await fetchTraceData(projectId, traceId);
-      setTraceData(data);
       setSelectedTrace(data);
     } catch (error) {
       console.error('Error loading trace data:', error);
@@ -79,38 +64,16 @@ const Index = () => {
   }, [setSelectedTrace, setError]);
 
   useEffect(() => {
-    const initializeDatabase = async () => {
-      try {
-        await initDatabase();
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Error initializing database:', error);
-        setError('Failed to initialize database');
-      }
-    };
-
-    initializeDatabase();
-  }, [setError]);
-
-  useEffect(() => {
-    if (selectedProject && !isLoading && selectedProject !== prevProjectIdRef.current) {
+    if (selectedProject) {
       loadProjectData(selectedProject);
-      prevProjectIdRef.current = selectedProject;
     }
-  }, [selectedProject, isLoading, loadProjectData]);
+  }, [selectedProject, loadProjectData]);
 
   useEffect(() => {
-    if (selectedProject && selectedTraceId &&
-      (selectedProject !== prevProjectIdRef.current || selectedTraceId !== prevTraceIdRef.current)) {
+    if (selectedProject && selectedTraceId) {
       loadTraceData(selectedProject, selectedTraceId);
-      prevProjectIdRef.current = selectedProject;
-      prevTraceIdRef.current = selectedTraceId;
     }
   }, [selectedProject, selectedTraceId, loadTraceData]);
-
-  if (isLoading) {
-    return <div>Loading database...</div>;
-  }
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
@@ -131,7 +94,6 @@ const Index = () => {
                 onValueChange={(value) => {
                   console.log('Selected project:', value);
                   setSelectedProject(Number(value));
-                  setSelectedTraceId(null);
                 }}
               >
                 <SelectTrigger className="w-[200px]">
@@ -173,7 +135,6 @@ const Index = () => {
 
           <div className="grid grid-cols-1 gap-8 mb-8">
             <ExecutionGraph />
-            {/* {<ExecutionTimeline />} */}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">

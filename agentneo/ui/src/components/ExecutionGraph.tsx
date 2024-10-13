@@ -18,6 +18,7 @@ import { Legend } from './ExecutionGraphLegend';
 import { getLayoutedElements } from './ExecutionGraphLayout';
 import { useProject } from '../contexts/ProjectContext';
 import { fetchExecutionGraphData, GraphNode, GraphEdge } from '../utils/databaseUtils';
+import { debounce } from 'lodash';
 
 const ExecutionGraph = () => {
   const { selectedProject, selectedTraceId } = useProject();

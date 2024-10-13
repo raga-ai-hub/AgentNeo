@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Terminal, Monitor, Cpu, HardDrive, Microchip, Database } from 'lucide-react';
 
-const SystemInformation = ({ systemData }) => {
+const SystemInformation = React.memo(({ systemData }) => {
   if (!systemData) {
     return <div>Loading system information...</div>;
   }
@@ -42,7 +42,7 @@ const SystemInformation = ({ systemData }) => {
       </CardContent>
     </Card>
   );
-};
+});
 
 const InfoItem = ({ icon, label, value }) => (
   <div className="flex items-center space-x-3">
