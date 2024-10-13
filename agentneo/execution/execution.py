@@ -91,7 +91,7 @@ class Execution:
         self.session.add(metric_entry)
 
 
-    def get_db_metric_results(self):
+    def get_results(self):
         results = self.session.query(MetricModel).filter_by(trace_id=self.trace_id).all()
         results_list = []
         for result in results:
