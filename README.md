@@ -64,7 +64,7 @@ Get up and running with AgentNeo in just a few steps!
 ### 1. Import the Necessary Components
 
 ```python
-from agentneo import AgentNeo, Tracer, Evaluation, launch_dashboard
+from agentneo import AgentNeo, Tracer, Evaluation, launch_dashboard, Execution
 ```
 
 ### 2. Create a Session and Project
@@ -102,7 +102,32 @@ def my_agent_function():
     pass
 ```
 
-### 5. Stop Tracing and Launch the Dashboard
+### 5. Evaluate your AI Agent's performance
+
+#### Present Supported Metrics
+1. [goal_decomposition_efficiency](https://docs.raga.ai/agentneo/metric-library/goal-decomposition-efficiency)
+2. goal_fulfillment_rate
+3. tool_correctness_metric
+4. tool_call_success_rate_metric
+
+```python
+exe = Execution(session=neo_session, trace_id=1)
+
+# run a single metric
+exe.execute(metric_list=['metric_name'])
+
+# run multiple metrics together
+exe.execute(metric_list=['metric_name1', 'metric_name2', ..])
+
+# can also use your own config and metadata related to the metric
+exe.execute(metric_list=['metric_name'], config={}, metadata={})
+
+# get your evaluated metrics results
+metric_results = exe.get_results()
+print(metric_results)
+```
+
+### 6. Stop Tracing and Launch the Dashboard
 
 ```python
 tracer.stop()
