@@ -107,13 +107,6 @@ def my_agent_function():
 ```
 
 ### 5. Evaluate your AI Agent's performance
-
-#### Present Supported Metrics
-1. Goal Decomposition Efficiency ([goal_decomposition_efficiency](https://docs.raga.ai/agentneo/metric-library/goal-decomposition-efficiency))
-2. Goal Fulfillment Rate (goal_fulfillment_rate)
-3. Tool Correctness Metric (tool_correctness_metric)
-4. Tool Call Success Rate Metric (tool_call_success_rate_metric)
-
 ---
 ![AgentNeo Evaluation](docs/assets/evaluation1.png)
 ---
@@ -160,6 +153,11 @@ Manage multiple projects with ease.
   ```
 
 ### Metrics Evaluation
+#### Supported Metrics
+1. Goal Decomposition Efficiency ([goal_decomposition_efficiency](https://docs.raga.ai/agentneo/metric-library/goal-decomposition-efficiency))
+2. Goal Fulfillment Rate (goal_fulfillment_rate)
+3. Tool Correctness Metric (tool_correctness_metric)
+4. Tool Call Success Rate Metric (tool_call_success_rate_metric)
 
 - **Run multiple metrics together**
 ```python
