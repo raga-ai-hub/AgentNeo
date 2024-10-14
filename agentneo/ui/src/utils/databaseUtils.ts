@@ -395,20 +395,20 @@ export const fetchTraceHistory = async (projectId: number): Promise<TraceHistory
         (SELECT COUNT(*) FROM tool_call WHERE trace_id = t.id) as tool_call_count,
         (SELECT COUNT(*) FROM agent_call WHERE trace_id = t.id) as agent_call_count,
         (SELECT COUNT(*) FROM errors WHERE trace_id = t.id) as error_count
-      FROM traces t
+\      FROM traces t
       WHERE t.project_id = ?
       ORDER BY t.start_time DESC
     `, [projectId]);
 
     if (result[0] && result[0].values) {
-        return result[0].values.map(([id, start_time, duration, llm_call_count, tool_call_count, agent_call_count, error_count]) => ({
+        return result[0].values.map(([id, start_time, duration, llm_call_count, tool_call_count, agent_call_count, error_count, user_interaction_count]) => ({
             id: id.toString(),
             start_time,
             duration: duration || 0,
             llm_call_count: llm_call_count || 0,
             tool_call_count: tool_call_count || 0,
             agent_call_count: agent_call_count || 0,
-            error_count: error_count || 0
+            error_count: error_count || 0,
         }));
     }
 
@@ -485,7 +485,7 @@ export const fetchDetailedTraceComponents = async (traceId: string): Promise<Det
 
 export const fetchEvaluationData = async (projectId: number, traceId: string | null): Promise<any[]> => {
     await initDatabase();
-  
+
     let query = `
       SELECT 
         m.id,
@@ -502,37 +502,37 @@ export const fetchEvaluationData = async (projectId: number, traceId: string | n
       JOIN traces t ON m.trace_id = t.id
       WHERE t.project_id = ?
     `;
-  
+
     const params = [projectId];
-  
+
     if (traceId && traceId !== 'all') {
-      query += ' AND t.id = ?';
-      params.push(traceId);
+        query += ' AND t.id = ?';
+        params.push(traceId);
     }
-  
+
     query += ' ORDER BY t.start_time DESC';
-  
+
     const result = db.exec(query, params);
-  
+
     if (result[0] && result[0].values) {
-      return result[0].values.map(([id, trace_id, metric_name, score, reason, result_detail, config, start_time, end_time, duration]) => ({
-        id,
-        trace_id,
-        type: metric_name,
-        [metric_name.toLowerCase().replace(/ /g, '_')]: {
-          score: parseFloat(score),
-          reason,
-          result_detail: JSON.parse(result_detail),
-          config: JSON.parse(config),
-        },
-        start_time,
-        end_time,
-        duration: parseFloat(duration)
-      }));
+        return result[0].values.map(([id, trace_id, metric_name, score, reason, result_detail, config, start_time, end_time, duration]) => ({
+            id,
+            trace_id,
+            type: metric_name,
+            [metric_name.toLowerCase().replace(/ /g, '_')]: {
+                score: parseFloat(score),
+                reason,
+                result_detail: JSON.parse(result_detail),
+                config: JSON.parse(config),
+            },
+            start_time,
+            end_time,
+            duration: parseFloat(duration)
+        }));
     }
-  
+
     return [];
-  };
+};
 
 export const fetchTracesForProject = async (projectId: number): Promise<{ id: string; name: string }[]> => {
     await initDatabase();
