@@ -1,10 +1,12 @@
-# AgentNeo
+# AgentNeo  
+
 
 **Empower Your AI Applications with Unparalleled Observability and Optimization**
 
 AgentNeo is an advanced, open-source **Agentic AI Application Observability, Monitoring, and Evaluation Framework**. Designed to elevate your AI development experience, AgentNeo provides deep insights into your AI agents, Large Language Model (LLM) calls, and tool interactions. By leveraging AgentNeo, you can build more efficient, cost-effective, and high-quality AI-driven solutions.
 
-![AgentNeo Dashboard](docs/assets/dashboard.png)
+![AgentNeo Overview](docs/assets/overview1.png)
+
 
 Whether you're a seasoned AI developer or just starting out, AgentNeo offers robust logging, visualization, and evaluation capabilities to help you debug and optimize your applications with ease.
 
@@ -64,7 +66,7 @@ Get up and running with AgentNeo in just a few steps!
 ### 1. Import the Necessary Components
 
 ```python
-from agentneo import AgentNeo, Tracer, Evaluation, launch_dashboard
+from agentneo import AgentNeo, Tracer, Evaluation, launch_dashboard, Execution
 ```
 
 ### 2. Create a Session and Project
@@ -77,7 +79,7 @@ neo_session.create_project(project_name="my_project")
 ### 3. Initialize the Tracer
 
 ```python
-tracer = Tracer(session=neo_session, log_file_path="trace.json")
+tracer = Tracer(session=neo_session)
 tracer.start()
 ```
 
@@ -102,7 +104,22 @@ def my_agent_function():
     pass
 ```
 
-### 5. Stop Tracing and Launch the Dashboard
+### 5. Evaluate your AI Agent's performance
+
+```python
+exe = Execution(session=neo_session, trace_id=1)
+
+# run a single metric
+exe.execute(metric_list=['metric_name'])
+```
+
+```python
+# get your evaluated metrics results
+metric_results = exe.get_results()
+print(metric_results)
+```
+
+### 6. Stop Tracing and Launch the Dashboard
 
 ```python
 tracer.stop()
@@ -111,6 +128,8 @@ launch_dashboard(port=3000)
 ```
 
 Access the interactive dashboard by visiting `http://localhost:3000` in your web browser.
+
+![AgentNeo Evaluation](docs/assets/evaluation1.png)
 
 ## 🔧 Advanced Usage
 
@@ -130,6 +149,23 @@ Manage multiple projects with ease.
   neo_session.connect_project(project_name="existing_project")
   ```
 
+### Metrics Evaluation
+#### Supported Metrics
+1. Goal Decomposition Efficiency ([goal_decomposition_efficiency](https://docs.raga.ai/agentneo/metric-library/goal-decomposition-efficiency))
+2. Goal Fulfillment Rate (goal_fulfillment_rate)
+3. Tool Correctness Metric (tool_correctness_metric)
+4. Tool Call Success Rate Metric (tool_call_success_rate_metric)
+
+- **Run multiple metrics together**
+```python
+exe.execute(metric_list=['metric_name1', 'metric_name2', ..])
+```
+
+- **Use your own config and metadata related to the metric**
+```python
+exe.execute(metric_list=['metric_name'], config={}, metadata={})
+```
+
 ### Execution Graph Visualization
 
 AgentNeo generates an execution graph that visualizes the flow of your AI application, including LLM calls, tool usage, and agent interactions. Explore this graph in the interactive dashboard to gain deeper insights.
@@ -144,6 +180,10 @@ The AgentNeo dashboard offers a comprehensive view of your AI application's perf
 - **Tool and Agent Interaction Metrics**
 - **Execution Graph Visualization**
 - **Timeline of Events**
+
+
+![AgentNeo Analysis](docs/assets/analysis1.png)
+
 
 ### Launching the Dashboard
 
