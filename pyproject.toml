@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentneo"
-version = "1.1.beta.0"
+version = "1.1.beta.1"
 description = "A powerful tracing library for monitoring and analyzing AI agents, LLM calls, and tool interactions."
 authors = [
     { name = "Rehan Asif", email = "rehan.asif@raga.ai" },
@@ -30,7 +30,8 @@ dependencies = [
     "psutil~=6.0.0",
     "py-cpuinfo~=9.0.0",
     "requests~=2.32.3",
-    "GPUtil~=1.4.0"
+    "GPUtil~=1.4.0",
+    "wrapt~=1.16"
 ]
 
 [project.optional-dependencies]
