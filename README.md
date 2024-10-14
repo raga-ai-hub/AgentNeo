@@ -1,10 +1,15 @@
-# AgentNeo
+# 🌐 AgentNeo  
+
 
 **Empower Your AI Applications with Unparalleled Observability and Optimization**
 
 AgentNeo is an advanced, open-source **Agentic AI Application Observability, Monitoring, and Evaluation Framework**. Designed to elevate your AI development experience, AgentNeo provides deep insights into your AI agents, Large Language Model (LLM) calls, and tool interactions. By leveraging AgentNeo, you can build more efficient, cost-effective, and high-quality AI-driven solutions.
 
-![AgentNeo Dashboard](docs/assets/dashboard.png)
+---
+
+<div align="center">
+  <img src="docs/assets/overview.png" alt="AgentNeo Overview" width="85%" style="border-radius: 15px; margin: 10px 0;">
+</div>
 
 Whether you're a seasoned AI developer or just starting out, AgentNeo offers robust logging, visualization, and evaluation capabilities to help you debug and optimize your applications with ease.
 
@@ -77,7 +82,7 @@ neo_session.create_project(project_name="my_project")
 ### 3. Initialize the Tracer
 
 ```python
-tracer = Tracer(session=neo_session, log_file_path="trace.json")
+tracer = Tracer(session=neo_session)
 tracer.start()
 ```
 
@@ -105,23 +110,35 @@ def my_agent_function():
 ### 5. Evaluate your AI Agent's performance
 
 #### Present Supported Metrics
-1. [goal_decomposition_efficiency](https://docs.raga.ai/agentneo/metric-library/goal-decomposition-efficiency)
-2. goal_fulfillment_rate
-3. tool_correctness_metric
-4. tool_call_success_rate_metric
+1. Goal Decomeposition Efficiency ([goal_decomposition_efficiency](https://docs.raga.ai/agentneo/metric-library/goal-decomposition-efficiency))
+2. Goal Fulfillment Rate (goal_fulfillment_rate)
+3. Tool cCorrectness Metric (tool_correctness_metri)
+4. Tool Call Success Rate Metric (tool_call_success_rate_metric)
+   
+---
+<div align="center">
+  <img src="docs/assets/evaluation.png" alt="AgentNeo Evaluation" width="85%" style="border-radius: 15px; margin: 10px 0;">
+</div>
+
 
 ```python
 exe = Execution(session=neo_session, trace_id=1)
 
 # run a single metric
 exe.execute(metric_list=['metric_name'])
+```
 
+```python
 # run multiple metrics together
 exe.execute(metric_list=['metric_name1', 'metric_name2', ..])
+```
 
+```python
 # can also use your own config and metadata related to the metric
 exe.execute(metric_list=['metric_name'], config={}, metadata={})
+```
 
+```python
 # get your evaluated metrics results
 metric_results = exe.get_results()
 print(metric_results)
@@ -158,6 +175,12 @@ Manage multiple projects with ease.
 ### Execution Graph Visualization
 
 AgentNeo generates an execution graph that visualizes the flow of your AI application, including LLM calls, tool usage, and agent interactions. Explore this graph in the interactive dashboard to gain deeper insights.
+
+---
+<div align="center">
+  <img src="docs/assets/analysis.png" alt="AgentNeo Analysis" width="85%" style="border-radius: 15px; margin: 10px 0;">
+</div>
+
 
 ## 📊 Dashboard Overview
 
