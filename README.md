@@ -6,10 +6,9 @@
 AgentNeo is an advanced, open-source **Agentic AI Application Observability, Monitoring, and Evaluation Framework**. Designed to elevate your AI development experience, AgentNeo provides deep insights into your AI agents, Large Language Model (LLM) calls, and tool interactions. By leveraging AgentNeo, you can build more efficient, cost-effective, and high-quality AI-driven solutions.
 
 ---
+![AgentNeo Overview](docs/assets/overview.png)
+---
 
-<div align="center">
-  <img src="docs/assets/overview.png" alt="AgentNeo Overview" width="85%" style="border-radius: 15px; margin: 10px 0;">
-</div>
 
 Whether you're a seasoned AI developer or just starting out, AgentNeo offers robust logging, visualization, and evaluation capabilities to help you debug and optimize your applications with ease.
 
@@ -114,12 +113,10 @@ def my_agent_function():
 2. Goal Fulfillment Rate (goal_fulfillment_rate)
 3. Tool cCorrectness Metric (tool_correctness_metri)
 4. Tool Call Success Rate Metric (tool_call_success_rate_metric)
-   
----
-<div align="center">
-  <img src="docs/assets/evaluation.png" alt="AgentNeo Evaluation" width="85%" style="border-radius: 15px; margin: 10px 0;">
-</div>
 
+---
+![AgentNeo Evaluation](docs/assets/evaluation.png)
+---
 
 ```python
 exe = Execution(session=neo_session, trace_id=1)
@@ -177,10 +174,8 @@ Manage multiple projects with ease.
 AgentNeo generates an execution graph that visualizes the flow of your AI application, including LLM calls, tool usage, and agent interactions. Explore this graph in the interactive dashboard to gain deeper insights.
 
 ---
-<div align="center">
-  <img src="docs/assets/analysis.png" alt="AgentNeo Analysis" width="85%" style="border-radius: 15px; margin: 10px 0;">
-</div>
-
+![AgentNeo Analysis](docs/assets/analysis.png)
+---
 
 ## 📊 Dashboard Overview
 
