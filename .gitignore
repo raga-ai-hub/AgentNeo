@@ -142,3 +142,6 @@ Desktop.ini
 # Project-specific
 *.json
 model_costs.yaml
+
+# Ensure agentneo/ui/dist is not ignored
+!agentneo/ui/dist/
