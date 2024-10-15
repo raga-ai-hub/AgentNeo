@@ -14,22 +14,25 @@ logging.basicConfig(
 )
 
 
-# TODO: Use a production server instead of the dev server
 def check_node_npm():
     """Check if Node.js and npm are installed."""
     try:
-        subprocess.run(
+        node_version = subprocess.run(
             ["node", "--version"],
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-        )
-        subprocess.run(
+            text=True,
+        ).stdout.strip()
+        npm_version = subprocess.run(
             ["npm", "--version"],
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-        )
+            text=True,
+        ).stdout.strip()
+        logging.info(f"Node.js version: {node_version}")
+        logging.info(f"npm version: {npm_version}")
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False
@@ -95,16 +98,16 @@ def launch_dashboard(port=3000):
         )
         return
 
-    # Attempt to use the specified port
-    free_port = port
+    # Use the port specified in the function argument
     if not is_port_free(port):
-        # Find a free port if the specified port is busy
+        logging.info(f"Port {port} is busy. Finding an available port...")
         free_port = find_free_port(port + 1)
         if free_port is None:
             logging.error(f"No free ports available starting from {port}")
             return
-        else:
-            logging.info(f"Port {port} is busy. Using port {free_port} instead.")
+        logging.info(f"Using port {free_port}")
+    else:
+        free_port = port
 
     original_cwd = os.getcwd()
     try:
