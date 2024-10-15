@@ -5,8 +5,8 @@ import functools
 from datetime import datetime
 from .network_tracer import NetworkTracer, patch_aiohttp_trace_config
 from .user_interaction_tracer import UserInteractionTracer
-from .tool import Tool
 from ..data import ToolCallModel
+from functools import wraps
 
 
 class ToolTracerMixin:
@@ -170,3 +170,44 @@ class ToolTracerMixin:
         serialized_args = {f"arg_{i}": _serialize(arg) for i, arg in enumerate(args)}
         serialized_kwargs = {k: _serialize(v) for k, v in kwargs.items()}
         return {**serialized_args, **serialized_kwargs}
+
+    def wrap_langchain_tool(self, tool_input, tool_name=None, **tool_kwargs):
+        try:
+            from langchain.tools import Tool as LangChainTool
+            from langchain.tools.base import BaseTool
+        except ImportError as exc:
+            raise ImportError(
+                "LangChain is not installed. Please install it using: "
+                "pip install agentneo[langchain]"
+            ) from exc
+
+        # Check if tool_input is already an instance
+        if isinstance(tool_input, BaseTool):
+            tool_instance = tool_input
+        else:
+            # Assume it's a class and try to instantiate it
+            tool_instance = tool_input(**tool_kwargs)
+
+        # Get the name, prioritizing the provided tool_name
+        if tool_name:
+            name = tool_name
+        elif hasattr(tool_instance, "name"):
+            name = tool_instance.name
+        elif hasattr(tool_input, "__name__"):
+            name = tool_input.__name__
+        else:
+            name = type(tool_instance).__name__
+
+        @self.trace_tool(name)
+        @wraps(getattr(tool_instance, "invoke", tool_instance))
+        def wrapped_tool(tool_input, **kwargs):
+            if hasattr(tool_instance, "invoke"):
+                return tool_instance.invoke(tool_input, **kwargs)
+            else:
+                return tool_instance(tool_input, **kwargs)
+
+        return LangChainTool(
+            name=name,
+            func=wrapped_tool,
+            description=getattr(tool_instance, "description", ""),
+        )
