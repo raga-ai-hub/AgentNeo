@@ -15,26 +15,26 @@ const LLMUsageAnalysis: React.FC<LLMUsageProps> = ({ projectId }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const usageData = await fetchLLMUsageData(projectId);
-        const formattedData = usageData.flatMap(model => [
-          { name: `${model.model} (Input)`, value: model.input },
-          { name: `${model.model} (Completion)`, value: model.completion },
-          { name: `${model.model} (Reasoning)`, value: model.reasoning },
-        ]);
-        setData(formattedData);
-      } catch (err) {
-        console.error('Error fetching LLM usage data:', err);
-        setError('Failed to fetch LLM usage data. Please try again later.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const usageData = await fetchLLMUsageData(projectId);
+      const formattedData = usageData.flatMap(model => [
+        { name: `${model.model} (Input)`, value: model.input },
+        { name: `${model.model} (Completion)`, value: model.completion },
+        { name: `${model.model} (Reasoning)`, value: model.reasoning },
+      ]);
+      setData(formattedData);
+    } catch (err) {
+      console.error('Error fetching LLM usage data:', err);
+      setError('Failed to fetch LLM usage data. Please try again later.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchData();
   }, [projectId]);
 
@@ -54,7 +54,7 @@ const LLMUsageAnalysis: React.FC<LLMUsageProps> = ({ projectId }) => {
           <p>{error}</p>
           <button
             className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            onClick={() => fetchData()}
+            onClick={fetchData}
           >
             Retry
           </button>

@@ -48,15 +48,15 @@ const TimelineContent: React.FC<TimelineContentProps> = ({
     }
   };
 
-  const startTime = timelineData.length > 0 ? new Date(timelineData[0].start_time).getTime() : 0;
+  const startTime = timelineData.length > 0 ? new Date(timelineData[0].startTime).getTime() : 0;
 
   return (
     <div className="w-5/6">
       <div className="relative" style={{ height: `${rows.length * 48 + 50}px`, overflowX: 'auto', overflowY: 'hidden' }} ref={timelineRef}>
         <div style={{ width: `${zoom}%`, minWidth: '100%', height: '100%', position: 'relative' }}>
           {timelineData.map((event, index) => {
-            const eventStart = (new Date(event.start_time).getTime() - startTime) / 1000;
-            const eventDuration = (new Date(event.end_time).getTime() - new Date(event.start_time).getTime()) / 1000;
+            const eventStart = (new Date(event.startTime).getTime() - startTime) / 1000;
+            const eventDuration = (new Date(event.endTime).getTime() - new Date(event.startTime).getTime()) / 1000;
             return (
               <TooltipProvider key={index}>
                 <Tooltip>

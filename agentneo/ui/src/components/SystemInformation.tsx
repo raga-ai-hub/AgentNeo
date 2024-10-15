@@ -2,7 +2,20 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Terminal, Monitor, Cpu, HardDrive, Microchip, Database } from 'lucide-react';
 
-const SystemInformation = React.memo(({ systemData }) => {
+interface SystemData {
+  pythonVersion: string;
+  os: string;
+  cpu: string;
+  gpu: string;
+  totalMemory: string;
+  diskSpace: string;
+}
+
+interface SystemInformationProps {
+  systemData: SystemData | null;
+}
+
+const SystemInformation: React.FC<SystemInformationProps> = React.memo(({ systemData }) => {
   if (!systemData) {
     return <div>Loading system information...</div>;
   }
@@ -44,7 +57,14 @@ const SystemInformation = React.memo(({ systemData }) => {
   );
 });
 
-const InfoItem = ({ icon, label, value }) => (
+
+interface InfoItemProps {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}
+
+const InfoItem: React.FC<InfoItemProps> = ({ icon, label, value }) => (
   <div className="flex items-center space-x-3">
     {icon}
     <div className="flex-1">

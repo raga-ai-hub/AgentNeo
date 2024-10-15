@@ -31,7 +31,10 @@ dependencies = [
     "py-cpuinfo~=9.0.0",
     "requests~=2.32.3",
     "GPUtil~=1.4.0",
-    "wrapt~=1.16"
+    "wrapt~=1.16",
+    "Flask~=3.0.2",
+    "waitress~=2.1.2",
+    "Flask-Cors~=4.0.1"
 ]
 
 [project.optional-dependencies]

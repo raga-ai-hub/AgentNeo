@@ -12,6 +12,7 @@ import { fetchTracesForProject } from '../utils/databaseUtils';
 import { useQuery } from '@tanstack/react-query';
 import { useProject } from '../contexts/ProjectContext';
 
+
 const ExecutionTimeline: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<TimelineData | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -28,7 +29,7 @@ const ExecutionTimeline: React.FC = () => {
 
   const { data: timelineData = [], isLoading } = useQuery({
     queryKey: ['timelineData', selectedProject, selectedTraceId],
-    queryFn: () => fetchTimelineData(selectedProject || 0, selectedTraceId),
+    queryFn: () => fetchTimelineData(selectedProject?.toString() || ''),
     enabled: !!selectedProject && !!selectedTraceId,
   });
 
@@ -45,7 +46,7 @@ const ExecutionTimeline: React.FC = () => {
 
   const handleEventClick = (event: TimelineData) => {
     setSelectedEvent(event);
-    setCurrentTime((new Date(event.start_time).getTime() - new Date(timelineData[0].start_time).getTime()) / 1000);
+    setCurrentTime((new Date(event.startTime).getTime() - new Date(timelineData[0].startTime).getTime()) / 1000);
   };
 
   useEffect(() => {

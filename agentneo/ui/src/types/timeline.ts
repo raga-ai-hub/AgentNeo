@@ -1,7 +1,8 @@
 export interface TimelineData {
   name: string;
-  start: number;
   duration: number;
+  startTime: string;
+  endTime: string;
   color: string;
   type: string;
   row: string;
@@ -10,5 +11,11 @@ export interface TimelineData {
     function?: string;
     input?: string;
     output?: string;
+    model?: string;
+    token_usage?: number;
+    cost?: number;
+    error_message?: string;
+    interaction_type?: string;
+    content?: string;
   };
 }
