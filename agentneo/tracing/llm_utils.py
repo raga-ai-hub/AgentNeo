@@ -1,7 +1,5 @@
 from agentneo.data import LLMCall
 from agentneo.tracing.utils import (
-    calculate_cost,
-    convert_usage_to_dict,
     load_model_costs,
 )
 from importlib import resources
@@ -13,15 +11,12 @@ try:
     with open("agentneo/configs/model_costs.json", "r") as file:
         config = json.load(file)
 except FileNotFoundError:
-    with resources.open_text("agentneo.configs", "model_costs.json") as file:
+    with resources.open_text("agentneo", "configs/model_costs.json") as file:
         config = json.load(file)
 
 
 def extract_llm_output(result):
 
-    # import pdb
-
-    # pdb.set_trace()
     # Initialize variables
     model_name = None
     output_response = ""

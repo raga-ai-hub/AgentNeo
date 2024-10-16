@@ -5,8 +5,12 @@ import functools
 from datetime import datetime
 from .network_tracer import NetworkTracer, patch_aiohttp_trace_config
 from .user_interaction_tracer import UserInteractionTracer
-from ..data import ToolCallModel
+from ..data.data_models import ToolCall, Error
 from functools import wraps
+
+import transaction
+from persistent import Persistent
+from BTrees.OOBTree import OOBTree
 
 
 class ToolTracerMixin:
@@ -41,22 +45,17 @@ class ToolTracerMixin:
             memory_used = end_memory - start_memory
 
             serialized_params = self._serialize_params(args, kwargs)
-            tool_call = ToolCallModel(
-                project_id=self.project_id,
-                trace_id=self.trace_id,
-                agent_id=agent_id,
-                name=name,
-                input_parameters=json.dumps(serialized_params),
-                output=str(result),
-                start_time=start_time,
-                end_time=end_time,
-                duration=(end_time - start_time).total_seconds(),
-                memory_used=memory_used,
-            )
-            with self.Session() as session:
-                session.add(tool_call)
-                session.commit()
-                tool_call_id = tool_call.id
+            tool_call_id = len(self.current_trace.tool_calls) + 1
+            tool_call = ToolCall(tool_call_id, agent_id, name)
+            tool_call.input_parameters = serialized_params
+            tool_call.output = {"result": str(result)}
+            tool_call.start_time = start_time
+            tool_call.end_time = end_time
+            tool_call.duration = (end_time - start_time).total_seconds()
+            tool_call.memory_used = memory_used
+
+            self.current_trace.tool_calls[tool_call_id] = tool_call
+            transaction.commit()
 
             # Append tool_call_id to current_tool_call_ids
             tool_call_ids = self.current_tool_call_ids.get()
@@ -65,13 +64,12 @@ class ToolTracerMixin:
                 self.current_tool_call_ids.set(tool_call_ids)
             tool_call_ids.append(tool_call_id)
 
-            serialized_params = self._serialize_params(args, kwargs)
             self.trace_data.setdefault("tool_calls", []).append(
                 {
                     "id": tool_call_id,
                     "name": name,
                     "description": description,
-                    "input_parameters": (json.dumps(serialized_params)),
+                    "input_parameters": json.dumps(serialized_params),
                     "output": str(result),
                     "start_time": start_time.isoformat(),
                     "end_time": end_time.isoformat(),
@@ -107,22 +105,18 @@ class ToolTracerMixin:
             memory_used = end_memory - start_memory
 
             serialized_params = self._serialize_params(args, kwargs)
-            tool_call = ToolCallModel(
-                project_id=self.project_id,
-                trace_id=self.trace_id,
-                agent_id=agent_id,
-                name=name,
-                input_parameters=json.dumps(serialized_params),
-                output=str(result),
-                start_time=start_time,
-                end_time=end_time,
-                duration=(end_time - start_time).total_seconds(),
-                memory_used=memory_used,
-            )
-            with self.Session() as session:
-                session.add(tool_call)
-                session.commit()
-                tool_call_id = tool_call.id
+            tool_call_id = len(self.current_trace.tool_calls) + 1
+            tool_call = ToolCall(tool_call_id, agent_id, name)
+            tool_call.input_parameters = serialized_params
+            tool_call.output = {"result": str(result)}
+            tool_call.start_time = start_time
+            tool_call.end_time = end_time
+            tool_call.duration = (end_time - start_time).total_seconds()
+            tool_call.memory_used = memory_used
+            tool_call.network_calls = self.network_tracer.network_calls
+
+            self.current_trace.tool_calls[tool_call_id] = tool_call
+            transaction.commit()
 
             # Append tool_call_id to current_tool_call_ids if available
             tool_call_ids = self.current_tool_call_ids.get(None)
@@ -130,9 +124,10 @@ class ToolTracerMixin:
                 tool_call_ids.append(tool_call_id)
 
             tool_call_data = {
+                "id": tool_call_id,
                 "name": name,
                 "description": description,
-                "input_parameters": json.dumps(args) if args else json.dumps(kwargs),
+                "input_parameters": json.dumps(serialized_params),
                 "output": str(result),
                 "start_time": start_time.isoformat(),
                 "end_time": end_time.isoformat(),
@@ -140,10 +135,9 @@ class ToolTracerMixin:
                 "memory_used": memory_used,
                 "network_calls": self.network_tracer.network_calls,
                 "agent_id": agent_id,
-                "tool_call_id": tool_call_id,
             }
 
-            self.trace_data["tool_calls"].append(tool_call_data)
+            self.trace_data.setdefault("tool_calls", []).append(tool_call_data)
 
             return result
         except Exception as e:
@@ -151,6 +145,12 @@ class ToolTracerMixin:
             raise
         finally:
             self.network_tracer.deactivate_patches()  # Deactivate patches after execution
+
+    def _log_error(self, exception, error_type, name):
+        error_id = len(self.current_trace.errors) + 1
+        error = Error(error_id, error_type, str(exception), "")
+        self.current_trace.errors.append(error)
+        transaction.commit()
 
     def _serialize_params(self, args, kwargs):
         def _serialize(obj):

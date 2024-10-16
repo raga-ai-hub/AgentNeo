@@ -1,15 +1,26 @@
 import asyncio
 import psutil
+import asyncio
+import psutil
 import json
 import wrapt
 import functools
 from datetime import datetime
 import os
 
-from .user_interaction_tracer import UserInteractionTracer
-from .utils import calculate_cost, load_model_costs, convert_usage_to_dict
+from .utils import load_model_costs
 from .llm_utils import extract_llm_output
-from ..data import LLMCallModel
+from ..data.data_models import LLMCall, Error
+
+import transaction
+from persistent import Persistent
+from BTrees.OOBTree import OOBTree
+
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 class LLMTracerMixin:
@@ -111,7 +122,6 @@ class LLMTracerMixin:
         self, result, name, model, prompt, start_time, end_time, memory_used, agent_id
     ):
         llm_data = extract_llm_output(result)
-        agent_id = self.current_agent_id.get()
 
         token_usage = {"input": 0, "completion": 0, "reasoning": 0}
 
@@ -136,58 +146,56 @@ class LLMTracerMixin:
             * model_cost.get("reasoning_cost_per_token", 0),
         }
 
-        llm_call = LLMCallModel(
-            project_id=self.project_id,
-            trace_id=self.trace_id,
-            agent_id=agent_id,
-            name=name,
-            model=llm_data.model_name,
-            input_prompt=str(prompt),
-            output=str(llm_data.output_response),
-            tool_call=(
-                str(llm_data.tool_call) if llm_data.tool_call else llm_data.tool_call
-            ),
-            start_time=start_time,
-            end_time=end_time,
-            duration=(end_time - start_time).total_seconds(),
-            token_usage=json.dumps(token_usage),
-            cost=json.dumps(cost),
-            memory_used=memory_used,
-        )
+        llm_call_id = len(self.current_trace.llm_calls) + 1
+        llm_call = LLMCall(llm_call_id, agent_id, name, model)
+        llm_call.input_prompt = {"prompt": str(prompt)}
+        llm_call.output_text = {"text": str(llm_data.output_response)}
+        llm_call.output = {"response": str(llm_data.output_response)}
+        llm_call.tool_call = str(llm_data.tool_call) if llm_data.tool_call else ""
+        llm_call.start_time = start_time
+        llm_call.end_time = end_time
+        llm_call.duration = (end_time - start_time).total_seconds()
+        llm_call.token_usage = token_usage
+        llm_call.cost = cost
+        llm_call.memory_used = memory_used
 
-        with self.Session() as session:
-            session.add(llm_call)
-            session.commit()
-            session.refresh(llm_call)
+        self.current_trace.llm_calls[llm_call_id] = llm_call
+        transaction.commit()
 
-            # Create a dictionary with all the necessary information
-            llm_call_data = {
-                "id": llm_call.id,
-                "name": name,
-                "model": llm_data.model_name,
-                "input_prompt": prompt,
-                "output": llm_data.output_response,
-                "tool_call": llm_data.tool_call,
-                "start_time": start_time,
-                "end_time": end_time,
-                "duration": (end_time - start_time).total_seconds(),
-                "token_usage": token_usage,
-                "cost": cost,
-                "memory_used": memory_used,
-                "agent_id": agent_id,
-            }
+        # Create a dictionary with all the necessary information
+        llm_call_data = {
+            "id": llm_call.id,
+            "name": name,
+            "model": model,
+            "input_prompt": prompt,
+            "output": llm_data.output_response,
+            "tool_call": llm_data.tool_call,
+            "start_time": start_time,
+            "end_time": end_time,
+            "duration": (end_time - start_time).total_seconds(),
+            "token_usage": token_usage,
+            "cost": cost,
+            "memory_used": memory_used,
+            "agent_id": agent_id,
+        }
 
         if agent_id:
-            llm_call_ids = self.current_llm_call_ids.get()
-            if llm_call_ids is None:
-                llm_call_ids = []
-                self.current_llm_call_ids.set(llm_call_ids)
-            llm_call_ids.append(llm_call.id)
+            agent_call = self.current_trace.agent_calls.get(agent_id)
+            if agent_call:
+                agent_call.llm_calls[llm_call_id] = llm_call
+                self.db.commit()
 
-        # Append the data to trace_data outside the session
+        # Append the data to trace_data
         self.trace_data.setdefault("llm_calls", []).append(llm_call_data)
 
         return llm_call
+
+    def _log_error(self, exception, error_type, name):
+        error_id = len(self.current_trace.errors) + 1
+        error = Error(error_id, error_type, str(exception), "")
+        self.current_trace.errors.append(error)
+        transaction.commit()
+        logger.error(f"Error in {error_type} {name}: {str(exception)}")
 
     def _extract_model_name(self, kwargs):
         return kwargs.get("model", "unknown")

@@ -1,13 +1,14 @@
 import asyncio
 import psutil
-import json
 import functools
 from datetime import datetime
 from .user_interaction_tracer import UserInteractionTracer
-from ..data import AgentCallModel, ToolCallModel, LLMCallModel, UserInteractionModel
-import pdb
-
+from ..data.data_models import AgentCall, UserInteraction, Error
 import logging
+
+import transaction
+from persistent import Persistent
+from BTrees.OOBTree import OOBTree
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -86,70 +87,25 @@ class AgentTracerMixin:
         return decorator
 
     def _start_agent_call(self, name, args, kwargs):
-        start_time = datetime.now()
-        agent_call = AgentCallModel(
-            project_id=self.project_id,
-            trace_id=self.trace_id,
-            name=name,
-            start_time=start_time,
-            llm_call_ids=json.dumps([]),
-            tool_call_ids=json.dumps([]),
-            user_interaction_ids=json.dumps([]),
-        )
-        with self.Session() as session:
-            session.add(agent_call)
-            session.commit()
-            return agent_call.id
+        agent_id = len(self.current_trace.agent_calls) + 1
+        agent_call = AgentCall(agent_id, name)
+        self.current_trace.agent_calls[agent_id] = agent_call
+        transaction.commit()
+        return agent_id
 
     def _end_agent_call(self, agent_id):
-        with self.Session() as session:
-            agent_call = session.query(AgentCallModel).get(agent_id)
-            if agent_call:
-                agent_call.end_time = datetime.now()
-                agent_call.llm_call_ids = json.dumps(
-                    self.current_llm_call_ids.get() or []
-                )
-                agent_call.tool_call_ids = json.dumps(
-                    self.current_tool_call_ids.get() or []
-                )
-                agent_call.user_interaction_ids = json.dumps(
-                    self.current_user_interaction_ids.get() or []
-                )
-
-                try:
-                    session.add(agent_call)
-                    session.commit()
-                    logger.debug(
-                        f"Successfully updated and committed AgentCallModel with id {agent_id}"
-                    )
-                except Exception as e:
-                    logger.error(
-                        f"Error committing AgentCallModel with id {agent_id}: {str(e)}"
-                    )
-                    session.rollback()
-
-                self.trace_data.setdefault("agent_calls", []).append(
-                    {
-                        "id": agent_call.id,
-                        "name": agent_call.name,
-                        "start_time": agent_call.start_time,
-                        "end_time": agent_call.end_time,
-                        "llm_call_ids": agent_call.llm_call_ids,
-                        "tool_call_ids": agent_call.tool_call_ids,
-                        "user_interaction_ids": agent_call.user_interaction_ids,
-                    }
-                )
-            else:
-                print(f"Warning: AgentCallModel with id {agent_id} not found")
+        agent_call = self.current_trace.agent_calls.get(agent_id)
+        if agent_call:
+            agent_call.end_time = datetime.now()
+            transaction.commit()
+            logger.debug(f"Successfully updated AgentCall with id {agent_id}")
+        else:
+            logger.warning(f"Warning: AgentCall with id {agent_id} not found")
 
     def _trace_agent_call_sync(self, func, name, *args, **kwargs):
         agent_id = self._start_agent_call(name, args, kwargs)
 
         token_agent = self.current_agent_id.set(agent_id)
-        token_llm = self.current_llm_call_ids.set([])
-        token_tool = self.current_tool_call_ids.set([])
-        token_user = self.current_user_interaction_ids.set([])
-
         user_interaction_tracer = UserInteractionTracer(self)
 
         try:
@@ -163,9 +119,6 @@ class AgentTracerMixin:
             raise
         finally:
             self.current_agent_id.reset(token_agent)
-            self.current_llm_call_ids.reset(token_llm)
-            self.current_tool_call_ids.reset(token_tool)
-            self.current_user_interaction_ids.reset(token_user)
 
         return result
 
@@ -173,10 +126,6 @@ class AgentTracerMixin:
         agent_id = self._start_agent_call(name, args, kwargs)
 
         token_agent = self.current_agent_id.set(agent_id)
-        token_llm = self.current_llm_call_ids.set([])
-        token_tool = self.current_tool_call_ids.set([])
-        token_user = self.current_user_interaction_ids.set([])
-
         user_interaction_tracer = UserInteractionTracer(self)
 
         try:
@@ -190,11 +139,17 @@ class AgentTracerMixin:
             raise
         finally:
             self.current_agent_id.reset(token_agent)
-            self.current_llm_call_ids.reset(token_llm)
-            self.current_tool_call_ids.reset(token_tool)
-            self.current_user_interaction_ids.reset(token_user)
 
         return result
+
+    def _log_error(self, exception, error_type, name, agent_id):
+        error_id = len(self.current_trace.errors) + 1
+        error = Error(error_id, error_type, str(exception), "")
+        agent_call = self.current_trace.agent_calls.get(agent_id)
+        if agent_call:
+            agent_call.errors.append(error)
+        transaction.commit()
+        logger.error(f"Error in {error_type} {name}: {str(exception)}")
 
     def _serialize_params(self, args, kwargs):
         def _serialize(obj):

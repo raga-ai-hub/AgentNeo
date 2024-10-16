@@ -2,7 +2,11 @@ import builtins
 from contextlib import contextmanager, asynccontextmanager
 from datetime import datetime
 
-from ..data import UserInteractionModel
+from ..data.data_models import UserInteraction
+
+import transaction
+from persistent import Persistent
+from BTrees.OOBTree import OOBTree
 
 
 class UserInteractionTracer:
@@ -24,24 +28,23 @@ class UserInteractionTracer:
 
     def _log_interaction(self, interaction_type, content):
         agent_id = self.tracer.current_agent_id.get()
-        user_interaction = UserInteractionModel(
-            project_id=self.tracer.project_id,
-            trace_id=self.tracer.trace_id,
-            agent_id=agent_id,
-            interaction_type=interaction_type,
-            content=content,
-            timestamp=datetime.now(),
-        )
-        with self.tracer.Session() as session:
-            session.add(user_interaction)
-            session.commit()
+        user_interaction = UserInteraction(interaction_type, content)
+
+        if agent_id:
+            agent_call = self.tracer.trace.agent_calls.get(agent_id)
+            if agent_call:
+                agent_call.user_interactions.append(user_interaction)
+        else:
+            self.tracer.trace.user_interactions.append(user_interaction)
+
+        transaction.commit()
 
         # Also add to trace data
         self.tracer.trace_data.setdefault("user_interactions", []).append(
             {
                 "interaction_type": interaction_type,
                 "content": content,
-                "timestamp": datetime.now(),
+                "timestamp": user_interaction.timestamp,
                 "agent_id": agent_id,
             }
         )

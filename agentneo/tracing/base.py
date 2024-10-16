@@ -1,89 +1,68 @@
 import asyncio
-import platform
-import cpuinfo
 import json
-import sys
-from pathlib import Path
-import contextvars
-from typing import Optional
-import traceback
+import platform
 import psutil
+import cpuinfo
 import GPUtil
 import pkg_resources
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.exc import SQLAlchemyError
+import traceback
 from datetime import datetime, timedelta
+from pathlib import Path
 import logging
 
+from ..data.data_models import Project, Trace, SystemInfo, Error
 
-from ..data import (
-    Base,
-    ProjectInfoModel,
-    SystemInfoModel,
-    ErrorModel,
-    TraceModel,
-    LLMCallModel,
-)
+from ZODB import DB
+from ZODB.FileStorage import FileStorage
+from BTrees.OOBTree import OOBTree
+import transaction
 
 
 class BaseTracer:
     def __init__(self, session):
         self.user_session = session
-        project_name = session.project_name
+        self.project_name = session.project_name
 
         # Setup DB
-        self.db_path = session.db_path
-        self.engine = create_engine(self.db_path)
+        storage = FileStorage("mydata.fs")
 
-        Base.metadata.create_all(self.engine)
-        self.Session = sessionmaker(bind=self.engine)
+        import p
 
-        self.project_info = self._get_project(project_name)
-        if self.project_info is None:
-            raise ValueError(
-                f"Project '{project_name}' does not exist. Please create a project first."
-            )
-        self.project_id = self.project_info.id
+        self.db = DB(storage)
+        self.connection = self.db.open()
+        self.root = self.connection.root()
+
+        # Initialize or get the project
+        self.project = self._get_or_create_project(self.project_name)
+        self.project_id = self.project.id
 
         self.trace_data = {
             "project_info": {
-                "project_name": project_name,
-                "start_time": self.project_info.start_time,
-            },
-            "llm_calls": [],
-            "tool_calls": [],
-            "agent_calls": [],
-            "errors": [],
+                "project_name": self.project_name,
+                "start_time": self.project.start_time,
+            }
         }
 
-        self.trace_id = None
-        self.trace = None
+        self.current_agent_id = asyncio.local()
+        self.current_llm_call_name = asyncio.local()
+        self.current_tool_call_ids = asyncio.local()
+        self.current_llm_call_ids = asyncio.local()
 
-        # Initialize context variables as instance variables
-        self.current_agent_id = contextvars.ContextVar("current_agent_id", default=None)
-        self.current_llm_call_ids = contextvars.ContextVar(
-            "current_llm_call_ids", default=None
-        )
-        self.current_tool_call_ids = contextvars.ContextVar(
-            "current_tool_call_ids", default=None
-        )
-        self.current_llm_call_name = contextvars.ContextVar(
-            "current_llm_call_name", default=None
-        )
-        self.current_user_interaction_ids = contextvars.ContextVar(
-            "current_user_interaction_ids", default=None
-        )
+    def _get_or_create_project(self, project_name: str) -> Project:
+        if "projects" not in self.root:
+            self.root["projects"] = OOBTree()
 
-    def __enter__(self):
-        # Start the tracer when entering the context
+        if project_name not in self.root["projects"]:
+            project_id = len(self.root["projects"]) + 1
+            project = Project(project_id, project_name)
+            self.root["projects"][project_name] = project
+            transaction.commit()
+            print(f"Project '{project_name}' created.")
+        else:
+            project = self.root["projects"][project_name]
+            print(f"Project '{project_name}' found.")
 
-        self.start()
-        return self
-
-    def __exit__(self, exc_type, exc_value, tb):
-        # End the tracer when exiting the context
-        self.stop()
+        return project
 
     async def __aenter__(self):
         # Start the tracer when entering the async context
@@ -98,89 +77,56 @@ class BaseTracer:
         print("Tracing Started.")
 
         # Create a new trace
-        with self.Session() as session:
-            trace = TraceModel(project_id=self.project_id, start_time=datetime.now())
-            session.add(trace)
-            session.commit()
-            self.trace_id = trace.id
-            self.trace = trace
+        trace_id = len(self.project.traces) + 1
+        self.trace = Trace(trace_id)
+        self.project.traces[trace_id] = self.trace
+        transaction.commit()
+
+        self.trace_id = trace_id
 
         # Save the system information
         self._save_system_info()
 
     def stop(self):
-        with self.Session() as session:
-            project = session.query(ProjectInfoModel).get(self.project_id)
-            if project is None:
-                raise ValueError(f"Project with id {self.project_id} not found")
+        self.trace.end_time = datetime.now()
+        self.trace.duration = (
+            self.trace.end_time - self.trace.start_time
+        ).total_seconds()
 
-            trace = session.query(TraceModel).get(self.trace_id)
-            if trace is None:
-                raise ValueError(f"Trace with id {self.trace_id} not found")
+        self.project.end_time = self.trace.end_time
+        if self.project.duration is None:
+            self.project.duration = 0
+        self.project.duration += self.trace.duration  # Accumulate duration
 
-            trace.end_time = datetime.now()
-            trace.duration = (trace.end_time - trace.start_time).total_seconds()
+        trace_cost = sum(
+            llm_call.cost.get("total", 0) for llm_call in self.trace.llm_calls.values()
+        )
+        trace_tokens = sum(
+            llm_call.token_usage.get("total", 0)
+            for llm_call in self.trace.llm_calls.values()
+        )
 
-            project.end_time = trace.end_time
-            if project.duration is None:
-                project.duration = 0
-            project.duration += trace.duration  # Accumulate duration
+        # Accumulate costs and tokens
+        if "total" not in self.project.total_cost:
+            self.project.total_cost["total"] = 0
+        self.project.total_cost["total"] += trace_cost
 
-            llm_calls = (
-                session.query(LLMCallModel).filter_by(trace_id=self.trace_id).all()
-            )
-            trace_cost = sum(
-                json.loads(llm_call.cost).get("total", 0) for llm_call in llm_calls
-            )
-            trace_tokens = sum(
-                json.loads(llm_call.token_usage).get("total", 0)
-                for llm_call in llm_calls
-            )
+        if "total" not in self.project.total_tokens:
+            self.project.total_tokens["total"] = 0
+        self.project.total_tokens["total"] += trace_tokens
 
-            # Accumulate costs and tokens instead of overwriting
-            if project.total_cost is None:
-                project.total_cost = 0
-            project.total_cost += trace_cost
-
-            if project.total_tokens is None:
-                project.total_tokens = 0
-            project.total_tokens += trace_tokens
-
-            session.commit()
-
-            end_time = trace.end_time
-            duration = trace.duration
-            total_cost = project.total_cost
-            total_tokens = project.total_tokens
+        transaction.commit()
 
         self.trace_data["project_info"].update(
             {
-                "end_time": end_time,
-                "duration": duration,
-                "total_cost": total_cost,
-                "total_tokens": total_tokens,
+                "end_time": self.trace.end_time,
+                "duration": self.trace.duration,
+                "total_cost": self.project.total_cost["total"],
+                "total_tokens": self.project.total_tokens["total"],
             }
         )
 
         print(f"Tracing Completed.\nData saved to the database and JSON file.\n")
-
-    def _get_project(self, project_name: str) -> Optional[ProjectInfoModel]:
-        with self.Session() as session:
-            try:
-                project = (
-                    session.query(ProjectInfoModel)
-                    .filter_by(project_name=project_name)
-                    .first()
-                )
-                if project:
-                    print(f"Project '{project_name}' found.")
-                    return project
-                else:
-                    print(f"Project '{project_name}' does not exist.")
-                    return None
-            except SQLAlchemyError as e:
-                print(f"An error occurred while accessing the database: {e}")
-                raise
 
     def _save_system_info(self):
         os_name = platform.system()
@@ -206,37 +152,33 @@ class BaseTracer:
             "available": disk.free / (1024**3),  # GB
         }
 
-        system_info = SystemInfoModel(
-            project_id=self.project_id,
-            trace_id=self.trace_id,
-            os_name=os_name,
-            os_version=os_version,
-            python_version=platform.python_version(),
-            cpu_info=cpuinfo.get_cpu_info()["brand_raw"],
-            gpu_info=json.dumps(gpu_info) if gpu_info else None,
-            disk_info=json.dumps(disk_info),
-            memory_total=psutil.virtual_memory().total / (1024**3),  # GB
-            installed_packages=json.dumps(
-                {pkg.key: pkg.version for pkg in pkg_resources.working_set}
+        system_info = SystemInfo()
+        system_info.os_name = os_name
+        system_info.os_version = os_version
+        system_info.python_version = platform.python_version()
+        system_info.cpu_info = cpuinfo.get_cpu_info()["brand_raw"]
+        system_info.gpu_info = json.dumps(gpu_info) if gpu_info else None
+        system_info.disk_info = json.dumps(disk_info)
+        system_info.memory_total = psutil.virtual_memory().total / (1024**3)  # GB
+        system_info.installed_packages = {
+            pkg.key: pkg.version for pkg in pkg_resources.working_set
+        }
+
+        self.trace.system_info = system_info
+        self.db.commit()
+
+        self.trace_data["system_info"] = {
+            "os_name": system_info.os_name,
+            "os_version": system_info.os_version,
+            "python_version": system_info.python_version,
+            "cpu_info": system_info.cpu_info,
+            "gpu_info": (
+                json.loads(system_info.gpu_info) if system_info.gpu_info else None
             ),
-        )
-
-        with self.Session() as session:
-            session.add(system_info)
-            session.commit()
-
-            self.trace_data["system_info"] = {
-                "os_name": system_info.os_name,
-                "os_version": system_info.os_version,
-                "python_version": system_info.python_version,
-                "cpu_info": system_info.cpu_info,
-                "gpu_info": (
-                    json.loads(system_info.gpu_info) if system_info.gpu_info else None
-                ),
-                "disk_info": json.loads(system_info.disk_info),
-                "memory_total": system_info.memory_total,
-                "installed_packages": json.loads(system_info.installed_packages),
-            }
+            "disk_info": json.loads(system_info.disk_info),
+            "memory_total": system_info.memory_total,
+            "installed_packages": system_info.installed_packages,
+        }
 
     def _save_to_json(self, log_file_path):
         def default_converter(o):
@@ -279,16 +221,26 @@ class BaseTracer:
             llm_call_id = call_id
 
         # Save error to the database
-        error_model = ErrorModel(
-            project_id=self.project_id,
-            trace_id=self.trace_id,
-            agent_id=agent_id,
-            tool_call_id=tool_call_id,
-            llm_call_id=llm_call_id,
-            error_type=call_type,
-            error_message=f"{call_name}: {str(error)}",
-            timestamp=error_info["timestamp"],
+        error_id = self.db.get_next_id("error")
+        error = Error(
+            error_id, call_type, f"{call_name}: {str(error)}", error_info["traceback"]
         )
-        with self.Session() as session:
-            session.add(error_model)
-            session.commit()
+
+        if agent_id:
+            agent_call = self.trace.agent_calls.get(agent_id)
+            if agent_call:
+                agent_call.errors.append(error)
+        elif tool_call_id:
+            tool_call = self.trace.tool_calls.get(tool_call_id)
+            if tool_call:
+                tool_call.errors.append(error)
+        elif llm_call_id:
+            llm_call = self.trace.llm_calls.get(llm_call_id)
+            if llm_call:
+                llm_call.errors.append(error)
+
+        self.db.commit()
+
+    def __del__(self):
+        if hasattr(self, "connection"):
+            self.connection.close()

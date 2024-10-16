@@ -26,7 +26,6 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "sqlalchemy~=2.0.35",
     "psutil~=6.0.0",
     "py-cpuinfo~=9.0.0",
     "requests~=2.32.3",
@@ -34,7 +33,8 @@ dependencies = [
     "wrapt~=1.16",
     "Flask~=3.0.2",
     "waitress~=2.1.2",
-    "Flask-Cors~=4.0.1"
+    "Flask-Cors~=4.0.1",
+    "Zodb~=6.0",
 ]
 
 [project.optional-dependencies]

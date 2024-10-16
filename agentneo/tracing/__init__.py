@@ -5,8 +5,12 @@ from .base import BaseTracer
 from .llm_tracer import LLMTracerMixin
 from .tool_tracer import ToolTracerMixin
 from .agent_tracer import AgentTracerMixin
-from .tool import Tool
 from .network_tracer import NetworkTracer
+
+from ZODB import DB
+from ZODB.FileStorage import FileStorage
+import transaction
+from BTrees.OOBTree import OOBTree
 
 
 class Tracer(LLMTracerMixin, ToolTracerMixin, AgentTracerMixin, BaseTracer):
@@ -17,7 +21,7 @@ class Tracer(LLMTracerMixin, ToolTracerMixin, AgentTracerMixin, BaseTracer):
     ):
         super().__init__(session)
         self.auto_instrument_llm = auto_instrument_llm
-        self.tools: Dict[str, Tool] = {}
+        self.tools = OOBTree()
         self.call_depth = contextvars.ContextVar("call_depth", default=0)
         self.network_tracer = NetworkTracer()
 
@@ -28,12 +32,18 @@ class Tracer(LLMTracerMixin, ToolTracerMixin, AgentTracerMixin, BaseTracer):
         if self.auto_instrument_llm:
             self.instrument_llm_calls()
 
+        # Start a new transaction
+        transaction.begin()
+
     def stop(self):
         # Unpatch methods from mixins
         self.unpatch_llm_calls()
 
         # Stop base tracer
         super().stop()
+
+        # Commit the transaction
+        transaction.commit()
 
     # If you need an unpatch_methods method
     def unpatch_methods(self):
