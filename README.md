@@ -26,8 +26,6 @@ Whether you're a seasoned AI developer or just starting out, AgentNeo offers rob
 ## 🛠 Requirements
 
 - **Python**: Version 3.8 or higher
-- **Node.js**: Version 14 or higher
-- **npm**: Version 6 or higher (or **yarn** 1.22+ as an alternative)
 
 ## 📦 Installation
 
@@ -36,28 +34,6 @@ Install AgentNeo effortlessly using pip:
 ```bash
 pip install agentneo
 ```
-
-### Install Node.js and npm (or yarn)
-
-The dashboard component requires Node.js and npm/yarn. Follow these steps to install them:
-
-- **Node.js and npm**: Visit [nodejs.org](https://nodejs.org/) and download the installer for your operating system.
-- **yarn (optional)**: If you prefer yarn over npm, install it globally after Node.js:
-
-  ```bash
-  npm install -g yarn
-  ```
-
-### Verify the Installations
-
-Ensure that Node.js and npm/yarn are correctly installed:
-
-```bash
-node --version
-npm --version  # or yarn --version
-```
-
-**Note**: AgentNeo will attempt to install the necessary React dependencies automatically when you launch the dashboard for the first time.
 
 ## 🌟 Quick Start Guide
 
@@ -229,14 +205,6 @@ We are committed to continuously improving AgentNeo. Here's a glimpse of what's 
 - 🔜 **Coming Soon**
 - 📝 **Planned**
 
-
-## 💡 Troubleshooting
-
-Encountering issues? Here are some common solutions:
-
-1. **Node.js and npm Accessibility**: Ensure Node.js and npm are installed and accessible from the command line.
-2. **Permission Issues**: If you face permission errors during dependency installation, try running your script with administrator/root privileges.
-3. **Check Error Messages**: Review the console output for any error messages related to Node.js, npm, or dependency installations.
 
 ## 📚 Documentation
 

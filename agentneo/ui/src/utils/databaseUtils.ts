@@ -121,22 +121,22 @@ export const fetchProjectInfo = async (projectId: number) => {
     return result;
 };
 
-export const fetchTraceData = async (projectId) => {
+export const fetchTraceData = async (projectId: number, traceId: string) => {
     await initDatabase();
 
     try {
         const traceResult = db.exec(`
             SELECT id, start_time, end_time
             FROM traces
-            WHERE project_id = ?
+            WHERE project_id = ? AND id = ?
             LIMIT 1
-        `, [projectId]);
+        `, [projectId, traceId]);
 
         if (!traceResult[0] || !traceResult[0].values[0]) {
-            throw new Error(`No trace found for project ID ${projectId}`);
+            throw new Error(`No trace found for project ID ${projectId} and trace ID ${traceId}`);
         }
 
-        const [traceId, traceStartTime, traceEndTime] = traceResult[0].values[0];
+        const [resultTraceId, traceStartTime, traceEndTime] = traceResult[0].values[0];
 
         const llmCallsResult = db.exec(`
             SELECT *
@@ -503,7 +503,7 @@ export const fetchEvaluationData = async (projectId: number, traceId: string | n
       WHERE t.project_id = ?
     `;
 
-    const params = [projectId];
+    const params: (number | string)[] = [projectId];
 
     if (traceId && traceId !== 'all') {
         query += ' AND t.id = ?';
@@ -568,6 +568,8 @@ export interface GraphNode {
         token_usage?: { input: number; completion: number };
         error_message?: string;
         content?: string;
+        llm_call_ids?: string[];
+        tool_call_ids?: string[];
     };
 }
 

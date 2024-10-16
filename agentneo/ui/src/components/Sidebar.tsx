@@ -15,7 +15,7 @@ const Sidebar: React.FC = () => {
       <div className="relative z-10 flex-grow">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center">
-            <img src="/src/assets/logo.png" alt="RagaAI Logo" className={`w-10 h-10 ${isCollapsed ? 'mx-auto' : 'mr-3'}`} />
+            <img src="/assets/logo.png" alt="RagaAI Logo" className={`w-10 h-10 ${isCollapsed ? 'mx-auto' : 'mr-3'}`} />
             {!isCollapsed && (
               <div>
                 <h1 className="text-2xl font-bold">AgentNeo</h1>

@@ -10,8 +10,8 @@ const TimelineDetails: React.FC<TimelineDetailsProps> = ({ selectedEvent }) => {
     return <div className="text-gray-500">Select an event to see details</div>;
   }
 
-  const startTime = new Date(selectedEvent.start_time);
-  const endTime = new Date(selectedEvent.end_time);
+  const startTime = new Date(selectedEvent.startTime);
+  const endTime = new Date(selectedEvent.endTime);
   const duration = (endTime.getTime() - startTime.getTime()) / 1000;
 
   return (

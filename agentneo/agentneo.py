@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from .data.data_models import Base, ProjectInfoModel
 from .tracing import Tracer
-from .dashboard import launch_dashboard as _launch_dashboard
+from .server.dashboard import launch_dashboard as _launch_dashboard
 
 
 class AgentNeo:
@@ -25,15 +25,13 @@ class AgentNeo:
         db_filename = "trace_data.db"
 
         # First, try the local directory
-        local_db_path = os.path.join(
-            os.getcwd(), "agentneo", "ui", "public", db_filename
-        )
+        local_db_path = os.path.join(os.getcwd(), "agentneo", "ui", "dist", db_filename)
         if os.path.exists(os.path.dirname(local_db_path)):
             return f"sqlite:///{local_db_path}"
 
         # If local directory doesn't exist, use the package directory
         package_dir = os.path.dirname(os.path.abspath(__file__))
-        public_dir = os.path.join(package_dir, "ui", "public")
+        public_dir = os.path.join(package_dir, "ui", "dist")
         package_db_path = os.path.join(public_dir, db_filename)
 
         # Ensure the directory exists

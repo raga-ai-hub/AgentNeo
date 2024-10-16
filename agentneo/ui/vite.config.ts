@@ -1,29 +1,20 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  server: {
-    host: "::",
-    port: 8080
-  },
-  optimizeDeps: {
-    exclude: ['sqlite3']
-  },
   plugins: [
-    react({
-      babel: {
-        plugins: [
-          ["@babel/plugin-transform-react-jsx", { runtime: "automatic" }],
-        ],
-        presets: [
-          ["@babel/preset-env", { targets: "defaults" }],
-          "@babel/preset-react",
-          "@babel/preset-typescript",
-        ],
-      },
-    }),
+    react(),
+    viteStaticCopy({
+      targets: [
+        {
+          src: 'assets/*',
+          dest: 'assets'
+        }
+      ]
+    })
   ],
   resolve: {
     alias: {
