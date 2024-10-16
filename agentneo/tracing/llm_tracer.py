@@ -74,8 +74,10 @@ class LLMTracerMixin:
         start_time = datetime.now()
         start_memory = psutil.Process().memory_info().rss
 
-        agent_id = self.current_agent_id.get()
-        llm_call_name = self.current_llm_call_name.get() or original_func.__name__
+        agent_id = getattr(self.current_agent_id, "value", None)
+        llm_call_name = (
+            getattr(self.current_llm_call_name, "value", None) or original_func.__name__
+        )
 
         try:
             result = original_func(*args, **kwargs)
@@ -149,9 +151,9 @@ class LLMTracerMixin:
         llm_call_id = len(self.current_trace.llm_calls) + 1
         llm_call = LLMCall(llm_call_id, agent_id, name, model)
         llm_call.input_prompt = {"prompt": str(prompt)}
-        llm_call.output_text = {"text": str(llm_data.output_response)}
-        llm_call.output = {"response": str(llm_data.output_response)}
-        llm_call.tool_call = str(llm_data.tool_call) if llm_data.tool_call else ""
+        llm_call.output_text = {"text": str(llm_data["output_text"])}
+        llm_call.output = {"response": str(llm_data["response"])}
+        llm_call.tool_call = str(llm_data[""]) if llm_data["tool_call"] else ""
         llm_call.start_time = start_time
         llm_call.end_time = end_time
         llm_call.duration = (end_time - start_time).total_seconds()
@@ -168,8 +170,8 @@ class LLMTracerMixin:
             "name": name,
             "model": model,
             "input_prompt": prompt,
-            "output": llm_data.output_response,
-            "tool_call": llm_data.tool_call,
+            "response": llm_data["response"],
+            "tool_call": llm_data["tool_call"],
             "start_time": start_time,
             "end_time": end_time,
             "duration": (end_time - start_time).total_seconds(),
@@ -183,7 +185,7 @@ class LLMTracerMixin:
             agent_call = self.current_trace.agent_calls.get(agent_id)
             if agent_call:
                 agent_call.llm_calls[llm_call_id] = llm_call
-                self.db.commit()
+                transaction.commit()
 
         # Append the data to trace_data
         self.trace_data.setdefault("llm_calls", []).append(llm_call_data)
@@ -191,8 +193,10 @@ class LLMTracerMixin:
         return llm_call
 
     def _log_error(self, exception, error_type, name):
-        error_id = len(self.current_trace.errors) + 1
+        error_id = len(getattr(self.current_trace, "errors", [])) + 1
         error = Error(error_id, error_type, str(exception), "")
+        if not hasattr(self.current_trace, "errors"):
+            self.current_trace.errors = []
         self.current_trace.errors.append(error)
         transaction.commit()
         logger.error(f"Error in {error_type} {name}: {str(exception)}")

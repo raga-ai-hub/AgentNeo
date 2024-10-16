@@ -41,8 +41,12 @@ class AgentTracerMixin:
                         self  # Use the current tracer instance
                     )
 
+                    # Ensure the tracer is started
+                    if not hasattr(self, "trace"):
+                        self.start()
+
                     self_instance._agent_id = self._start_agent_call(name, args, kwargs)
-                    self.current_agent_id.set(self_instance._agent_id)
+                    self.current_agent_id.value = self_instance._agent_id
                     original_init(self_instance, *args, **kwargs)
 
                 func_or_class.__init__ = wrapped_init
@@ -87,9 +91,11 @@ class AgentTracerMixin:
         return decorator
 
     def _start_agent_call(self, name, args, kwargs):
-        agent_id = len(self.current_trace.agent_calls) + 1
+        if not hasattr(self, "trace"):
+            self.start()
+        agent_id = len(self.trace.agent_calls) + 1
         agent_call = AgentCall(agent_id, name)
-        self.current_trace.agent_calls[agent_id] = agent_call
+        self.trace.agent_calls[agent_id] = agent_call
         transaction.commit()
         return agent_id
 

@@ -9,6 +9,7 @@ import traceback
 from datetime import datetime, timedelta
 from pathlib import Path
 import logging
+import threading
 
 from ..data.data_models import Project, Trace, SystemInfo, Error
 
@@ -24,10 +25,7 @@ class BaseTracer:
         self.project_name = session.project_name
 
         # Setup DB
-        storage = FileStorage("mydata.fs")
-
-        import p
-
+        storage = FileStorage(".mydata.fs")
         self.db = DB(storage)
         self.connection = self.db.open()
         self.root = self.connection.root()
@@ -43,10 +41,10 @@ class BaseTracer:
             }
         }
 
-        self.current_agent_id = asyncio.local()
-        self.current_llm_call_name = asyncio.local()
-        self.current_tool_call_ids = asyncio.local()
-        self.current_llm_call_ids = asyncio.local()
+        self.current_agent_id = threading.local()
+        self.current_llm_call_name = threading.local()
+        self.current_tool_call_ids = threading.local()
+        self.current_llm_call_ids = threading.local()
 
     def _get_or_create_project(self, project_name: str) -> Project:
         if "projects" not in self.root:
@@ -165,7 +163,7 @@ class BaseTracer:
         }
 
         self.trace.system_info = system_info
-        self.db.commit()
+        transaction.commit()
 
         self.trace_data["system_info"] = {
             "os_name": system_info.os_name,
@@ -221,7 +219,7 @@ class BaseTracer:
             llm_call_id = call_id
 
         # Save error to the database
-        error_id = self.db.get_next_id("error")
+        error_id = len(self.trace.errors) + 1
         error = Error(
             error_id, call_type, f"{call_name}: {str(error)}", error_info["traceback"]
         )
@@ -239,7 +237,7 @@ class BaseTracer:
             if llm_call:
                 llm_call.errors.append(error)
 
-        self.db.commit()
+        transaction.commit()
 
     def __del__(self):
         if hasattr(self, "connection"):

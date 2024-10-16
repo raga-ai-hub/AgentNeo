@@ -12,6 +12,12 @@ import transaction
 from persistent import Persistent
 from BTrees.OOBTree import OOBTree
 
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 
 class ToolTracerMixin:
     def trace_tool(self, name: str, description: str = ""):
@@ -35,7 +41,7 @@ class ToolTracerMixin:
     def _trace_tool_call_sync(self, func, name, description, *args, **kwargs):
         start_time = datetime.now()
         start_memory = psutil.Process().memory_info().rss
-        agent_id = self.current_agent_id.get()
+        agent_id = getattr(self.current_agent_id, "value", None)
 
         try:
             result = func(*args, **kwargs)
@@ -58,10 +64,10 @@ class ToolTracerMixin:
             transaction.commit()
 
             # Append tool_call_id to current_tool_call_ids
-            tool_call_ids = self.current_tool_call_ids.get()
+            tool_call_ids = getattr(self.current_tool_call_ids, "value", None)
             if tool_call_ids is None:
                 tool_call_ids = []
-                self.current_tool_call_ids.set(tool_call_ids)
+                self.current_tool_call_ids.value = tool_call_ids
             tool_call_ids.append(tool_call_id)
 
             self.trace_data.setdefault("tool_calls", []).append(
@@ -87,7 +93,7 @@ class ToolTracerMixin:
     async def _trace_tool_call_async(self, func, name, description, *args, **kwargs):
         start_time = datetime.now()
         start_memory = psutil.Process().memory_info().rss
-        agent_id = self.current_agent_id.get()
+        agent_id = getattr(self.current_agent_id, "value", None)
 
         # Initialize the UserInteractionTracer
         user_interaction_tracer = UserInteractionTracer(self)
@@ -147,10 +153,13 @@ class ToolTracerMixin:
             self.network_tracer.deactivate_patches()  # Deactivate patches after execution
 
     def _log_error(self, exception, error_type, name):
-        error_id = len(self.current_trace.errors) + 1
+        error_id = len(getattr(self.current_trace, "errors", [])) + 1
         error = Error(error_id, error_type, str(exception), "")
+        if not hasattr(self.current_trace, "errors"):
+            self.current_trace.errors = []
         self.current_trace.errors.append(error)
         transaction.commit()
+        logger.error(f"Error in {error_type} {name}: {str(exception)}")
 
     def _serialize_params(self, args, kwargs):
         def _serialize(obj):

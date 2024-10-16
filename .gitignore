@@ -1,3 +1,6 @@
+*.fs 
+*.fs.* 
+
 __pycache__/
 .env
 .DS_Store
@@ -143,5 +146,6 @@ Desktop.ini
 *.json
 model_costs.yaml
 
-# Ensure agentneo/ui/dist is not ignored
+# Ensure these are not ignored
 !agentneo/ui/dist/
+!agentneo/configs/model_costs.json

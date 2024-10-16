@@ -44,20 +44,32 @@ class SystemInfo(Persistent):
 
 
 class LLMCall(Persistent):
-    def __init__(self, id, agent_id, name, model):
+    def __init__(
+        self,
+        id,
+        agent_id,
+        name,
+        model,
+        input_prompt=None,
+        output_text=None,
+        output=None,
+        tool_call="",
+        token_usage=None,
+        cost=None,
+    ):
         self.id = id
         self.agent_id = agent_id
         self.name = name
         self.model = model
-        self.input_prompt = PersistentMapping()
-        self.output_text = PersistentMapping()
-        self.output = PersistentMapping()
-        self.tool_call = ""
+        self.input_prompt = PersistentMapping(input_prompt or {})
+        self.output_text = PersistentMapping(output_text or {})
+        self.output = PersistentMapping(output or {})
+        self.tool_call = tool_call
         self.start_time = datetime.now()
         self.end_time = None
         self.duration = None
-        self.token_usage = PersistentMapping()
-        self.cost = PersistentMapping()
+        self.token_usage = PersistentMapping(token_usage or {})
+        self.cost = PersistentMapping(cost or {})
         self.memory_used = 0
         self.user_interactions = PersistentList()
         self.errors = PersistentList()

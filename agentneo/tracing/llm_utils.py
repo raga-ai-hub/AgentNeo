@@ -1,6 +1,8 @@
 from agentneo.data import LLMCall
 from agentneo.tracing.utils import (
     load_model_costs,
+    convert_usage_to_dict,
+    calculate_cost,
 )
 from importlib import resources
 import json
@@ -159,13 +161,12 @@ def extract_llm_output(result):
         reasoning_cost_per_token=reasoning_cost_per_token,
     )
 
-    llm_data = LLMCall(
-        name="",
-        model_name=model_name,
-        input_prompt="",  # Not available here
-        output_response=output_response,
-        token_usage=token_usage,
-        cost=cost,
-        tool_call=parsed_tool_call,
-    )
+    llm_data = {
+        "model": model_name,
+        "output_text": output_response,
+        "response": result,
+        "token_usage": token_usage,
+        "cost": cost,
+        "tool_call": parsed_tool_call,
+    }
     return llm_data
