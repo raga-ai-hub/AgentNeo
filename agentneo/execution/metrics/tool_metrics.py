@@ -29,7 +29,10 @@ def execute_tool_correctness_metric(
 ) -> Dict[str, Any]:
 
     # Extract query from the trace
-    query = trace_json["llm_calls"][0]["input_prompt"][0]["content"]
+    try:
+        query = trace_json["llm_calls"][0]["input_prompt"][0]["content"]
+    except:
+        query = ""
 
     # Find tool calls
     tool_calls = trace_json["tool_calls"]
