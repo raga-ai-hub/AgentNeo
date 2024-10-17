@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentneo"
-version = "1.1.beta.2"
+version = "1.1.1"
 description = "A powerful tracing library for monitoring and analyzing AI agents, LLM calls, and tool interactions."
 authors = [
     { name = "Rehan Asif", email = "rehan.asif@raga.ai" },
@@ -34,7 +34,8 @@ dependencies = [
     "wrapt~=1.16",
     "Flask~=3.0.2",
     "waitress~=2.1.2",
-    "Flask-Cors~=4.0.1"
+    "Flask-Cors~=4.0.1",
+    "setuptools>=67",
 ]
 
 [project.optional-dependencies]
