@@ -74,10 +74,8 @@ class LLMTracerMixin:
         start_time = datetime.now()
         start_memory = psutil.Process().memory_info().rss
 
-        agent_id = getattr(self.current_agent_id, "value", None)
-        llm_call_name = (
-            getattr(self.current_llm_call_name, "value", None) or original_func.__name__
-        )
+        agent_id = self.get_current_agent_id()
+        llm_call_name = self.get_current_llm_call_name() or original_func.__name__
 
         try:
             result = original_func(*args, **kwargs)
@@ -109,11 +107,11 @@ class LLMTracerMixin:
             )
 
             # Append llm_call_id to current_llm_call_ids
-            llm_call_ids = self.current_llm_call_ids.get()
+            llm_call_ids = self.get_current_llm_call_ids()
             if llm_call_ids is None:
                 llm_call_ids = []
-                self.current_llm_call_ids.set(llm_call_ids)
             llm_call_ids.append(llm_call.id)
+            self.set_current_llm_call_ids(llm_call_ids)
 
             return result
         except Exception as e:
@@ -236,19 +234,21 @@ class LLMTracerMixin:
 
                 @functools.wraps(func_or_class)
                 async def async_wrapper(*args, **kwargs):
-                    token = self.current_llm_call_name.set(name)
+                    previous_name = self.get_current_llm_call_name()
+                    self.set_current_llm_call_name(name)
                     try:
                         return await func_or_class(*args, **kwargs)
                     finally:
-                        self.current_llm_call_name.reset(token)
+                        self.set_current_llm_call_name(previous_name)
 
                 @functools.wraps(func_or_class)
                 def sync_wrapper(*args, **kwargs):
-                    token = self.current_llm_call_name.set(name)
+                    previous_name = self.get_current_llm_call_name()
+                    self.set_current_llm_call_name(name)
                     try:
                         return func_or_class(*args, **kwargs)
                     finally:
-                        self.current_llm_call_name.reset(token)
+                        self.set_current_llm_call_name(previous_name)
 
                 return (
                     async_wrapper

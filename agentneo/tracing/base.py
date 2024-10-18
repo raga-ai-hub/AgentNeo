@@ -46,6 +46,30 @@ class BaseTracer:
         self.current_tool_call_ids = threading.local()
         self.current_llm_call_ids = threading.local()
 
+    def set_current_agent_id(self, agent_id):
+        self.current_agent_id.value = agent_id
+
+    def get_current_agent_id(self):
+        return getattr(self.current_agent_id, "value", None)
+
+    def set_current_llm_call_name(self, call_name):
+        self.current_llm_call_name.value = call_name
+
+    def get_current_llm_call_name(self):
+        return getattr(self.current_llm_call_name, "value", None)
+
+    def set_current_tool_call_ids(self, call_ids):
+        self.current_tool_call_ids.value = call_ids
+
+    def get_current_tool_call_ids(self):
+        return getattr(self.current_tool_call_ids, "value", None)
+
+    def set_current_llm_call_ids(self, call_ids):
+        self.current_llm_call_ids.value = call_ids
+
+    def get_current_llm_call_ids(self):
+        return getattr(self.current_llm_call_ids, "value", None)
+
     def _get_or_create_project(self, project_name: str) -> Project:
         if "projects" not in self.root:
             self.root["projects"] = OOBTree()
