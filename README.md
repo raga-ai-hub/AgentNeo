@@ -1,4 +1,4 @@
-# AgentNeo  
+# AgentNeo &nbsp; ![GitHub release (latest by date)](https://img.shields.io/github/v/release/raga-ai-hub/agentneo) ![GitHub license](https://img.shields.io/github/license/raga-ai-hub/agentneo) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/agentneo) ![Issues](https://img.shields.io/github/issues/raga-ai-hub/agentneo)
 
 
 **Empower Your AI Applications with Unparalleled Observability and Optimization**
@@ -7,6 +7,7 @@ AgentNeo is an advanced, open-source **Agentic AI Application Observability, Mon
 
 ![AgentNeo Overview](docs/assets/overview1.png)
 
+## ⚡ Why AgentNeo?
 
 Whether you're a seasoned AI developer or just starting out, AgentNeo offers robust logging, visualization, and evaluation capabilities to help you debug and optimize your applications with ease.
 
@@ -164,11 +165,8 @@ The AgentNeo dashboard offers a comprehensive view of your AI application's perf
 ### Launching the Dashboard
 
 ```python
-from agentneo import launch_dashboard
-launch_dashboard(port=3000)
+neo_session.launch_dashboard(port=3000)
 ```
-
-**Note**: The first time you launch the dashboard, AgentNeo will install necessary React dependencies. This may take a few moments.
 
 ## 🛣️ Roadmap
 
@@ -208,14 +206,14 @@ We are committed to continuously improving AgentNeo. Here's a glimpse of what's 
 
 ## 📚 Documentation
 
-Dive deeper into AgentNeo's capabilities by visiting our TODO
+For more details, explore the full [AgentNeo Documentation](https://docs.raga.ai/agentneo)
 
 ## 🤝 Contributing
 
 We warmly welcome contributions from the community! Whether it's reporting bugs, suggesting new features, or improving documentation, your input is invaluable.
 
 - **GitHub Repository**: [raga-ai-hub/agentneo](https://github.com/raga-ai-hub/agentneo)
-- **Contribution Guidelines**: Check out our contribution guidelines(TODO) on GitHub to get started.
+- **Contribution Guidelines**: Check out our [Contribution Guidelines](https://github.com/raga-ai-hub/AgentNeo/blob/main/CONTRIBUTING.md) on GitHub to get started.
 
 Join us in making AgentNeo even better!
 
