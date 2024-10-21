@@ -28,7 +28,7 @@ def execute_tool_correctness_metric(
     trace_json: Dict[str, Any], config: Dict[str, Any]
 ) -> Dict[str, Any]:
     
-    # Extract query from the trace
+    # Extract query 
     try:
         query = trace_json["llm_calls"][0]["input_prompt"][0]["content"]
     except (IndexError, KeyError) as e:
