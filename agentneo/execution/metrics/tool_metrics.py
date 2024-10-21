@@ -27,9 +27,20 @@ def determine_intended_tool(query: str, tools: list, config: Dict[str, Any]) -> 
 def execute_tool_correctness_metric(
     trace_json: Dict[str, Any], config: Dict[str, Any]
 ) -> Dict[str, Any]:
-
-    # Extract query from the trace
-    query = trace_json["llm_calls"][0]["input_prompt"][0]["content"]
+    
+    # Extract query 
+    try:
+        query = trace_json["llm_calls"][0]["input_prompt"][0]["content"]
+    except (IndexError, KeyError) as e:
+        print(f"Error extracting query: {e}")
+        return {
+            "metric_name": "tool_correctness",
+            "config": config,
+            "result": {
+                "score": 0,
+                "reason": f"Unable to extract query from trace_json: {e}",
+            },
+        }
 
     # Find tool calls
     tool_calls = trace_json["tool_calls"]
