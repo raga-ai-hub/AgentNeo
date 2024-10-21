@@ -176,9 +176,9 @@ We are committed to continuously improving AgentNeo. Here's a glimpse of what's 
 |-------------------------------------------|-----------------|
 | **Local Data Storage Improvements**       | ✅ Completed    |
 | **Support for Additional LLMs**           | ✅ Completed    |
-| **Integration with AutoGen**              | 🔄 In Progress  |
+| **Integration with AutoGen**              |  ✅ Completed   |
 | **Integration with CrewAI**               | ✅ Completed   |
-| **Integration with Langraph**             | 🔄 In Progress  |
+| **Integration with Langraph**             | ✅ Completed |
 | **Tracing User Interactions**             | ✅ Completed   |
 | **Tracing Network Calls**             | ✅ Completed   |
 | **Comprehensive Logging Enhancements**    | ✅ Completed    |
