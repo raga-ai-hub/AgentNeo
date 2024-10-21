@@ -36,12 +36,12 @@ dependencies = [
     "waitress~=2.1.2",
     "Flask-Cors~=4.0.1",
     "setuptools>=67",
+    "litellm~=1.49.2",
+    "openai~=1.51.2",
+    "langchain~=0.2.16"
 ]
 
 [project.optional-dependencies]
-langchain = ["langchain~=0.2.16"]
-openai = ["openai~=1.51.2"]
-litellm = ["litellm~=1.49.2"]
 dev = ["pytest", "black", "isort"]
 
 [project.urls]
