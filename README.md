@@ -1,4 +1,4 @@
-# AgentNeo &nbsp; ![GitHub release (latest by date)](https://img.shields.io/github/v/release/raga-ai-hub/agentneo) ![GitHub license](https://img.shields.io/github/license/raga-ai-hub/agentneo) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/agentneo) ![Issues](https://img.shields.io/github/issues/raga-ai-hub/agentneo)
+# AgentNeo &nbsp; ![GitHub release (latest by date)](https://img.shields.io/github/v/release/raga-ai-hub/agentneo) ![GitHub stars](https://img.shields.io/github/stars/raga-ai-hub/agentneo?style=social)  ![Issues](https://img.shields.io/github/issues/raga-ai-hub/agentneo) ![GitHub license](https://img.shields.io/github/license/raga-ai-hub/agentneo) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/agentneo)
 
 
 **Empower Your AI Applications with Unparalleled Observability and Optimization**
