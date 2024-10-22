@@ -24,7 +24,7 @@ from .metrics import (
 
 from datetime import datetime
 
-class Execution:
+class Evaluation:
     def __init__(self, session, trace_id):
         self.user_session = session
         self.project_name = session.project_name
@@ -37,7 +37,7 @@ class Execution:
 
         self.trace_data = self.get_trace_data()
 
-    def execute(self, metric_list=[], config={}, metadata={}):
+    def evaluate(self, metric_list=[], config={}, metadata={}):
         for metric in metric_list:
             start_time = datetime.now()   
             result = self._execute_metric(metric, config, metadata)   
