@@ -15,8 +15,8 @@ from ..data import (
 from .metrics import (
     execute_goal_decomposition_efficiency_metric,
     execute_goal_fulfillment_metric,
-    execute_tool_correctness_metric,
-    execute_tool_call_success_rate_metric,
+    execute_tool_call_correctness_rate,
+    execute_tool_call_success_rate,
     execute_tool_selection_accuracy_metric,
     execute_tool_usage_efficiency_metric,
     execute_plan_adaptibility_metric,
@@ -61,13 +61,13 @@ class Evaluation:
                 trace_json=self.trace_data,
                 config=config,
             )
-        elif metric == 'tool_correctness_metric':
-            return execute_tool_correctness_metric(
+        elif metric == 'tool_call_correctness_rate':
+            return execute_tool_call_correctness_rate(
                 trace_json=self.trace_data,
                 config=config,
             )
-        elif metric == 'tool_call_success_rate_metric':
-            return execute_tool_call_success_rate_metric(
+        elif metric == 'tool_call_success_rate':
+            return execute_tool_call_success_rate(
                 trace_json=self.trace_data,
                 config=config,
             )
