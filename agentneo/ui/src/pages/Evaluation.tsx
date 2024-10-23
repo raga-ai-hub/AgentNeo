@@ -14,11 +14,9 @@ import { fetchEvaluationData } from '../utils/databaseUtils';
 const metricNames = [
   'goal_decomposition_efficiency',
   'goal_fulfillment_rate',
-  'tool_correctness_metric',
-  'tool_call_success_rate_metric'
+  'tool_call_correctness_rate',
+  'tool_call_success_rate'
 ];
-
-const resultFields = ['trace_id', 'score', 'reason', 'result_detail', 'config', 'start_time', 'end_time', 'duration'];
 
 const Evaluation: React.FC = () => {
   const { isCollapsed } = useSidebar();
@@ -37,7 +35,6 @@ const Evaluation: React.FC = () => {
         const data = await fetchEvaluationData(selectedProject, selectedTraceId === 'all' ? null : selectedTraceId);
         setEvaluationData(data);
 
-        // If we're fetching all traces, update the allTraces state
         if (selectedTraceId === 'all') {
           const uniqueTraces = new Set(data.map(item => item.trace_id));
           setAllTraces([
@@ -51,48 +48,38 @@ const Evaluation: React.FC = () => {
   }, [selectedProject, selectedTraceId]);
 
   const prepareDataForTable = (data: any[]) => {
-    const metricMap = new Map();
-
+    const preparedData = {};
     data.forEach(item => {
+      if (!preparedData[item.trace_id]) {
+        preparedData[item.trace_id] = { trace_id: item.trace_id };
+      }
       metricNames.forEach(metric => {
         const metricKey = metric.toLowerCase().replace(/ /g, '_');
         if (item[metricKey]) {
-          if (!metricMap.has(metric)) {
-            metricMap.set(metric, { metric, results: [] });
-          }
-          const result = {
-            trace_id: item.trace_id,
+          preparedData[item.trace_id][metric] = {
             score: item[metricKey].score,
             reason: item[metricKey].reason,
             result_detail: JSON.stringify(item[metricKey].result_detail),
-            config: JSON.stringify(item[metricKey].config),
-            start_time: item.start_time,
-            end_time: item.end_time,
-            duration: item.duration
           };
-          metricMap.get(metric).results.push(result);
         }
       });
     });
-
-    return Array.from(metricMap.values());
+    return Object.values(preparedData);
   };
 
   const sortedData = useMemo(() => {
     const preparedData = prepareDataForTable(evaluationData);
     if (sortConfig !== null) {
-      preparedData.forEach(metricData => {
-        metricData.results.sort((a, b) => {
-          const aValue = a[sortConfig.key] || '';
-          const bValue = b[sortConfig.key] || '';
-          if (aValue < bValue) {
-            return sortConfig.direction === 'ascending' ? -1 : 1;
-          }
-          if (aValue > bValue) {
-            return sortConfig.direction === 'ascending' ? 1 : -1;
-          }
-          return 0;
-        });
+      preparedData.sort((a, b) => {
+        const aValue = sortConfig.key === 'trace_id' ? a[sortConfig.key] : a[sortConfig.key]?.score || '';
+        const bValue = sortConfig.key === 'trace_id' ? b[sortConfig.key] : b[sortConfig.key]?.score || '';
+        if (aValue < bValue) {
+          return sortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
       });
     }
     return preparedData;
@@ -195,7 +182,7 @@ const Evaluation: React.FC = () => {
               <EvaluationTable 
                 sortedData={sortedData} 
                 requestSort={requestSort}
-                resultFields={resultFields}
+                metricNames={metricNames}
               />
             </CardContent>
           </Card>

@@ -6,20 +6,20 @@ import { ArrowUpDown } from "lucide-react";
 interface EvaluationTableProps {
   sortedData: any[];
   requestSort: (key: string) => void;
-  resultFields: string[];
+  metricNames: string[];
 }
 
-const EvaluationTable: React.FC<EvaluationTableProps> = ({ sortedData, requestSort, resultFields }) => {
+const EvaluationTable: React.FC<EvaluationTableProps> = ({ sortedData, requestSort, metricNames }) => {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [expandedDetails, setExpandedDetails] = useState<Set<string>>(new Set());
 
-  const toggleRowExpansion = (metricId: string) => {
+  const toggleRowExpansion = (traceId: string) => {
     setExpandedRows(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(metricId)) {
-        newSet.delete(metricId);
+      if (newSet.has(traceId)) {
+        newSet.delete(traceId);
       } else {
-        newSet.add(metricId);
+        newSet.add(traceId);
       }
       return newSet;
     });
@@ -37,10 +37,10 @@ const EvaluationTable: React.FC<EvaluationTableProps> = ({ sortedData, requestSo
     });
   };
 
-  const renderCell = (cellData: any, field: string, metricId: string, resultIndex: number) => {
+  const renderCell = (cellData: any, field: string, traceId: string) => {
     if (cellData === undefined || cellData === null || cellData === '') return <TableCell>-</TableCell>;
 
-    const cellId = `${metricId}-${resultIndex}-${field}`;
+    const cellId = `${traceId}-${field}`;
     let content;
 
     switch (field) {
@@ -72,13 +72,6 @@ const EvaluationTable: React.FC<EvaluationTableProps> = ({ sortedData, requestSo
           content = cellData;
         }
         break;
-      case 'start_time':
-      case 'end_time':
-        content = new Date(cellData).toLocaleString();
-        break;
-      case 'duration':
-        content = typeof cellData === 'number' ? `${cellData.toFixed(2)}s` : cellData;
-        break;
       default:
         content = String(cellData);
     }
@@ -90,11 +83,15 @@ const EvaluationTable: React.FC<EvaluationTableProps> = ({ sortedData, requestSo
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Metric</TableHead>
-          {resultFields.map(header => (
-            <TableHead key={header}>
-              <Button variant="ghost" onClick={() => requestSort(header)}>
-                {header.charAt(0).toUpperCase() + header.slice(1).replace(/_/g, ' ')} <ArrowUpDown className="ml-2 h-4 w-4" />
+          <TableHead>
+            <Button variant="ghost" onClick={() => requestSort('trace_id')}>
+              Trace ID <ArrowUpDown className="ml-2 h-4 w-4" />
+            </Button>
+          </TableHead>
+          {metricNames.map(metric => (
+            <TableHead key={metric}>
+              <Button variant="ghost" onClick={() => requestSort(metric)}>
+                {metric.charAt(0).toUpperCase() + metric.slice(1).replace(/_/g, ' ')} <ArrowUpDown className="ml-2 h-4 w-4" />
               </Button>
             </TableHead>
           ))}
@@ -102,20 +99,29 @@ const EvaluationTable: React.FC<EvaluationTableProps> = ({ sortedData, requestSo
       </TableHeader>
       <TableBody>
         {sortedData.map((row) => (
-          <React.Fragment key={row.metric}>
+          <React.Fragment key={row.trace_id}>
             <TableRow 
               className="hover:bg-gray-100 cursor-pointer"
-              onClick={() => toggleRowExpansion(row.metric)}
+              onClick={() => toggleRowExpansion(row.trace_id)}
             >
-              <TableCell>{row.metric}</TableCell>
-              {resultFields.map(field => renderCell(row.results[0]?.[field], field, row.metric, 0))}
+              <TableCell>{row.trace_id}</TableCell>
+              {metricNames.map(metric => (
+                <TableCell key={`${row.trace_id}-${metric}`}>
+                  {renderCell(row[metric]?.score, 'score', row.trace_id)}
+                </TableCell>
+              ))}
             </TableRow>
-            {expandedRows.has(row.metric) && row.results.slice(1).map((result, index) => (
-              <TableRow key={`${row.metric}-${index + 1}`} className="bg-gray-50">
+            {expandedRows.has(row.trace_id) && (
+              <TableRow className="bg-gray-50">
                 <TableCell></TableCell>
-                {resultFields.map(field => renderCell(result[field], field, row.metric, index + 1))}
+                {metricNames.map(metric => (
+                  <TableCell key={`${row.trace_id}-${metric}-details`}>
+                    <div>Reason: {renderCell(row[metric]?.reason, 'reason', row.trace_id)}</div>
+                    <div>Details: {renderCell(row[metric]?.result_detail, 'result_detail', row.trace_id)}</div>
+                  </TableCell>
+                ))}
               </TableRow>
-            ))}
+            )}
           </React.Fragment>
         ))}
       </TableBody>
