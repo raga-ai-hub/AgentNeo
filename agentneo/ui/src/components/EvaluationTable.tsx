@@ -10,23 +10,10 @@ interface EvaluationTableProps {
 }
 
 const EvaluationTable: React.FC<EvaluationTableProps> = ({ sortedData, requestSort, metricNames }) => {
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [expandedDetails, setExpandedDetails] = useState<Set<string>>(new Set());
+  const [expandedCells, setExpandedCells] = useState<Set<string>>(new Set());
 
-  const toggleRowExpansion = (traceId: string) => {
-    setExpandedRows(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(traceId)) {
-        newSet.delete(traceId);
-      } else {
-        newSet.add(traceId);
-      }
-      return newSet;
-    });
-  };
-
-  const toggleDetailExpansion = (cellId: string) => {
-    setExpandedDetails(prev => {
+  const toggleCellExpansion = (cellId: string) => {
+    setExpandedCells(prev => {
       const newSet = new Set(prev);
       if (newSet.has(cellId)) {
         newSet.delete(cellId);
@@ -37,46 +24,40 @@ const EvaluationTable: React.FC<EvaluationTableProps> = ({ sortedData, requestSo
     });
   };
 
-  const renderCell = (cellData: any, field: string, traceId: string) => {
-    if (cellData === undefined || cellData === null || cellData === '') return <TableCell>-</TableCell>;
+  const renderCell = (cellData: any, field: string, traceId: string, metric: string) => {
+    if (cellData === undefined || cellData === null || cellData === '') return <div>-</div>;
 
-    const cellId = `${traceId}-${field}`;
+    const cellId = `${traceId}-${metric}-${field}`;
+    const isExpanded = expandedCells.has(cellId);
     let content;
 
     switch (field) {
       case 'score':
         content = typeof cellData === 'number' ? cellData.toFixed(2) : cellData;
-        break;
-      case 'reason':
-      case 'result_detail':
-        const isExpanded = expandedDetails.has(cellId);
-        const truncatedContent = cellData.length > 50 ? cellData.substring(0, 50) + '...' : cellData;
-        content = (
-          <div 
-            className="cursor-pointer text-blue-600 hover:underline"
-            onClick={() => toggleDetailExpansion(cellId)}
-          >
-            {isExpanded ? cellData : truncatedContent}
+        return (
+          <div key={cellId} className="mb-2">
+            <span className="font-bold">Score: </span>
+            <span>{content}</span>
           </div>
         );
-        break;
-      case 'config':
-        try {
-          const parsedData = JSON.parse(cellData);
-          content = (
-            <pre className="whitespace-pre-wrap overflow-hidden text-xs">
-              {JSON.stringify(parsedData, null, 2)}
-            </pre>
-          );
-        } catch {
-          content = cellData;
-        }
-        break;
+      case 'reason':
+      case 'result_detail':
+        const truncatedContent = cellData.length > 50 ? cellData.substring(0, 50) + '...' : cellData;
+        return (
+          <div key={cellId} className="mb-2">
+            <span className="font-bold">{field.charAt(0).toUpperCase() + field.slice(1)}: </span>
+            <span 
+              className="cursor-pointer text-blue-600 hover:underline"
+              onClick={() => toggleCellExpansion(cellId)}
+            >
+              {isExpanded ? cellData : truncatedContent}
+            </span>
+          </div>
+        );
       default:
         content = String(cellData);
+        return <div key={cellId} className="mb-2">{content}</div>;
     }
-
-    return <TableCell key={cellId}>{content}</TableCell>;
   };
 
   return (
@@ -99,30 +80,18 @@ const EvaluationTable: React.FC<EvaluationTableProps> = ({ sortedData, requestSo
       </TableHeader>
       <TableBody>
         {sortedData.map((row) => (
-          <React.Fragment key={row.trace_id}>
-            <TableRow 
-              className="hover:bg-gray-100 cursor-pointer"
-              onClick={() => toggleRowExpansion(row.trace_id)}
-            >
-              <TableCell>{row.trace_id}</TableCell>
-              {metricNames.map(metric => (
-                <TableCell key={`${row.trace_id}-${metric}`}>
-                  {renderCell(row[metric]?.score, 'score', row.trace_id)}
-                </TableCell>
-              ))}
-            </TableRow>
-            {expandedRows.has(row.trace_id) && (
-              <TableRow className="bg-gray-50">
-                <TableCell></TableCell>
-                {metricNames.map(metric => (
-                  <TableCell key={`${row.trace_id}-${metric}-details`}>
-                    <div>Reason: {renderCell(row[metric]?.reason, 'reason', row.trace_id)}</div>
-                    <div>Details: {renderCell(row[metric]?.result_detail, 'result_detail', row.trace_id)}</div>
-                  </TableCell>
-                ))}
-              </TableRow>
-            )}
-          </React.Fragment>
+          <TableRow key={row.trace_id}>
+            <TableCell>{row.trace_id}</TableCell>
+            {metricNames.map(metric => (
+              <TableCell key={`${row.trace_id}-${metric}`} className="align-top">
+                <div className="space-y-2">
+                  {renderCell(row[metric]?.score, 'score', row.trace_id, metric)}
+                  {renderCell(row[metric]?.reason, 'reason', row.trace_id, metric)}
+                  {renderCell(row[metric]?.result_detail, 'result_detail', row.trace_id, metric)}
+                </div>
+              </TableCell>
+            ))}
+          </TableRow>
         ))}
       </TableBody>
     </Table>
