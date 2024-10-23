@@ -42,7 +42,7 @@ Get up and running with AgentNeo in just a few steps!
 ### 1. Import the Necessary Components
 
 ```python
-from agentneo import AgentNeo, Tracer, Evaluation, launch_dashboard, Execution
+from agentneo import AgentNeo, Tracer, Evaluation, launch_dashboard
 ```
 
 ### 2. Create a Session and Project
@@ -83,10 +83,10 @@ def my_agent_function():
 ### 5. Evaluate your AI Agent's performance
 
 ```python
-exe = Execution(session=neo_session, trace_id=1)
+exe = Evaluation(session=neo_session, trace_id=tracer.trace_id)
 
 # run a single metric
-exe.execute(metric_list=['metric_name'])
+exe.evaluate(metric_list=['metric_name'])
 ```
 
 ```python
@@ -129,17 +129,32 @@ Manage multiple projects with ease.
 #### Supported Metrics
 1. Goal Decomposition Efficiency ([goal_decomposition_efficiency](https://docs.raga.ai/agentneo/metric-library/goal-decomposition-efficiency))
 2. Goal Fulfillment Rate (goal_fulfillment_rate)
-3. Tool Correctness Metric (tool_correctness_metric)
-4. Tool Call Success Rate Metric (tool_call_success_rate_metric)
+3. Tool Call Correctness Rate (tool_call_correctness_rate)
+4. Tool Call Success Rate (tool_call_success_rate)
 
 - **Run multiple metrics together**
 ```python
-exe.execute(metric_list=['metric_name1', 'metric_name2', ..])
+exe.evaluate(metric_list=['metric_name1', 'metric_name2', ..])
 ```
 
 - **Use your own config and metadata related to the metric**
 ```python
-exe.execute(metric_list=['metric_name'], config={}, metadata={})
+exe.evaluate(metric_list=['metric_name'], config={}, metadata={})
+
+## sample config and metadata
+# config = {"model": "gpt-4o-mini"}
+# metadata = {
+#     "tools": [
+#       {
+#         "name": "flight_price_estimator_tool",
+#         "description": "flight_price_estimator_tool"
+#       },
+#       {
+#         "name": "currency_converter_tool",
+#         "description": "currency_converter_tool"
+#       },
+#     ]
+#   }
 ```
 
 ### Execution Graph Visualization
