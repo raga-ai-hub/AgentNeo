@@ -150,3 +150,5 @@ model_costs.yaml
 !agentneo/ui/tsconfig.json
 !agentneo/ui/tsconfig.node.json
 !agentneo/ui/tsconfig.app.json
+!agentneo/ui/src/lib/utils.ts
+!agentneo/ui/components.json
