@@ -37,13 +37,9 @@ def is_port_free(port):
 def launch_dashboard(port=3005):
     """Launches the dashboard on a specified port."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    script_path = os.path.join(script_dir, "dashboard_server.py")
+    parent_dir = os.path.dirname(script_dir)
+    agentneo_dir = os.path.dirname(parent_dir)
 
-    if not os.path.exists(script_path):
-        logging.error(f"Error: Dashboard server script not found at {script_path}")
-        return
-
-    # Find a free port starting from the specified port
     if not is_port_free(port):
         logging.info(f"Port {port} is busy. Finding an available port...")
         free_port = find_free_port(port + 1)
@@ -55,7 +51,15 @@ def launch_dashboard(port=3005):
         free_port = port
 
     # Start the dashboard server in a new detached subprocess
-    command = [sys.executable, script_path, "--port", str(free_port)]
+    command = [
+        sys.executable,
+        "-m",
+        "agentneo.server.dashboard_server",
+        "--port",
+        str(free_port),
+    ]
+
+    logging.debug(f"Command to be executed: {' '.join(command)}")
 
     try:
         if sys.platform == "win32":
@@ -67,6 +71,7 @@ def launch_dashboard(port=3005):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 stdin=subprocess.DEVNULL,
+                cwd=agentneo_dir,
             )
         else:
             # Unix/Linux/Mac
@@ -76,6 +81,7 @@ def launch_dashboard(port=3005):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 stdin=subprocess.DEVNULL,
+                cwd=agentneo_dir,
             )
 
         try:
