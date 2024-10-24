@@ -1,4 +1,4 @@
-from .tracing import Tracer
+from .tracing.tracer import Tracer
 from .agentneo import AgentNeo
 from .evaluation import Evaluation
 from .server import launch_dashboard, close_dashboard
