@@ -10,15 +10,14 @@ import { ClipboardCheck } from 'lucide-react';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useProject } from '../contexts/ProjectContext';
 import { fetchEvaluationData } from '../utils/databaseUtils';
+import { Button } from "@/components/ui/button";
 
 const metricNames = [
   'goal_decomposition_efficiency',
   'goal_fulfillment_rate',
-  'tool_correctness_metric',
-  'tool_call_success_rate_metric'
+  'tool_call_correctness_rate',
+  'tool_call_success_rate'
 ];
-
-const resultFields = ['trace_id', 'score', 'reason', 'result_detail', 'config', 'start_time', 'end_time', 'duration'];
 
 const Evaluation: React.FC = () => {
   const { isCollapsed } = useSidebar();
@@ -29,6 +28,7 @@ const Evaluation: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' } | null>(null);
   const [evaluationData, setEvaluationData] = useState<any[]>([]);
+  const [filteredData, setFilteredData] = useState<any[]>([]);
   const [allTraces, setAllTraces] = useState<{id: string, name: string}[]>([]);
 
   useEffect(() => {
@@ -36,8 +36,8 @@ const Evaluation: React.FC = () => {
       if (selectedProject) {
         const data = await fetchEvaluationData(selectedProject, selectedTraceId === 'all' ? null : selectedTraceId);
         setEvaluationData(data);
+        setFilteredData(data);
 
-        // If we're fetching all traces, update the allTraces state
         if (selectedTraceId === 'all') {
           const uniqueTraces = new Set(data.map(item => item.trace_id));
           setAllTraces([
@@ -50,53 +50,71 @@ const Evaluation: React.FC = () => {
     fetchData();
   }, [selectedProject, selectedTraceId]);
 
-  const prepareDataForTable = (data: any[]) => {
-    const metricMap = new Map();
+  const applyDateFilter = () => {
+    if (!startDate && !endDate) {
+      setFilteredData(evaluationData);
+      return;
+    }
 
+    const filtered = evaluationData.filter(item => {
+      const itemDate = new Date(item.start_time);
+      
+      // Set the start of the day for startDate if it exists
+      const startOfDay = startDate ? new Date(startDate.setHours(0, 0, 0, 0)) : null;
+      
+      // Set the end of the day for endDate if it exists
+      const endOfDay = endDate ? new Date(endDate.setHours(23, 59, 59, 999)) : null;
+
+      const isAfterStart = startOfDay ? itemDate >= startOfDay : true;
+      const isBeforeEnd = endOfDay ? itemDate <= endOfDay : true;
+
+      return isAfterStart && isBeforeEnd;
+    });
+
+    setFilteredData(filtered);
+  };
+
+  useEffect(() => {
+    applyDateFilter();
+  }, [startDate, endDate, evaluationData]);
+
+  const prepareDataForTable = (data: any[]) => {
+    const preparedData = {};
     data.forEach(item => {
+      if (!preparedData[item.trace_id]) {
+        preparedData[item.trace_id] = { trace_id: item.trace_id };
+      }
       metricNames.forEach(metric => {
         const metricKey = metric.toLowerCase().replace(/ /g, '_');
         if (item[metricKey]) {
-          if (!metricMap.has(metric)) {
-            metricMap.set(metric, { metric, results: [] });
-          }
-          const result = {
-            trace_id: item.trace_id,
+          preparedData[item.trace_id][metric] = {
             score: item[metricKey].score,
             reason: item[metricKey].reason,
             result_detail: JSON.stringify(item[metricKey].result_detail),
-            config: JSON.stringify(item[metricKey].config),
-            start_time: item.start_time,
-            end_time: item.end_time,
-            duration: item.duration
           };
-          metricMap.get(metric).results.push(result);
         }
       });
     });
-
-    return Array.from(metricMap.values());
+    return Object.values(preparedData);
   };
 
   const sortedData = useMemo(() => {
-    const preparedData = prepareDataForTable(evaluationData);
+    const preparedData = prepareDataForTable(filteredData);
     if (sortConfig !== null) {
-      preparedData.forEach(metricData => {
-        metricData.results.sort((a, b) => {
-          const aValue = a[sortConfig.key] || '';
-          const bValue = b[sortConfig.key] || '';
-          if (aValue < bValue) {
-            return sortConfig.direction === 'ascending' ? -1 : 1;
-          }
-          if (aValue > bValue) {
-            return sortConfig.direction === 'ascending' ? 1 : -1;
-          }
-          return 0;
-        });
+      preparedData.sort((a, b) => {
+        const aValue = sortConfig.key === 'trace_id' ? a[sortConfig.key] : a[sortConfig.key]?.score || '';
+        const bValue = sortConfig.key === 'trace_id' ? b[sortConfig.key] : b[sortConfig.key]?.score || '';
+        if (aValue < bValue) {
+          return sortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
       });
     }
     return preparedData;
-  }, [sortConfig, evaluationData]);
+  }, [sortConfig, filteredData]);
 
   const requestSort = (key: string) => {
     let direction: 'ascending' | 'descending' = 'ascending';
@@ -109,7 +127,7 @@ const Evaluation: React.FC = () => {
   const metricsData = useMemo(() => {
     return metricNames.map(metric => {
       const metricKey = metric.toLowerCase().replace(/ /g, '_');
-      const scores = evaluationData
+      const scores = filteredData
         .filter(item => item[metricKey])
         .map(item => item[metricKey].score || 0);
       return {
@@ -119,7 +137,7 @@ const Evaluation: React.FC = () => {
         avg: scores.reduce((a, b) => a + b, 0) / scores.length || 0
       };
     });
-  }, [evaluationData]);
+  }, [filteredData]);
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
@@ -161,15 +179,54 @@ const Evaluation: React.FC = () => {
             <DateTimePicker date={startDate} setDate={setStartDate} />
             <DateTimePicker date={endDate} setDate={setEndDate} />
           </div>
+          <Button onClick={applyDateFilter} className="mb-6">Apply Date Filter</Button>
           <Card className="mb-6">
             <CardHeader>
               <CardTitle>Metrics Distribution</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={400}>
-                <LineChart data={metricsData}>
+                <LineChart 
+                  data={metricsData} 
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
+                  <XAxis 
+                    dataKey="name" 
+                    interval={0}
+                    tick={({ x, y, payload, index }) => {
+                      const totalLabels = metricsData.length;
+                      let textAnchor: "start" | "middle" | "end";
+                      let xOffset: number;
+
+                      if (index === 0) {
+                        textAnchor = "start";
+                        xOffset = 0;
+                      } else if (index === totalLabels - 1) {
+                        textAnchor = "end";
+                        xOffset = 0;
+                      } else {
+                        textAnchor = "middle";
+                        xOffset = 0;
+                      }
+
+                      return (
+                        <g transform={`translate(${x},${y})`}>
+                          <text 
+                            x={xOffset} 
+                            y={0} 
+                            dy={16} 
+                            textAnchor={textAnchor} 
+                            fill="#666"
+                            fontSize={12}
+                          >
+                            {payload.value}
+                          </text>
+                        </g>
+                      );
+                    }}
+                    height={60}
+                  />
                   <YAxis />
                   <Tooltip />
                   <Legend />
@@ -195,7 +252,7 @@ const Evaluation: React.FC = () => {
               <EvaluationTable 
                 sortedData={sortedData} 
                 requestSort={requestSort}
-                resultFields={resultFields}
+                metricNames={metricNames}
               />
             </CardContent>
           </Card>
