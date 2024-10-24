@@ -1,25 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useSidebar } from '../contexts/SidebarContext';
+import { useProject } from '../contexts/ProjectContext';
 import Sidebar from '../components/Sidebar';
-import TraceDetails from '../components/TraceDetails';
+import TraceDetailsPanel from '../components/TraceDetailsPanel';
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Search, History, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useProject } from '../contexts/ProjectContext';
-import { fetchTraceHistory, TraceHistoryItem, fetchDetailedTraceComponents, DetailedTraceComponents } from '../utils/databaseUtils';
+import type { TraceHistoryItem, DetailedTraceComponents } from '../types/trace';
+import { fetchTraces, fetchTraceDetails } from '../utils/api';
 
 const TraceHistory: React.FC = () => {
   const { isCollapsed } = useSidebar();
   const { selectedProject, setSelectedProject, projects } = useProject();
   const [traces, setTraces] = useState<TraceHistoryItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedTraceData, setExpandedTraceData] = useState<DetailedTraceComponents | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [expandedTrace, setExpandedTrace] = useState<string | null>(null);
+  const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
+  const [selectedTraceData, setSelectedTraceData] = useState<DetailedTraceComponents | null>(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
   const tracesPerPage = 10;
 
   useEffect(() => {
@@ -27,7 +28,7 @@ const TraceHistory: React.FC = () => {
       if (selectedProject) {
         setIsLoading(true);
         try {
-          const fetchedTraces = await fetchTraceHistory(selectedProject);
+          const fetchedTraces = await fetchTraces(selectedProject);
           setTraces(fetchedTraces);
         } catch (error) {
           console.error('Error loading traces:', error);
@@ -42,6 +43,25 @@ const TraceHistory: React.FC = () => {
     loadTraces();
   }, [selectedProject]);
 
+  const handleTraceSelect = async (traceId: string) => {
+    setSelectedTraceId(traceId);
+    setIsPanelOpen(true);
+
+    try {
+      const traceData = await fetchTraceDetails(traceId);
+      setSelectedTraceData(traceData);
+    } catch (error) {
+      console.error('Error fetching trace details:', error);
+      setSelectedTraceData(null);
+    }
+  };
+
+  const handleCloseSidebar = () => {
+    setIsPanelOpen(false);
+    setSelectedTraceId(null);
+    setSelectedTraceData(null);
+  };
+
   const filteredTraces = traces.filter(trace =>
     trace.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -52,31 +72,19 @@ const TraceHistory: React.FC = () => {
     currentPage * tracesPerPage
   );
 
-  const handleSearch = () => {
-    setCurrentPage(1);
-  };
-
-  const handleExpandTrace = async (traceId: string) => {
-    setExpandedTrace(traceId);
-    try {
-      const detailedData = await fetchDetailedTraceComponents(traceId);
-      setExpandedTraceData(detailedData);
-    } catch (error) {
-      console.error('Error fetching detailed trace data:', error);
-      setExpandedTraceData(null);
-    }
-  };
-
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
       <Sidebar />
-      <div className="flex-1 overflow-y-auto p-8">
+      <div className={`flex-1 overflow-y-auto p-8 transition-all duration-300 ${isPanelOpen ? 'mr-96' : ''}`}>
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center">
             <History className="mr-2 h-8 w-8 text-indigo-600 dark:text-indigo-400" />
             <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Trace History</h1>
           </div>
-          <Select value={selectedProject?.toString()} onValueChange={(value) => setSelectedProject(Number(value))}>
+          <Select
+            value={selectedProject?.toString()}
+            onValueChange={(value) => setSelectedProject(Number(value))}
+          >
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Select project" />
             </SelectTrigger>
@@ -100,7 +108,7 @@ const TraceHistory: React.FC = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="flex-grow"
               />
-              <Button onClick={handleSearch} className="flex items-center">
+              <Button onClick={() => setCurrentPage(1)} className="flex items-center">
                 <Search className="w-4 h-4 mr-2" /> Search
               </Button>
             </div>
@@ -137,16 +145,31 @@ const TraceHistory: React.FC = () => {
                 paginatedTraces.map((trace) => (
                   <tr
                     key={trace.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-150 ease-in-out"
-                    onClick={() => handleExpandTrace(trace.id)}
+                    onClick={() => handleTraceSelect(trace.id)}
+                    className={`hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-150 ease-in-out ${selectedTraceId === trace.id ? 'bg-purple-50 dark:bg-purple-900' : ''
+                      }`}
                   >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600 dark:text-indigo-400">{trace.id}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{new Date(trace.start_time).toLocaleString()}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{trace.duration.toFixed(2)}s</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{trace.llm_call_count}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{trace.tool_call_count}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{trace.agent_call_count}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{trace.error_count}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600 dark:text-indigo-400">
+                      {trace.id}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                      {new Date(trace.start_time).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                      {trace.duration.toFixed(2)}s
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                      {trace.llm_call_count}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                      {trace.tool_call_count}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                      {trace.agent_call_count}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                      {trace.error_count}
+                    </td>
                   </tr>
                 ))
               )}
@@ -175,23 +198,13 @@ const TraceHistory: React.FC = () => {
             Next <ChevronRight className="w-4 h-4 ml-2" />
           </Button>
         </div>
-
-        <Dialog open={!!expandedTrace} onOpenChange={() => {
-          setExpandedTrace(null);
-          setExpandedTraceData(null);
-        }}>
-          <DialogContent className="max-w-6xl w-11/12 max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Trace Details: {expandedTrace}</DialogTitle>
-            </DialogHeader>
-            {expandedTraceData ? (
-              <TraceDetails traceData={expandedTraceData} />
-            ) : (
-              <div>Loading trace details...</div>
-            )}
-          </DialogContent>
-        </Dialog>
       </div>
+
+      <TraceDetailsPanel
+        isOpen={isPanelOpen}
+        onClose={handleCloseSidebar}
+        traceData={selectedTraceData}
+      />
     </div>
   );
 };
