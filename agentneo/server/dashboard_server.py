@@ -8,6 +8,15 @@ from waitress import serve
 from flask import request, abort
 from flask_cors import CORS
 
+from flask import jsonify
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import joinedload
+from sqlalchemy.exc import SQLAlchemyError
+
+from ..utils import get_db_path
+from ..data import ProjectInfoModel, TraceModel
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -19,6 +28,12 @@ ui_folder = os.path.join(current_dir, "../ui/dist")
 
 app = Flask(__name__, static_folder=ui_folder)
 CORS(app)  # Enable CORS
+
+
+db_path = get_db_path()
+# Setup database connection
+engine = create_engine(db_path)
+Session = sessionmaker(bind=engine)
 
 
 # Remove X-Frame-Options header
@@ -47,6 +62,139 @@ def shutdown():
     func()
     logging.info("Dashboard server shutting down...")
     return "Server shutting down..."
+
+
+@app.route("/api/projects", methods=["GET"])
+def get_projects():
+    try:
+        with Session() as session:
+            projects = session.query(ProjectInfoModel).all()
+            return jsonify(
+                [
+                    {
+                        "id": p.id,
+                        "project_name": p.project_name,
+                        "start_time": p.start_time,
+                        "end_time": p.end_time,
+                        "duration": p.duration,
+                        "total_cost": p.total_cost,
+                        "total_tokens": p.total_tokens,
+                    }
+                    for p in projects
+                ]
+            )
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/projects/<int:project_id>", methods=["GET"])
+def get_project(project_id):
+    try:
+        with Session() as session:
+            project = session.query(ProjectInfoModel).get(project_id)
+            if project is None:
+                return jsonify({"error": "Project not found"}), 404
+            return jsonify(
+                {
+                    "id": project.id,
+                    "project_name": project.project_name,
+                    "start_time": project.start_time,
+                    "end_time": project.end_time,
+                    "duration": project.duration,
+                    "total_cost": project.total_cost,
+                    "total_tokens": project.total_tokens,
+                }
+            )
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/projects/<int:project_id>/traces", methods=["GET"])
+def get_project_traces(project_id):
+    try:
+        with Session() as session:
+            traces = session.query(TraceModel).filter_by(project_id=project_id).all()
+            return jsonify(
+                [
+                    {
+                        "id": t.id,
+                        "start_time": t.start_time,
+                        "end_time": t.end_time,
+                        "duration": t.duration,
+                    }
+                    for t in traces
+                ]
+            )
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/traces/<int:trace_id>", methods=["GET"])
+def get_trace(trace_id):
+    try:
+        with Session() as session:
+            trace = (
+                session.query(TraceModel)
+                .options(
+                    joinedload(TraceModel.llm_calls),
+                    joinedload(TraceModel.errors),
+                    joinedload(TraceModel.system_info),
+                )
+                .get(trace_id)
+            )
+            if trace is None:
+                return jsonify({"error": "Trace not found"}), 404
+            return jsonify(
+                {
+                    "id": trace.id,
+                    "project_id": trace.project_id,
+                    "start_time": trace.start_time,
+                    "end_time": trace.end_time,
+                    "duration": trace.duration,
+                    "llm_calls": [
+                        {
+                            "id": call.id,
+                            "name": call.name,
+                            "start_time": call.start_time,
+                            "end_time": call.end_time,
+                            "duration": call.duration,
+                            "token_usage": call.token_usage,
+                            "cost": call.cost,
+                        }
+                        for call in trace.llm_calls
+                    ],
+                    "errors": [
+                        {
+                            "id": error.id,
+                            "error_type": error.error_type,
+                            "error_message": error.error_message,
+                            "timestamp": error.timestamp,
+                        }
+                        for error in trace.errors
+                    ],
+                    "system_info": (
+                        {
+                            "os_name": trace.system_info.os_name,
+                            "os_version": trace.system_info.os_version,
+                            "python_version": trace.system_info.python_version,
+                            "cpu_info": trace.system_info.cpu_info,
+                            "gpu_info": trace.system_info.gpu_info,
+                            "disk_info": trace.system_info.disk_info,
+                            "memory_total": trace.system_info.memory_total,
+                            "installed_packages": trace.system_info.installed_packages,
+                        }
+                        if trace.system_info
+                        else None
+                    ),
+                }
+            )
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/health")
+def health_check():
+    return "OK", 200
 
 
 def main():

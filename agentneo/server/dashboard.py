@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import logging
 import subprocess
 import socket
@@ -35,15 +36,10 @@ def is_port_free(port):
 
 def launch_dashboard(port=3005):
     """Launches the dashboard on a specified port."""
-    # Adjust the path to where 'dashboard_server.py' is located
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    script_path = os.path.join(script_dir, "dashboard_server.py")
+    parent_dir = os.path.dirname(script_dir)
+    agentneo_dir = os.path.dirname(parent_dir)
 
-    if not os.path.exists(script_path):
-        logging.error(f"Error: Dashboard server script not found at {script_path}")
-        return
-
-    # Find a free port starting from the specified port
     if not is_port_free(port):
         logging.info(f"Port {port} is busy. Finding an available port...")
         free_port = find_free_port(port + 1)
@@ -55,34 +51,76 @@ def launch_dashboard(port=3005):
         free_port = port
 
     # Start the dashboard server in a new detached subprocess
-    command = [sys.executable, script_path, "--port", str(free_port)]
+    command = [
+        sys.executable,
+        "-m",
+        "agentneo.server.dashboard_server",
+        "--port",
+        str(free_port),
+    ]
+
+    logging.debug(f"Command to be executed: {' '.join(command)}")
 
     try:
         if sys.platform == "win32":
             # Windows
             DETACHED_PROCESS = 0x00000008
-            subprocess.Popen(
+            process = subprocess.Popen(
                 command,
                 creationflags=DETACHED_PROCESS,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 stdin=subprocess.DEVNULL,
+                cwd=agentneo_dir,
             )
         else:
             # Unix/Linux/Mac
-            subprocess.Popen(
+            process = subprocess.Popen(
                 command,
                 start_new_session=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 stdin=subprocess.DEVNULL,
+                cwd=agentneo_dir,
             )
+
+        try:
+            stdout, stderr = process.communicate(timeout=5)
+            if process.returncode is not None:
+                logging.error(
+                    f"Dashboard failed to start. Return code: {process.returncode}"
+                )
+                logging.error(f"STDOUT: {stdout.decode('utf-8')}")
+                logging.error(f"STDERR: {stderr.decode('utf-8')}")
+                return
+        except subprocess.TimeoutExpired:
+            # Process is still running, which is good
+            logging.info("Dashboard process started successfully")
+
+        # Check if the server is responding
+        max_retries = 5
+        for _ in range(max_retries):
+            try:
+                response = requests.get(
+                    f"http://localhost:{free_port}/health", timeout=1
+                )
+                if response.status_code == 200:
+                    logging.info(
+                        f"Dashboard launched successfully. Access it at: http://localhost:{free_port}"
+                    )
+                    return
+            except requests.RequestException:
+                time.sleep(1)
+
+        logging.error(
+            "Dashboard started but is not responding. It may have encountered an error."
+        )
     except Exception as e:
-        logging.error(f"Failed to launch dashboard: {e}")
+        logging.error(f"Failed to launch dashboard: {e}", exc_info=True)
         return
 
     logging.info(
-        f"Dashboard launched successfully. Access it at: http://localhost:{free_port}"
+        f"Dashboard launch attempt completed. If successful, access it at: http://localhost:{free_port}"
     )
 
 
