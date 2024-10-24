@@ -28,7 +28,7 @@ const Sidebar: React.FC = () => {
           <nav>
             <ul className="space-y-4">
               <SidebarLink to="/" icon={LayoutDashboard} text="Overview" isCollapsed={isCollapsed} />
-              <SidebarLink to="/analysis" icon={PieChart} text="Analytics" isCollapsed={isCollapsed} />
+              {/* <SidebarLink to="/analysis" icon={PieChart} text="Analytics" isCollapsed={isCollapsed} /> */}
               <SidebarLink to="/trace-history" icon={History} text="Trace History" isCollapsed={isCollapsed} />
               <SidebarLink to="/evaluation" icon={ClipboardCheck} text="Evaluation" isCollapsed={isCollapsed} />
             </ul>
