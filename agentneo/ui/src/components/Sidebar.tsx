@@ -39,7 +39,7 @@ const Sidebar: React.FC = () => {
       <div className="relative z-10 mt-auto pt-6 border-t border-white border-opacity-20">
         <ul className="space-y-4">
           <SidebarExternalLink href="https://docs.raga.ai/agentneo" icon={BookOpen} text="Documentation" isCollapsed={isCollapsed} />
-          <SidebarExternalLink href="https://github.com/aristotle-ai/ragaai-agentneo" icon={Github} text="Code Repository" isCollapsed={isCollapsed} />
+          <SidebarExternalLink href="https://github.com/raga-ai-hub/agentneo" icon={Github} text="Code Repository" isCollapsed={isCollapsed} />
         </ul>
       </div>
 
