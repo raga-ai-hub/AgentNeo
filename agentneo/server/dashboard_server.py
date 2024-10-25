@@ -197,6 +197,11 @@ def health_check():
     return "OK", 200
 
 
+@app.route("/api/port")
+def get_port():
+    return jsonify({"port": os.environ.get("AGENTNEO_DASHBOARD_PORT", "3000")})
+
+
 def main():
     import argparse
 
@@ -205,6 +210,7 @@ def main():
     args = parser.parse_args()
 
     port = args.port
+    os.environ["AGENTNEO_DASHBOARD_PORT"] = str(port)
 
     # Start the server
     logging.info(f"Starting dashboard server on port {port}")

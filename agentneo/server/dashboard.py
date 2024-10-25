@@ -1,10 +1,10 @@
 import os
 import sys
 import time
-import logging
-import subprocess
 import socket
+import logging
 import requests
+import subprocess
 
 # Configure logging
 logging.basicConfig(
@@ -46,9 +46,11 @@ def launch_dashboard(port=3005):
         if free_port is None:
             logging.error(f"No free ports available starting from {port}")
             return
-        logging.info(f"Using port {free_port}")
-    else:
-        free_port = port
+        port = free_port
+        logging.info(f"Using port {port}")
+
+    # Set the environment variable with the port
+    os.environ["AGENTNEO_DASHBOARD_PORT"] = str(port)
 
     # Start the dashboard server in a new detached subprocess
     command = [
@@ -56,7 +58,7 @@ def launch_dashboard(port=3005):
         "-m",
         "agentneo.server.dashboard_server",
         "--port",
-        str(free_port),
+        str(port),
     ]
 
     logging.debug(f"Command to be executed: {' '.join(command)}")

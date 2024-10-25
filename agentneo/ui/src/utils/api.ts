@@ -1,22 +1,40 @@
 import { Project, TraceHistoryItem, DetailedTraceComponents } from '../types/trace';
 
+let BASE_URL: string | null = null;
 
-const BASE_URL = `${process.env.AGENTNEO_DASHBOARD_URL || 'http://localhost:3000'}/api`;
+const getBaseUrl = async (): Promise<string> => {
+    if (BASE_URL) return BASE_URL;
+
+    try {
+        const response = await fetch('/api/port');
+        if (!response.ok) throw new Error('Failed to fetch port');
+        const { port } = await response.json();
+        BASE_URL = `http://localhost:${port}/api`;
+    } catch (error) {
+        console.error('Error fetching port:', error);
+        BASE_URL = 'http://localhost:3000/api'; // Fallback to default
+    }
+
+    return BASE_URL;
+};
 
 export const fetchProjects = async (): Promise<Project[]> => {
-    const response = await fetch(`${BASE_URL}/projects`);
+    const baseUrl = await getBaseUrl();
+    const response = await fetch(`${baseUrl}/projects`);
     if (!response.ok) throw new Error('Failed to fetch projects');
     return response.json();
 };
 
 export const fetchTraces = async (projectId: number): Promise<TraceHistoryItem[]> => {
-    const response = await fetch(`${BASE_URL}/projects/${projectId}/traces`);
+    const baseUrl = await getBaseUrl();
+    const response = await fetch(`${baseUrl}/projects/${projectId}/traces`);
     if (!response.ok) throw new Error('Failed to fetch traces');
     return response.json();
 };
 
 export const fetchTraceDetails = async (traceId: string): Promise<DetailedTraceComponents> => {
-    const response = await fetch(`${BASE_URL}/traces/${traceId}`);
+    const baseUrl = await getBaseUrl();
+    const response = await fetch(`${baseUrl}/traces/${traceId}`);
     if (!response.ok) throw new Error('Failed to fetch trace details');
     return response.json();
 };

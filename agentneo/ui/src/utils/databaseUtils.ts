@@ -12,7 +12,13 @@ export const initDatabase = async () => {
     }
     if (!db) {
         console.log('Loading trace_data.db');
-        const response = await fetch('/trace_data.db');
+        let response;
+        try {
+            response = await fetch('/tracdata.db');
+        } catch (error) {
+            console.log('Failed to fetch from /trace_data.db, trying /dist/trace_data.db');
+            response = await fetch('/dist/trace_data.db');
+        }
         const arrayBuffer = await response.arrayBuffer();
         db = new SQL.Database(new Uint8Array(arrayBuffer));
         console.log('Database loaded successfully');
