@@ -172,9 +172,9 @@ def get_trace(trace_id):
                     "cost": call.cost,
                     "memory_used": call.memory_used,
                     "errors": [format_error(error) for error in call.errors],
-                    "user_interactions": [
-                        format_user_interaction(ui) for ui in call.user_interactions
-                    ],
+                    # "user_interactions": [
+                    #     format_user_interaction(ui) for ui in call.user_interactions
+                    # ],
                 }
 
             def format_tool_call(call):
@@ -189,9 +189,9 @@ def get_trace(trace_id):
                     "memory_used": call.memory_used,
                     "network_calls": call.network_calls,
                     "errors": [format_error(error) for error in call.errors],
-                    "user_interactions": [
-                        format_user_interaction(ui) for ui in call.user_interactions
-                    ],
+                    # "user_interactions": [
+                    #     format_user_interaction(ui) for ui in call.user_interactions
+                    # ],
                 }
 
             def format_user_interaction(ui):

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   ChevronRight,
   Clock,
@@ -6,262 +6,179 @@ import {
   Bot,
   Wrench,
   MessageSquare,
-  Globe,
-  User,
   ArrowDownCircle,
   ArrowUpCircle,
-  Maximize2,
-  Minimize2,
-  X
+  X,
+  Code,
+  Network
 } from 'lucide-react';
 
-interface TraceComponent {
-  name: string;
-  type: 'agent' | 'tool' | 'llm' | 'network' | 'user';
-  duration: string;
-  status: 'success' | 'error' | 'warning';
-  details: string;
-  input?: any;
-  output?: any;
-  children?: TraceComponent[];
-}
+const TraceDetailsPanel = ({ isOpen, onClose, traceData }) => {
+  const [expandedSections, setExpandedSections] = useState(new Set());
+  const [selectedSection, setSelectedSection] = useState(null);
 
-interface DetailedTraceComponents {
-  id: string;
-  duration: string;
-  errors: number;
-  components: TraceComponent[];
-}
-
-interface Breadcrumb {
-  name: string;
-  type: string;
-  path: string;
-}
-
-interface TraceDetailsPanelProps {
-  isOpen: boolean;
-  onClose: () => void;
-  traceData: DetailedTraceComponents | null;
-}
-
-const CodeBlock: React.FC<{ data: any; label: React.ReactNode }> = ({ data, label }) => (
-  <div className="space-y-1">
-    <div className="flex justify-between items-center text-sm text-gray-500">
-      <span>{label}</span>
-    </div>
-    <pre className="bg-gray-800 text-gray-100 rounded-md p-3 text-sm overflow-auto">
-      <code>{JSON.stringify(data, null, 2)}</code>
-    </pre>
-  </div>
-);
-
-export const TraceDetailsPanel: React.FC<TraceDetailsPanelProps> = ({
-  isOpen,
-  onClose,
-  traceData
-}) => {
-  const [expandedComponents, setExpandedComponents] = useState<Set<string>>(new Set());
-  const [selectedComponent, setSelectedComponent] = useState<TraceComponent | null>(null);
-  const [breadcrumbs, setBreadcrumbs] = useState<Breadcrumb[]>([]);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setExpandedComponents(new Set());
-      setSelectedComponent(null);
-      setBreadcrumbs([]);
+  const formatDuration = (duration) => {
+    if (typeof duration === 'string') {
+      return duration;
     }
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (selectedComponent && traceData) {
-      const generateBreadcrumbs = (
-        components: TraceComponent[],
-        targetName: string,
-        path: string = '',
-        result: Breadcrumb[] = []
-      ): Breadcrumb[] | null => {
-        for (const component of components) {
-          const currentPath = `${path}/${component.name}`;
-          if (component.name === targetName) {
-            return [...result, { name: component.name, type: component.type, path: currentPath }];
-          }
-          if (component.children?.length) {
-            const found = generateBreadcrumbs(
-              component.children,
-              targetName,
-              currentPath,
-              [...result, { name: component.name, type: component.type, path: currentPath }]
-            );
-            if (found) return found;
-          }
-        }
-        return null;
-      };
-
-      const newBreadcrumbs = generateBreadcrumbs(traceData.components, selectedComponent.name);
-      if (newBreadcrumbs) {
-        setBreadcrumbs(newBreadcrumbs);
-      }
-    } else {
-      setBreadcrumbs([]);
+    if (typeof duration === 'number') {
+      return `${duration.toFixed(3)}s`;
     }
-  }, [selectedComponent, traceData]);
+    return 'N/A';
+  };
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'agent': return <Bot className="w-4 h-4" />;
-      case 'tool': return <Wrench className="w-4 h-4" />;
-      case 'llm': return <MessageSquare className="w-4 h-4" />;
-      case 'network': return <Globe className="w-4 h-4" />;
-      case 'user': return <User className="w-4 h-4" />;
-      default: return <ChevronRight className="w-4 h-4" />;
+  const parseJSON = (str) => {
+    try {
+      return JSON.parse(str);
+    } catch (e) {
+      return null;
     }
   };
 
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'agent': return 'text-violet-600';
-      case 'tool': return 'text-blue-600';
-      case 'llm': return 'text-emerald-600';
-      case 'network': return 'text-amber-600';
-      case 'user': return 'text-rose-600';
-      default: return 'text-gray-600';
-    }
-  };
-
-  const getTypeBadgeColor = (type: string) => {
-    switch (type) {
-      case 'agent': return 'bg-violet-100 text-violet-800';
-      case 'tool': return 'bg-blue-100 text-blue-800';
-      case 'llm': return 'bg-emerald-100 text-emerald-800';
-      case 'network': return 'bg-amber-100 text-amber-800';
-      case 'user': return 'bg-rose-100 text-rose-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const handleExpandAll = () => {
-    if (traceData) {
-      const getAllPaths = (components: TraceComponent[], parentPath = ''): Set<string> => {
-        let paths = new Set<string>();
-        components.forEach(component => {
-          const currentPath = `${parentPath}/${component.name}`;
-          paths.add(currentPath);
-          if (component.children?.length) {
-            const childPaths = getAllPaths(component.children, currentPath);
-            childPaths.forEach(path => paths.add(path));
-          }
-        });
-        return paths;
-      };
-      setExpandedComponents(getAllPaths(traceData.components));
-    }
-  };
-
-  const renderComponentDetails = (component: TraceComponent) => (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <span className={`px-2 py-1 rounded-full text-sm ${getTypeBadgeColor(component.type)}`}>
-          {component.type.charAt(0).toUpperCase() + component.type.slice(1)}
-        </span>
-        <span className="text-sm text-gray-500">{component.duration}</span>
+  const renderCodeBlock = ({ label, data }) => {
+    if (!data) return null;
+    return (
+      <div className="space-y-1">
+        <div className="flex items-center gap-1 text-sm text-gray-500">
+          {label}
+        </div>
+        <pre className="bg-gray-800 text-gray-100 rounded-md p-3 text-xs overflow-auto">
+          <code>{typeof data === 'string' ? data : JSON.stringify(data, null, 2)}</code>
+        </pre>
       </div>
+    );
+  };
 
-      <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-        {component.details}
-      </div>
+  const renderCall = (call, type, depth = 0) => {
+    if (!call) return null;
 
-      {component.input && (
-        <CodeBlock
-          data={component.input}
-          label={
-            <div className="flex items-center gap-1">
-              <ArrowDownCircle className="w-4 h-4" />
-              <span>Input</span>
-            </div>
-          }
-        />
-      )}
+    const callId = `${type}-${call.id}`;
+    const isExpanded = expandedSections.has(callId);
+    const isSelected = selectedSection?.id === callId;
 
-      {component.output && (
-        <CodeBlock
-          data={component.output}
-          label={
-            <div className="flex items-center gap-1">
-              <ArrowUpCircle className="w-4 h-4" />
-              <span>Output</span>
-            </div>
-          }
-        />
-      )}
-    </div>
-  );
+    let iconColor;
+    let Icon;
+    switch (type) {
+      case 'agent':
+        Icon = Bot;
+        iconColor = 'text-violet-600';
+        break;
+      case 'llm':
+        Icon = MessageSquare;
+        iconColor = 'text-green-600';
+        break;
+      case 'tool':
+        Icon = Wrench;
+        iconColor = 'text-blue-600';
+        break;
+      default:
+        Icon = Code;
+        iconColor = 'text-gray-600';
+    }
 
-  const renderComponent = (component: TraceComponent, depth = 0, parentPath = '') => {
-    const currentPath = `${parentPath}/${component.name}`;
-    const isExpanded = expandedComponents.has(currentPath);
-    const isSelected = selectedComponent?.name === component.name;
-    const hasChildren = component.children?.length > 0;
+    const hasChildren = (call.llm_calls?.length > 0 || call.tool_calls?.length > 0);
+    const marginLeft = depth * 16;
 
     return (
-      <div key={currentPath} className="mb-2">
+      <div key={callId} style={{ marginLeft: `${marginLeft}px` }}>
         <div
-          className={`rounded-lg border transition-all duration-200 ${isSelected ? 'border-purple-300 bg-purple-50' : 'border-gray-200 bg-white'
-            }`}
-          style={{ marginLeft: `${depth * 16}px` }}
+          className={`
+            rounded-lg border transition-all duration-200 mb-2
+            ${isSelected ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white'}
+          `}
         >
           <div
             className="flex items-center gap-2 p-3 cursor-pointer hover:bg-gray-50"
             onClick={() => {
+              setSelectedSection(isSelected ? null : { ...call, id: callId });
               if (hasChildren) {
-                setExpandedComponents(prev => {
+                setExpandedSections(prev => {
                   const next = new Set(prev);
-                  if (next.has(currentPath)) {
-                    next.delete(currentPath);
+                  if (next.has(callId)) {
+                    next.delete(callId);
                   } else {
-                    next.add(currentPath);
+                    next.add(callId);
                   }
                   return next;
                 });
               }
-              setSelectedComponent(isSelected ? null : component);
             }}
           >
             <div className="flex items-center gap-2">
               {hasChildren && (
                 <ChevronRight
-                  className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isExpanded ? 'transform rotate-90' : ''
-                    }`}
+                  className={`w-4 h-4 text-gray-400 transition-transform duration-200 
+                    ${isExpanded ? 'transform rotate-90' : ''}`}
                 />
               )}
-              <div className={getTypeColor(component.type)}>
-                {getTypeIcon(component.type)}
-              </div>
+              <Icon className={`w-4 h-4 ${iconColor}`} />
             </div>
             <div className="flex-1 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="font-medium">{component.name}</span>
-                <span className={`px-2 py-0.5 rounded-full text-xs ${getTypeBadgeColor(component.type)}`}>
-                  {component.type}
+                <span className="font-medium">
+                  {call.name || `${type.charAt(0).toUpperCase() + type.slice(1)} ${call.id}`}
+                </span>
+                <span className={`px-2 py-0.5 rounded-full text-xs ${iconColor.replace('text', 'bg')}/10`}>
+                  {type}
                 </span>
               </div>
-              <span className="text-sm text-gray-500">{component.duration}</span>
+              <span className="text-sm text-gray-500">{formatDuration(call.duration)}</span>
             </div>
           </div>
 
           {isSelected && (
-            <div className="px-4 pb-3 border-t">
-              {renderComponentDetails(component)}
+            <div className="p-4 border-t space-y-4">
+              {call.input_prompt && renderCodeBlock({
+                label: <div className="flex items-center gap-1">
+                  <ArrowDownCircle className="w-4 h-4" />
+                  <span>Input</span>
+                </div>,
+                data: call.input_prompt
+              })}
+
+              {call.output && renderCodeBlock({
+                label: <div className="flex items-center gap-1">
+                  <ArrowUpCircle className="w-4 h-4" />
+                  <span>Output</span>
+                </div>,
+                data: call.output
+              })}
+
+              {call.token_usage && (
+                <div className="bg-gray-50 p-3 rounded">
+                  <h4 className="text-sm font-medium mb-2">Token Usage</h4>
+                  <div className="grid grid-cols-3 gap-4">
+                    {Object.entries(parseJSON(call.token_usage) || {}).map(([key, value]) => (
+                      <div key={key}>
+                        <div className="text-xs text-gray-500">{key}</div>
+                        <div className="text-sm font-medium">{value}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {call.cost && (
+                <div className="bg-gray-50 p-3 rounded">
+                  <h4 className="text-sm font-medium mb-2">Cost</h4>
+                  <div className="grid grid-cols-3 gap-4">
+                    {Object.entries(parseJSON(call.cost) || {}).map(([key, value]) => (
+                      <div key={key}>
+                        <div className="text-xs text-gray-500">{key}</div>
+                        <div className="text-sm font-medium">${Number(value).toFixed(6)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {hasChildren && isExpanded && (
-          <div className="relative ml-4 pl-4 border-l border-gray-200">
-            {component.children.map(child =>
-              renderComponent(child, depth + 1, currentPath)
-            )}
+        {isExpanded && (
+          <div className="ml-4 border-l border-gray-200">
+            {call.llm_calls?.map(llmCall => renderCall(llmCall, 'llm', depth + 1))}
+            {call.tool_calls?.map(toolCall => renderCall(toolCall, 'tool', depth + 1))}
           </div>
         )}
       </div>
@@ -270,102 +187,64 @@ export const TraceDetailsPanel: React.FC<TraceDetailsPanelProps> = ({
 
   return (
     <div
-      className={`fixed right-0 top-0 h-screen w-96 border-l bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
+      className={`
+        fixed inset-y-0 right-0 w-[600px] bg-white shadow-xl transform transition-transform
+        ${isOpen ? 'translate-x-0' : 'translate-x-full'}
+      `}
     >
       <div className="h-full flex flex-col">
-        <div className="p-4 border-b">
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-xl font-semibold flex items-center gap-2">
-              <Bot className="w-5 h-5 text-purple-500" />
+        <div className="p-4 border-b flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Bot className="w-5 h-5 text-purple-600" />
               Trace Details
             </h2>
-            <button
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            {traceData && (
+              <div className="text-sm text-gray-500 mt-1">
+                ID: {traceData.id}
+              </div>
+            )}
           </div>
-          {traceData && (
-            <div className="flex items-center gap-4 text-sm text-gray-600">
-              <div className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded">
-                <Clock size={16} />
-                <span>{traceData.duration}</span>
-              </div>
-              <div className="flex items-center gap-1 bg-red-50 px-2 py-1 rounded">
-                <AlertCircle size={16} />
-                <span>{traceData.errors} errors</span>
-              </div>
-            </div>
-          )}
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-full"
+          >
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
         </div>
 
         {traceData && (
-          <div className="flex-1 overflow-y-auto">
-            <div className="p-4 space-y-4">
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-medium">Execution Timeline</h3>
-                  <div className="space-x-2">
-                    <button
-                      onClick={handleExpandAll}
-                      className="text-sm text-purple-600 hover:text-purple-800 flex items-center gap-1 inline-flex"
-                    >
-                      <Maximize2 className="w-4 h-4" />
-                      <span>Expand All</span>
-                    </button>
-                    <button
-                      onClick={() => setExpandedComponents(new Set())}
-                      className="text-sm text-purple-600 hover:text-purple-800 flex items-center gap-1 inline-flex"
-                    >
-                      <Minimize2 className="w-4 h-4" />
-                      <span>Collapse All</span>
-                    </button>
+          <>
+            <div className="p-4 bg-gray-50 border-b">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center gap-2 bg-white p-3 rounded-lg border">
+                  <Clock className="w-5 h-5 text-blue-600" />
+                  <div>
+                    <div className="text-sm text-gray-500">Duration</div>
+                    <div className="font-medium">{formatDuration(traceData.duration)}</div>
                   </div>
                 </div>
-
-                {breadcrumbs.length > 0 && (
-                  <div className="mb-4 border-b pb-2">
-                    <div className="flex items-center gap-1 text-sm text-gray-500 overflow-x-auto">
-                      {breadcrumbs.map((item, index) => (
-                        <React.Fragment key={item.path}>
-                          {index > 0 && <ChevronRight className="w-3 h-3" />}
-                          <button
-                            onClick={() => {
-                              const component = traceData.components.find(c => c.name === item.name);
-                              if (component) {
-                                setSelectedComponent(component);
-                              }
-                            }}
-                            className={`flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100 ${index === breadcrumbs.length - 1 ? 'text-purple-600 font-medium' : ''
-                              }`}
-                          >
-                            {getTypeIcon(item.type)}
-                            <span>{item.name}</span>
-                          </button>
-                        </React.Fragment>
-                      ))}
-                    </div>
+                <div className="flex items-center gap-2 bg-white p-3 rounded-lg border">
+                  <AlertCircle className="w-5 h-5 text-red-600" />
+                  <div>
+                    <div className="text-sm text-gray-500">Errors</div>
+                    <div className="font-medium">{Array.isArray(traceData.errors) ? traceData.errors.length : 0}</div>
                   </div>
-                )}
-
-                <div className="space-y-2">
-                  <pre className="bg-gray-100 p-4 rounded-md overflow-auto text-sm">
-                    {JSON.stringify(traceData, null, 2)}
-                  </pre>
                 </div>
-
-
-
-                {/* <div className="space-y-2">
-                  {traceData.components.map(component =>
-                    renderComponent(component, 0, '')
-                  )}
-                </div> */}
               </div>
             </div>
-          </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="space-y-6">
+                {Array.isArray(traceData.agent_calls) && traceData.agent_calls.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 mb-2">Agent Calls</h3>
+                    {traceData.agent_calls.map(call => renderCall(call, 'agent'))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>
