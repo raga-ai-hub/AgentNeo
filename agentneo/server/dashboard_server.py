@@ -137,8 +137,12 @@ def get_trace(trace_id):
                 session.query(TraceModel)
                 .options(
                     joinedload(TraceModel.llm_calls),
+                    joinedload(TraceModel.tool_calls),
+                    joinedload(TraceModel.agent_calls),
+                    joinedload(TraceModel.user_interactions),
                     joinedload(TraceModel.errors),
                     joinedload(TraceModel.system_info),
+                    joinedload(TraceModel.metrics),
                 )
                 .get(trace_id)
             )
@@ -155,13 +159,53 @@ def get_trace(trace_id):
                         {
                             "id": call.id,
                             "name": call.name,
+                            "model": call.model,
+                            "input_prompt": call.input_prompt,
+                            "output": call.output,
+                            "tool_call": call.tool_call,
                             "start_time": call.start_time,
                             "end_time": call.end_time,
                             "duration": call.duration,
                             "token_usage": call.token_usage,
                             "cost": call.cost,
+                            "memory_used": call.memory_used,
                         }
                         for call in trace.llm_calls
+                    ],
+                    "tool_calls": [
+                        {
+                            "id": call.id,
+                            "name": call.name,
+                            "input_parameters": call.input_parameters,
+                            "output": call.output,
+                            "start_time": call.start_time,
+                            "end_time": call.end_time,
+                            "duration": call.duration,
+                            "memory_used": call.memory_used,
+                            "network_calls": call.network_calls,
+                        }
+                        for call in trace.tool_calls
+                    ],
+                    "agent_calls": [
+                        {
+                            "id": call.id,
+                            "name": call.name,
+                            "start_time": call.start_time,
+                            "end_time": call.end_time,
+                            "llm_call_ids": call.llm_call_ids,
+                            "tool_call_ids": call.tool_call_ids,
+                            "user_interaction_ids": call.user_interaction_ids,
+                        }
+                        for call in trace.agent_calls
+                    ],
+                    "user_interactions": [
+                        {
+                            "id": interaction.id,
+                            "interaction_type": interaction.interaction_type,
+                            "content": interaction.content,
+                            "timestamp": interaction.timestamp,
+                        }
+                        for interaction in trace.user_interactions
                     ],
                     "errors": [
                         {
@@ -186,6 +230,21 @@ def get_trace(trace_id):
                         if trace.system_info
                         else None
                     ),
+                    "metrics": [
+                        {
+                            "id": metric.id,
+                            "metric_name": metric.metric_name,
+                            "score": metric.score,
+                            "reason": metric.reason,
+                            "result_detail": metric.result_detail,
+                            "config": metric.config,
+                            "start_time": metric.start_time,
+                            "end_time": metric.end_time,
+                            "duration": metric.duration,
+                            "timestamp": metric.timestamp,
+                        }
+                        for metric in trace.metrics
+                    ],
                 }
             )
     except SQLAlchemyError as e:
