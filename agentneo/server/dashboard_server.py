@@ -43,27 +43,6 @@ def add_header(response):
     return response
 
 
-@app.route("/", defaults={"path": ""})
-@app.route("/<path:path>")
-def serve_static(path):
-    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
-        return send_from_directory(app.static_folder, path)
-    else:
-        return send_from_directory(app.static_folder, "index.html")
-
-
-@app.route("/shutdown", methods=["POST"])
-def shutdown():
-    if request.remote_addr not in ["127.0.0.1", "::1"]:
-        abort(403)
-    func = request.environ.get("werkzeug.server.shutdown")
-    if func is None:
-        raise RuntimeError("Not running with the Werkzeug Server")
-    func()
-    logging.info("Dashboard server shutting down...")
-    return "Server shutting down..."
-
-
 @app.route("/api/projects", methods=["GET"])
 def get_projects():
     try:
@@ -200,6 +179,27 @@ def health_check():
 @app.route("/api/port")
 def get_port():
     return jsonify({"port": os.environ.get("AGENTNEO_DASHBOARD_PORT", "3000")})
+
+
+@app.route("/dashboard", defaults={"path": ""})
+@app.route("/<path:path>")
+def serve_static(path):
+    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, "index.html")
+
+
+@app.route("/shutdown", methods=["POST"])
+def shutdown():
+    if request.remote_addr not in ["127.0.0.1", "::1"]:
+        abort(403)
+    func = request.environ.get("werkzeug.server.shutdown")
+    if func is None:
+        raise RuntimeError("Not running with the Werkzeug Server")
+    func()
+    logging.info("Dashboard server shutting down...")
+    return "Server shutting down..."
 
 
 def main():

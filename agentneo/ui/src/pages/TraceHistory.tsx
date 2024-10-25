@@ -63,7 +63,7 @@ const TraceHistory: React.FC = () => {
   };
 
   const filteredTraces = traces.filter(trace =>
-    trace.id.toLowerCase().includes(searchTerm.toLowerCase())
+    String(trace.id).toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const totalPages = Math.ceil(filteredTraces.length / tracesPerPage);

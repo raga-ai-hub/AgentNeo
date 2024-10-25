@@ -351,10 +351,18 @@ export const TraceDetailsPanel: React.FC<TraceDetailsPanelProps> = ({
                 )}
 
                 <div className="space-y-2">
+                  <pre className="bg-gray-100 p-4 rounded-md overflow-auto text-sm">
+                    {JSON.stringify(traceData, null, 2)}
+                  </pre>
+                </div>
+
+
+
+                {/* <div className="space-y-2">
                   {traceData.components.map(component =>
                     renderComponent(component, 0, '')
                   )}
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
