@@ -12,12 +12,133 @@ import {
   Code,
   Cpu,
   CircleDollarSign,
-  Database
+  Database,
+  User,
+  Globe
 } from 'lucide-react';
+
+// Utility functions
+const utils = {
+  formatDuration: (duration) => {
+    if (typeof duration === 'string') return duration;
+    if (typeof duration === 'number') return `${duration.toFixed(3)}s`;
+    return 'N/A';
+  },
+
+  formatTime: (timestamp) => {
+    if (!timestamp) return 'N/A';
+    return new Date(timestamp).toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      fractionalSecondDigits: 3
+    });
+  },
+
+  parseJSON: (str) => {
+    try {
+      return JSON.parse(str);
+    } catch (e) {
+      return null;
+    }
+  }
+};
+
+const TimelineSegment = ({
+  call,
+  timelineStart,
+  timelineDuration,
+  depth,
+  isSelected,
+  onSelect
+}) => {
+  const startOffset = ((call.startTime - timelineStart) / timelineDuration) * 100;
+  const duration = ((call.endTime - call.startTime) / timelineDuration) * 100;
+
+  let color;
+  switch (call.type) {
+    case 'agent': color = 'violet'; break;
+    case 'llm': color = 'green'; break;
+    case 'tool': color = 'blue'; break;
+    case 'user': color = 'orange'; break;
+    case 'network': color = 'cyan'; break;
+    default: color = 'gray';
+  }
+
+  return (
+    <div
+      className={`
+        absolute h-6 group cursor-pointer
+        ${isSelected ? 'z-20' : 'z-10'}
+      `}
+      style={{
+        left: `${startOffset}%`,
+        width: `${duration}%`,
+        top: `${depth * 28}px`
+      }}
+      onClick={() => onSelect(call)}
+    >
+      {/* Start marker */}
+      <div className={`
+        absolute -left-1 top-1/2 w-2 h-2 rounded-full bg-${color}-600
+        transform -translate-y-1/2
+        ${isSelected ? 'ring-2 ring-offset-1 ring-blue-400' : ''}
+      `} />
+
+      {/* Main segment bar */}
+      <div className={`
+        h-2 bg-${color}-100 border border-${color}-600
+        relative top-1/2 transform -translate-y-1/2
+        ${isSelected ? 'ring-1 ring-blue-400' : ''}
+      `} />
+
+      {/* End marker */}
+      <div className={`
+        absolute -right-1 top-1/2 w-2 h-2 rounded-full bg-${color}-600
+        transform -translate-y-1/2
+        ${isSelected ? 'ring-2 ring-offset-1 ring-blue-400' : ''}
+      `} />
+
+      {/* Hover tooltip */}
+      <div className={`
+        absolute -top-6 left-0 p-1 rounded bg-gray-800 text-white text-xs
+        whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-30
+      `}>
+        {call.name || `${call.type} ${call.id}`} ({utils.formatDuration(call.duration)})
+      </div>
+    </div>
+  );
+};
 
 const TraceDetailsPanel = ({ isOpen, onClose, traceData }) => {
   const [expandedSections, setExpandedSections] = useState(new Set());
   const [selectedSection, setSelectedSection] = useState(null);
+
+  const formatDuration = (duration) => {
+    if (typeof duration === 'string') return duration;
+    if (typeof duration === 'number') return `${duration.toFixed(3)}s`;
+    return 'N/A';
+  };
+
+  const formatTime = (timestamp) => {
+    if (!timestamp) return 'N/A';
+    return new Date(timestamp).toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      fractionalSecondDigits: 3
+    });
+  };
+
+  const parseJSON = (str) => {
+    try {
+      return JSON.parse(str);
+    } catch (e) {
+      return null;
+    }
+  };
 
   const chronologicalCalls = useMemo(() => {
     if (!traceData) return [];
@@ -34,6 +155,7 @@ const TraceDetailsPanel = ({ isOpen, onClose, traceData }) => {
         depth
       });
 
+      // Process nested calls
       if (call.llm_calls) {
         call.llm_calls.forEach(llmCall =>
           processCall(llmCall, 'llm', call.id, depth + 1)
@@ -61,88 +183,129 @@ const TraceDetailsPanel = ({ isOpen, onClose, traceData }) => {
     return endTime - timelineStart;
   }, [chronologicalCalls, timelineStart]);
 
-  const formatDuration = (duration) => {
-    if (typeof duration === 'string') return duration;
-    if (typeof duration === 'number') return `${duration.toFixed(3)}s`;
-    return 'N/A';
-  };
-
-  const formatTime = (timestamp) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString('en-US', {
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      fractionalSecondDigits: 3
-    });
-  };
-
-  const parseJSON = (str) => {
-    try {
-      return JSON.parse(str);
-    } catch (e) {
-      return null;
-    }
-  };
-
   const getTypeIcon = (type) => {
     switch (type) {
       case 'agent': return { icon: Bot, color: 'text-violet-600', bgColor: 'bg-violet-100' };
       case 'llm': return { icon: MessageSquare, color: 'text-green-600', bgColor: 'bg-green-100' };
       case 'tool': return { icon: Wrench, color: 'text-blue-600', bgColor: 'bg-blue-100' };
+      case 'user': return { icon: User, color: 'text-orange-600', bgColor: 'bg-orange-100' };
+      case 'network': return { icon: Globe, color: 'text-cyan-600', bgColor: 'bg-cyan-100' };
       default: return { icon: Code, color: 'text-gray-600', bgColor: 'bg-gray-100' };
     }
   };
 
-  const renderTimelineBar = (call) => {
-    const startOffset = ((call.startTime - timelineStart) / timelineDuration) * 100;
-    const duration = ((call.endTime - call.startTime) / timelineDuration) * 100;
-    const { color } = getTypeIcon(call.type);
-    const isSelected = selectedSection?.id === `${call.type}-${call.id}`;
-
-    return (
-      <div
-        className={`
-          absolute h-2 rounded transition-all duration-200
-          ${color.replace('text', 'bg')}
-          ${isSelected ? 'ring-2 ring-offset-2 ring-blue-400 z-10' : ''}
-        `}
-        style={{
-          left: `${startOffset}%`,
-          width: `${duration}%`,
-          top: `${call.depth * 20}px`,
-          opacity: isSelected ? 1 : 0.7
-        }}
-      />
-    );
-  };
-
-  const renderDetailGrid = (items) => (
-    <div className="grid grid-cols-2 gap-2">
-      {items.map(([label, value, icon]) =>
-        value && (
-          <div key={label} className="bg-gray-50 p-2 rounded flex items-start gap-2">
-            {icon && <div className="mt-0.5">{icon}</div>}
-            <div>
-              <div className="text-xs text-gray-500">{label}</div>
-              <div className="text-sm font-medium">{value}</div>
-            </div>
-          </div>
-        )
-      )}
-    </div>
-  );
-
-  const renderCall = (call) => {
-    const callId = `${call.type}-${call.id}`;
-    const isExpanded = expandedSections.has(callId);
-    const isSelected = selectedSection?.id === callId;
-    const { icon: Icon, color, bgColor } = getTypeIcon(call.type);
-
+  const renderCallDetails = (call) => {
     const tokenUsage = parseJSON(call.token_usage);
     const cost = parseJSON(call.cost);
     const inputParams = parseJSON(call.input_parameters);
+
+    return (
+      <div className="p-4 border-t space-y-4">
+        <div className="grid grid-cols-2 gap-2">
+          {call.model && (
+            <div className="bg-gray-50 p-2 rounded flex items-start gap-2">
+              <Cpu className="w-4 h-4 text-gray-400 mt-0.5" />
+              <div>
+                <div className="text-xs text-gray-500">Model</div>
+                <div className="text-sm font-medium">{call.model}</div>
+              </div>
+            </div>
+          )}
+          {typeof call.memory_used === 'number' && (
+            <div className="bg-gray-50 p-2 rounded flex items-start gap-2">
+              <Database className="w-4 h-4 text-gray-400 mt-0.5" />
+              <div>
+                <div className="text-xs text-gray-500">Memory Used</div>
+                <div className="text-sm font-medium">
+                  {(call.memory_used / 1024 / 1024).toFixed(2)} MB
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {tokenUsage && (
+          <div className="bg-gray-50 p-3 rounded">
+            <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-gray-400" />
+              Token Usage
+            </h4>
+            <div className="grid grid-cols-3 gap-2">
+              {Object.entries(tokenUsage).map(([key, value]) => (
+                <div key={key} className="bg-white p-2 rounded border">
+                  <div className="text-xs text-gray-500">{key}</div>
+                  <div className="text-sm font-medium">{value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {cost && (
+          <div className="bg-gray-50 p-3 rounded">
+            <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+              <CircleDollarSign className="w-4 h-4 text-gray-400" />
+              Cost
+            </h4>
+            <div className="grid grid-cols-3 gap-2">
+              {Object.entries(cost).map(([key, value]) => (
+                <div key={key} className="bg-white p-2 rounded border">
+                  <div className="text-xs text-gray-500">{key}</div>
+                  <div className="text-sm font-medium">${Number(value).toFixed(6)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {inputParams && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1 text-sm text-gray-500">
+              <ArrowDownCircle className="w-4 h-4" />
+              <span>Input Parameters</span>
+            </div>
+            <pre className="bg-gray-800 text-gray-100 rounded-md p-3 text-xs overflow-auto">
+              <code>{JSON.stringify(inputParams, null, 2)}</code>
+            </pre>
+          </div>
+        )}
+
+        {call.input_prompt && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1 text-sm text-gray-500">
+              <ArrowDownCircle className="w-4 h-4" />
+              <span>Input</span>
+            </div>
+            <pre className="bg-gray-800 text-gray-100 rounded-md p-3 text-xs overflow-auto">
+              <code>{typeof call.input_prompt === 'string'
+                ? call.input_prompt
+                : JSON.stringify(call.input_prompt, null, 2)}</code>
+            </pre>
+          </div>
+        )}
+
+        {call.output && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1 text-sm text-gray-500">
+              <ArrowUpCircle className="w-4 h-4" />
+              <span>Output</span>
+            </div>
+            <pre className="bg-gray-800 text-gray-100 rounded-md p-3 text-xs overflow-auto">
+              <code>{typeof call.output === 'string'
+                ? call.output
+                : JSON.stringify(call.output, null, 2)}</code>
+            </pre>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderCall = (call) => {
+    const { icon: Icon, color, bgColor } = getTypeIcon(call.type);
+    const callId = `${call.type}-${call.id}`;
+    const isExpanded = expandedSections.has(callId);
+    const isSelected = selectedSection?.id === callId;
 
     return (
       <div key={callId} style={{ marginLeft: `${call.depth * 16}px` }}>
@@ -155,7 +318,7 @@ const TraceDetailsPanel = ({ isOpen, onClose, traceData }) => {
           <div
             className="flex items-center gap-2 p-3 cursor-pointer hover:bg-gray-50"
             onClick={() => {
-              setSelectedSection(isSelected ? null : { ...call, id: callId });
+              setSelectedSection(isSelected ? null : call);
               setExpandedSections(prev => {
                 const next = new Set(prev);
                 if (next.has(callId)) {
@@ -167,9 +330,7 @@ const TraceDetailsPanel = ({ isOpen, onClose, traceData }) => {
               });
             }}
           >
-            <div className="flex items-center gap-2">
-              <Icon className={`w-4 h-4 ${color}`} />
-            </div>
+            <Icon className={`w-4 h-4 ${color}`} />
             <div className="flex-1">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -182,105 +343,22 @@ const TraceDetailsPanel = ({ isOpen, onClose, traceData }) => {
                 </div>
                 <span className="text-sm text-gray-500">{formatDuration(call.duration)}</span>
               </div>
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                <Clock className="w-3 h-3" />
                 {formatTime(call.startTime)}
               </div>
             </div>
           </div>
 
-          {isSelected && (
-            <div className="p-4 border-t space-y-4">
-              {renderDetailGrid([
-                ['Start Time', formatTime(call.startTime), <Clock className="w-4 h-4 text-gray-400" />],
-                ['End Time', formatTime(call.endTime), <Clock className="w-4 h-4 text-gray-400" />],
-                ['Model', call.model, <Cpu className="w-4 h-4 text-gray-400" />],
-                ['Memory Used', call.memory_used ? `${(call.memory_used / 1024 / 1024).toFixed(2)} MB` : null,
-                  <Database className="w-4 h-4 text-gray-400" />]
-              ])}
-
-              {tokenUsage && (
-                <div className="bg-gray-50 p-3 rounded">
-                  <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4 text-gray-400" />
-                    Token Usage
-                  </h4>
-                  <div className="grid grid-cols-3 gap-2">
-                    {Object.entries(tokenUsage).map(([key, value]) => (
-                      <div key={key} className="bg-white p-2 rounded border">
-                        <div className="text-xs text-gray-500">{key}</div>
-                        <div className="text-sm font-medium">{value}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {cost && (
-                <div className="bg-gray-50 p-3 rounded">
-                  <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
-                    <CircleDollarSign className="w-4 h-4 text-gray-400" />
-                    Cost
-                  </h4>
-                  <div className="grid grid-cols-3 gap-2">
-                    {Object.entries(cost).map(([key, value]) => (
-                      <div key={key} className="bg-white p-2 rounded border">
-                        <div className="text-xs text-gray-500">{key}</div>
-                        <div className="text-sm font-medium">${Number(value).toFixed(6)}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {inputParams && (
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1 text-sm text-gray-500">
-                    <ArrowDownCircle className="w-4 h-4" />
-                    <span>Input Parameters</span>
-                  </div>
-                  <pre className="bg-gray-800 text-gray-100 rounded-md p-3 text-xs overflow-auto">
-                    <code>{JSON.stringify(inputParams, null, 2)}</code>
-                  </pre>
-                </div>
-              )}
-
-              {call.input_prompt && (
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1 text-sm text-gray-500">
-                    <ArrowDownCircle className="w-4 h-4" />
-                    <span>Input</span>
-                  </div>
-                  <pre className="bg-gray-800 text-gray-100 rounded-md p-3 text-xs overflow-auto">
-                    <code>{call.input_prompt}</code>
-                  </pre>
-                </div>
-              )}
-
-              {call.output && (
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1 text-sm text-gray-500">
-                    <ArrowUpCircle className="w-4 h-4" />
-                    <span>Output</span>
-                  </div>
-                  <pre className="bg-gray-800 text-gray-100 rounded-md p-3 text-xs overflow-auto">
-                    <code>{typeof call.output === 'string' ? call.output : JSON.stringify(call.output, null, 2)}</code>
-                  </pre>
-                </div>
-              )}
-            </div>
-          )}
+          {isSelected && renderCallDetails(call)}
         </div>
       </div>
     );
   };
 
   return (
-    <div
-      className={`
-        fixed inset-y-0 right-0 w-[600px] bg-white shadow-xl transform transition-transform
-        ${isOpen ? 'translate-x-0' : 'translate-x-full'}
-      `}
-    >
+    <div className={`fixed inset-y-0 right-0 w-[600px] bg-white shadow-xl transform transition-transform
+      ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
       <div className="h-full flex flex-col">
         <div className="p-4 border-b flex items-center justify-between">
           <div>
@@ -323,17 +401,34 @@ const TraceDetailsPanel = ({ isOpen, onClose, traceData }) => {
               </div>
 
               <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="text-sm font-medium mb-2">Timeline</div>
-                <div className="relative h-24 bg-gray-100 rounded">
-                  {chronologicalCalls.map(call => renderTimelineBar(call))}
-                  <div className="absolute bottom-0 left-0 text-xs text-gray-500">
-                    {formatTime(timelineStart)}
-                  </div>
-                  <div className="absolute bottom-0 right-0 text-xs text-gray-500">
-                    {formatTime(timelineStart + timelineDuration)}
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm font-medium">Timeline</div>
+                  <div className="text-xs text-gray-500">
+                    {formatTime(timelineStart)} - {formatTime(timelineStart + timelineDuration)}
                   </div>
                 </div>
-                <div className="mt-2 flex gap-4 text-xs text-gray-500">
+
+                <div
+                  className="relative bg-gray-100 rounded overflow-hidden"
+                  style={{
+                    height: `${Math.max(...chronologicalCalls.map(c => c.depth + 1)) * 28}px`,
+                    minHeight: '56px'
+                  }}
+                >
+                  {chronologicalCalls.map(call => (
+                    <TimelineSegment
+                      key={`${call.type}-${call.id}`}
+                      call={call}
+                      timelineStart={timelineStart}
+                      timelineDuration={timelineDuration}
+                      depth={call.depth}
+                      isSelected={selectedSection?.id === call.id}
+                      onSelect={setSelectedSection}
+                    />
+                  ))}
+                </div>
+
+                <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500">
                   <div className="flex items-center gap-1">
                     <div className="w-3 h-3 rounded bg-violet-600" />
                     Agent Calls
@@ -346,6 +441,14 @@ const TraceDetailsPanel = ({ isOpen, onClose, traceData }) => {
                     <div className="w-3 h-3 rounded bg-blue-600" />
                     Tool Calls
                   </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 rounded bg-orange-600" />
+                    User Interactions
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 rounded bg-cyan-600" />
+                    Network Calls
+                  </div>
                 </div>
               </div>
             </div>
@@ -355,7 +458,8 @@ const TraceDetailsPanel = ({ isOpen, onClose, traceData }) => {
                 {chronologicalCalls.map((call, index) => (
                   <React.Fragment key={`${call.type}-${call.id}`}>
                     {index === 0 ||
-                      formatTime(call.startTime).split(':')[1] !== formatTime(chronologicalCalls[index - 1].startTime).split(':')[1] ? (
+                      formatTime(call.startTime).split(':')[1] !==
+                      formatTime(chronologicalCalls[index - 1].startTime).split(':')[1] ? (
                       <div className="text-xs text-gray-400 mt-4 mb-2 sticky top-0 bg-white py-1">
                         {formatTime(call.startTime)}
                       </div>
