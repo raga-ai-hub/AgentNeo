@@ -14,14 +14,17 @@ import {
   CircleDollarSign,
   Database,
   User,
-  Globe
+  AlertTriangle,
 } from 'lucide-react';
 
-// Utility functions
 const utils = {
   formatDuration: (duration) => {
     if (typeof duration === 'string') return duration;
-    if (typeof duration === 'number') return `${duration.toFixed(3)}s`;
+    if (typeof duration === 'number') {
+      // Convert to seconds if in milliseconds
+      const seconds = duration > 1000 ? duration / 1000 : duration;
+      return `${seconds.toFixed(3)}s`;
+    }
     return 'N/A';
   },
 
@@ -45,6 +48,42 @@ const utils = {
   }
 };
 
+const CallDetailsSection = ({ title, children }) => (
+  <div className="bg-gray-50 p-3 rounded mb-4">
+    <h4 className="text-sm font-medium mb-2">{title}</h4>
+    <div className="space-y-2">
+      {children}
+    </div>
+  </div>
+);
+
+const UserInteractionMessage = ({ interaction, type }) => {
+  const isUser = type === 'input';
+
+  return (
+    <div className={`flex gap-3 mb-3 ${isUser ? 'justify-start' : 'justify-end'}`}>
+      <div className={`
+        max-w-[80%] rounded-lg p-3
+        ${isUser ? 'bg-gray-100' : 'bg-blue-50'}
+      `}>
+        <div className="flex items-center gap-2 mb-1">
+          {isUser ? (
+            <User className="w-4 h-4 text-gray-600" />
+          ) : (
+            <Bot className="w-4 h-4 text-blue-600" />
+          )}
+          <span className="text-xs text-gray-500">
+            {utils.formatTime(interaction.timestamp)}
+          </span>
+        </div>
+        <div className="text-sm whitespace-pre-wrap">
+          {interaction.content}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const TimelineSegment = ({
   call,
   timelineStart,
@@ -53,16 +92,14 @@ const TimelineSegment = ({
   isSelected,
   onSelect
 }) => {
-  const startOffset = ((call.startTime - timelineStart) / timelineDuration) * 100;
-  const duration = ((call.endTime - call.startTime) / timelineDuration) * 100;
+  const startOffset = (((call.startTime - timelineStart) / 1000) / timelineDuration) * 100;
+  const duration = (call.duration / timelineDuration) * 100;
 
   let color;
   switch (call.type) {
     case 'agent': color = 'violet'; break;
     case 'llm': color = 'green'; break;
     case 'tool': color = 'blue'; break;
-    case 'user': color = 'orange'; break;
-    case 'network': color = 'cyan'; break;
     default: color = 'gray';
   }
 
@@ -79,28 +116,24 @@ const TimelineSegment = ({
       }}
       onClick={() => onSelect(call)}
     >
-      {/* Start marker */}
       <div className={`
         absolute -left-1 top-1/2 w-2 h-2 rounded-full bg-${color}-600
         transform -translate-y-1/2
         ${isSelected ? 'ring-2 ring-offset-1 ring-blue-400' : ''}
       `} />
 
-      {/* Main segment bar */}
       <div className={`
         h-2 bg-${color}-100 border border-${color}-600
         relative top-1/2 transform -translate-y-1/2
         ${isSelected ? 'ring-1 ring-blue-400' : ''}
       `} />
 
-      {/* End marker */}
       <div className={`
         absolute -right-1 top-1/2 w-2 h-2 rounded-full bg-${color}-600
         transform -translate-y-1/2
         ${isSelected ? 'ring-2 ring-offset-1 ring-blue-400' : ''}
       `} />
 
-      {/* Hover tooltip */}
       <div className={`
         absolute -top-6 left-0 p-1 rounded bg-gray-800 text-white text-xs
         whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-30
@@ -115,42 +148,23 @@ const TraceDetailsPanel = ({ isOpen, onClose, traceData }) => {
   const [expandedSections, setExpandedSections] = useState(new Set());
   const [selectedSection, setSelectedSection] = useState(null);
 
-  const formatDuration = (duration) => {
-    if (typeof duration === 'string') return duration;
-    if (typeof duration === 'number') return `${duration.toFixed(3)}s`;
-    return 'N/A';
-  };
-
-  const formatTime = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    return new Date(timestamp).toLocaleTimeString('en-US', {
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      fractionalSecondDigits: 3
-    });
-  };
-
-  const parseJSON = (str) => {
-    try {
-      return JSON.parse(str);
-    } catch (e) {
-      return null;
-    }
-  };
-
   const chronologicalCalls = useMemo(() => {
     if (!traceData) return [];
 
     const allCalls = [];
     const processCall = (call, type, parentId = null, depth = 0) => {
       const startTime = new Date(call.start_time).getTime();
+      const endTime = new Date(call.end_time).getTime();
+
+      // Convert duration to seconds
+      const duration = (endTime - startTime) / 1000;
+
       allCalls.push({
         ...call,
         type,
         startTime,
-        endTime: new Date(call.end_time).getTime(),
+        endTime,
+        duration,
         parentId,
         depth
       });
@@ -180,25 +194,33 @@ const TraceDetailsPanel = ({ isOpen, onClose, traceData }) => {
   const timelineDuration = useMemo(() => {
     if (chronologicalCalls.length === 0) return 0;
     const endTime = Math.max(...chronologicalCalls.map(call => call.endTime));
-    return endTime - timelineStart;
+    return (endTime - timelineStart) / 1000; // Convert to seconds
   }, [chronologicalCalls, timelineStart]);
 
-  const getTypeIcon = (type) => {
-    switch (type) {
-      case 'agent': return { icon: Bot, color: 'text-violet-600', bgColor: 'bg-violet-100' };
-      case 'llm': return { icon: MessageSquare, color: 'text-green-600', bgColor: 'bg-green-100' };
-      case 'tool': return { icon: Wrench, color: 'text-blue-600', bgColor: 'bg-blue-100' };
-      case 'user': return { icon: User, color: 'text-orange-600', bgColor: 'bg-orange-100' };
-      case 'network': return { icon: Globe, color: 'text-cyan-600', bgColor: 'bg-cyan-100' };
-      default: return { icon: Code, color: 'text-gray-600', bgColor: 'bg-gray-100' };
-    }
+  const renderErrors = (errors) => {
+    if (!errors || errors.length === 0) return null;
+
+    return (
+      <CallDetailsSection title={
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-red-500" />
+          Errors
+        </div>
+      }>
+        {errors.map((error, index) => (
+          <div key={index} className="bg-red-50 border border-red-200 rounded p-2">
+            <div className="text-sm font-medium text-red-700">{error.error_type}</div>
+            <div className="text-sm text-red-600">{error.error_message}</div>
+            <div className="text-xs text-red-500 mt-1">
+              {new Date(error.timestamp).toLocaleString()}
+            </div>
+          </div>
+        ))}
+      </CallDetailsSection>
+    );
   };
 
   const renderCallDetails = (call) => {
-    const tokenUsage = parseJSON(call.token_usage);
-    const cost = parseJSON(call.cost);
-    const inputParams = parseJSON(call.input_parameters);
-
     return (
       <div className="p-4 border-t space-y-4">
         <div className="grid grid-cols-2 gap-2">
@@ -224,88 +246,132 @@ const TraceDetailsPanel = ({ isOpen, onClose, traceData }) => {
           )}
         </div>
 
-        {tokenUsage && (
-          <div className="bg-gray-50 p-3 rounded">
-            <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+        {/* User Interactions */}
+        {call.user_interactions && call.user_interactions.length > 0 && (
+          <CallDetailsSection title={
+            <div className="flex items-center gap-2">
+              <User className="w-4 h-4 text-gray-400" />
+              Conversation
+            </div>
+          }>
+            <div className="space-y-2">
+              {call.user_interactions.map((interaction, index) => (
+                <UserInteractionMessage
+                  key={index}
+                  interaction={interaction}
+                  type={interaction.interaction_type.toLowerCase()}
+                />
+              ))}
+            </div>
+          </CallDetailsSection>
+        )}
+
+        {/* Input/Output */}
+        {(call.input_prompt || call.input_parameters) && (
+          <CallDetailsSection title={
+            <div className="flex items-center gap-2">
+              <ArrowDownCircle className="w-4 h-4 text-gray-400" />
+              Input
+            </div>
+          }>
+            <div className="bg-gray-800 text-gray-100 rounded-md p-3 text-xs overflow-auto">
+              {call.input_prompt && (
+                <div className="mb-2">
+                  <div className="text-gray-400 mb-1">Prompt:</div>
+                  <pre className="whitespace-pre-wrap">
+                    {typeof call.input_prompt === 'string'
+                      ? call.input_prompt
+                      : JSON.stringify(call.input_prompt, null, 2)}
+                  </pre>
+                </div>
+              )}
+              {call.input_parameters && (
+                <div>
+                  <div className="text-gray-400 mb-1">Parameters:</div>
+                  <pre className="whitespace-pre-wrap">
+                    {JSON.stringify(utils.parseJSON(call.input_parameters), null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          </CallDetailsSection>
+        )}
+
+        {call.output && (
+          <CallDetailsSection title={
+            <div className="flex items-center gap-2">
+              <ArrowUpCircle className="w-4 h-4 text-gray-400" />
+              Output
+            </div>
+          }>
+            <div className="bg-gray-800 text-gray-100 rounded-md p-3 text-xs overflow-auto">
+              <pre className="whitespace-pre-wrap">
+                {typeof call.output === 'string'
+                  ? call.output
+                  : JSON.stringify(call.output, null, 2)}
+              </pre>
+            </div>
+          </CallDetailsSection>
+        )}
+
+        {/* Token Usage */}
+        {call.token_usage && (
+          <CallDetailsSection title={
+            <div className="flex items-center gap-2">
               <MessageSquare className="w-4 h-4 text-gray-400" />
               Token Usage
-            </h4>
+            </div>
+          }>
             <div className="grid grid-cols-3 gap-2">
-              {Object.entries(tokenUsage).map(([key, value]) => (
+              {Object.entries(utils.parseJSON(call.token_usage) || {}).map(([key, value]) => (
                 <div key={key} className="bg-white p-2 rounded border">
                   <div className="text-xs text-gray-500">{key}</div>
                   <div className="text-sm font-medium">{value}</div>
                 </div>
               ))}
             </div>
-          </div>
+          </CallDetailsSection>
         )}
 
-        {cost && (
-          <div className="bg-gray-50 p-3 rounded">
-            <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+        {/* Cost */}
+        {call.cost && (
+          <CallDetailsSection title={
+            <div className="flex items-center gap-2">
               <CircleDollarSign className="w-4 h-4 text-gray-400" />
               Cost
-            </h4>
+            </div>
+          }>
             <div className="grid grid-cols-3 gap-2">
-              {Object.entries(cost).map(([key, value]) => (
+              {Object.entries(utils.parseJSON(call.cost) || {}).map(([key, value]) => (
                 <div key={key} className="bg-white p-2 rounded border">
                   <div className="text-xs text-gray-500">{key}</div>
                   <div className="text-sm font-medium">${Number(value).toFixed(6)}</div>
                 </div>
               ))}
             </div>
-          </div>
+          </CallDetailsSection>
         )}
 
-        {inputParams && (
-          <div className="space-y-1">
-            <div className="flex items-center gap-1 text-sm text-gray-500">
-              <ArrowDownCircle className="w-4 h-4" />
-              <span>Input Parameters</span>
-            </div>
-            <pre className="bg-gray-800 text-gray-100 rounded-md p-3 text-xs overflow-auto">
-              <code>{JSON.stringify(inputParams, null, 2)}</code>
-            </pre>
-          </div>
-        )}
-
-        {call.input_prompt && (
-          <div className="space-y-1">
-            <div className="flex items-center gap-1 text-sm text-gray-500">
-              <ArrowDownCircle className="w-4 h-4" />
-              <span>Input</span>
-            </div>
-            <pre className="bg-gray-800 text-gray-100 rounded-md p-3 text-xs overflow-auto">
-              <code>{typeof call.input_prompt === 'string'
-                ? call.input_prompt
-                : JSON.stringify(call.input_prompt, null, 2)}</code>
-            </pre>
-          </div>
-        )}
-
-        {call.output && (
-          <div className="space-y-1">
-            <div className="flex items-center gap-1 text-sm text-gray-500">
-              <ArrowUpCircle className="w-4 h-4" />
-              <span>Output</span>
-            </div>
-            <pre className="bg-gray-800 text-gray-100 rounded-md p-3 text-xs overflow-auto">
-              <code>{typeof call.output === 'string'
-                ? call.output
-                : JSON.stringify(call.output, null, 2)}</code>
-            </pre>
-          </div>
-        )}
+        {/* Errors */}
+        {renderErrors(call.errors)}
       </div>
     );
+  };
+
+  const getTypeIcon = (type) => {
+    switch (type) {
+      case 'agent': return { icon: Bot, color: 'text-violet-600', bgColor: 'bg-violet-100' };
+      case 'llm': return { icon: MessageSquare, color: 'text-green-600', bgColor: 'bg-green-100' };
+      case 'tool': return { icon: Wrench, color: 'text-blue-600', bgColor: 'bg-blue-100' };
+      default: return { icon: Code, color: 'text-gray-600', bgColor: 'bg-gray-100' };
+    }
   };
 
   const renderCall = (call) => {
     const { icon: Icon, color, bgColor } = getTypeIcon(call.type);
     const callId = `${call.type}-${call.id}`;
     const isExpanded = expandedSections.has(callId);
-    const isSelected = selectedSection?.id === callId;
+    const isSelected = selectedSection?.id === call.id;
 
     return (
       <div key={callId} style={{ marginLeft: `${call.depth * 16}px` }}>
@@ -341,11 +407,11 @@ const TraceDetailsPanel = ({ isOpen, onClose, traceData }) => {
                     {call.type}
                   </span>
                 </div>
-                <span className="text-sm text-gray-500">{formatDuration(call.duration)}</span>
+                <span className="text-sm text-gray-500">{utils.formatDuration(call.duration)}</span>
               </div>
               <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
                 <Clock className="w-3 h-3" />
-                {formatTime(call.startTime)}
+                {utils.formatTime(call.startTime)}
               </div>
             </div>
           </div>
@@ -360,6 +426,7 @@ const TraceDetailsPanel = ({ isOpen, onClose, traceData }) => {
     <div className={`fixed inset-y-0 right-0 w-[600px] bg-white shadow-xl transform transition-transform
       ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
       <div className="h-full flex flex-col">
+        {/* Header */}
         <div className="p-4 border-b flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -382,13 +449,14 @@ const TraceDetailsPanel = ({ isOpen, onClose, traceData }) => {
 
         {traceData && (
           <>
+            {/* Summary Section */}
             <div className="p-4 space-y-4 border-b">
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center gap-2 bg-white p-3 rounded-lg border">
                   <Clock className="w-5 h-5 text-blue-600" />
                   <div>
                     <div className="text-sm text-gray-500">Duration</div>
-                    <div className="font-medium">{formatDuration(traceData.duration)}</div>
+                    <div className="font-medium">{utils.formatDuration(traceData.duration)}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 bg-white p-3 rounded-lg border">
@@ -400,11 +468,12 @@ const TraceDetailsPanel = ({ isOpen, onClose, traceData }) => {
                 </div>
               </div>
 
+              {/* Timeline */}
               <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
                   <div className="text-sm font-medium">Timeline</div>
                   <div className="text-xs text-gray-500">
-                    {formatTime(timelineStart)} - {formatTime(timelineStart + timelineDuration)}
+                    {utils.formatTime(timelineStart)} - {utils.formatTime(timelineStart + timelineDuration * 1000)}
                   </div>
                 </div>
 
@@ -428,6 +497,7 @@ const TraceDetailsPanel = ({ isOpen, onClose, traceData }) => {
                   ))}
                 </div>
 
+                {/* Timeline Legend */}
                 <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500">
                   <div className="flex items-center gap-1">
                     <div className="w-3 h-3 rounded bg-violet-600" />
@@ -441,27 +511,20 @@ const TraceDetailsPanel = ({ isOpen, onClose, traceData }) => {
                     <div className="w-3 h-3 rounded bg-blue-600" />
                     Tool Calls
                   </div>
-                  <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 rounded bg-orange-600" />
-                    User Interactions
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 rounded bg-cyan-600" />
-                    Network Calls
-                  </div>
                 </div>
               </div>
             </div>
 
+            {/* Call List */}
             <div className="flex-1 overflow-y-auto p-4">
               <div className="space-y-1">
                 {chronologicalCalls.map((call, index) => (
                   <React.Fragment key={`${call.type}-${call.id}`}>
                     {index === 0 ||
-                      formatTime(call.startTime).split(':')[1] !==
-                      formatTime(chronologicalCalls[index - 1].startTime).split(':')[1] ? (
+                      utils.formatTime(call.startTime).split(':')[1] !==
+                      utils.formatTime(chronologicalCalls[index - 1].startTime).split(':')[1] ? (
                       <div className="text-xs text-gray-400 mt-4 mb-2 sticky top-0 bg-white py-1">
-                        {formatTime(call.startTime)}
+                        {utils.formatTime(call.startTime)}
                       </div>
                     ) : null}
                     {renderCall(call)}
