@@ -325,7 +325,7 @@ const TraceDetailsPanel = ({ isOpen, onClose, traceData }) => {
               {Object.entries(utils.parseJSON(call.token_usage) || {}).map(([key, value]) => (
                 <div key={key} className="bg-white p-2 rounded border">
                   <div className="text-xs text-gray-500">{key}</div>
-                  <div className="text-sm font-medium">{value}</div>
+                  <div className="text-sm font-medium">{String(value)}</div>
                 </div>
               ))}
             </div>

@@ -346,7 +346,7 @@ def get_port():
     return jsonify({"port": os.environ.get("AGENTNEO_DASHBOARD_PORT", "3000")})
 
 
-@app.route("/dashboard", defaults={"path": ""})
+@app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
 def serve_static(path):
     if path != "" and os.path.exists(os.path.join(app.static_folder, path)):

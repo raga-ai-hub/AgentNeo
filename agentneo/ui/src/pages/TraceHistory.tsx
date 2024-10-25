@@ -31,10 +31,10 @@ const TraceHistory: React.FC = () => {
           const fetchedTraces = await fetchTraces(selectedProject);
           setTraces(fetchedTraces.map(trace => ({
             ...trace,
-            llm_call_count: trace.total_llm_calls,
-            tool_call_count: trace.total_tool_calls,
-            agent_call_count: trace.total_agent_calls,
-            error_count: trace.total_errors
+            total_llm_calls: trace.total_llm_calls,
+            total_tool_calls: trace.total_tool_calls,
+            total_agent_calls: trace.total_agent_calls,
+            total_errors: trace.total_errors
           })));
         } catch (error) {
           console.error('Error loading traces:', error);
@@ -168,16 +168,16 @@ const TraceHistory: React.FC = () => {
                       {trace.duration.toFixed(2)}s
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {trace.llm_call_count}
+                      {trace.total_llm_calls}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {trace.tool_call_count}
+                      {trace.total_tool_calls}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {trace.agent_call_count}
+                      {trace.total_agent_calls}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {trace.error_count}
+                      {trace.total_errors}
                     </td>
                   </tr>
                 ))
