@@ -56,7 +56,7 @@ const ErrorAnalysis: React.FC = () => {
       let errorCounts: Record<string, number> = {};
 
       for (const trace of traces) {
-        const traceResponse = await axios.get(`/api/traces/${trace.id}`);
+        const traceResponse = await axios.get(`/api/analysis_traces/${trace.id}`);
         const traceData = traceResponse.data;
 
         for (const error of traceData.errors) {

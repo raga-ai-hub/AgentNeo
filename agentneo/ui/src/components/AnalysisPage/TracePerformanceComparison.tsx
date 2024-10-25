@@ -39,7 +39,7 @@ const TracePerformanceComparison: React.FC = () => {
       const tracesData = response.data;
 
       const processedTraces = await Promise.all(tracesData.map(async (trace: any) => {
-        const traceResponse = await axios.get(`/api/traces/${trace.id}`);
+        const traceResponse = await axios.get(`/api/analysis_traces/${trace.id}`);
         const traceData = traceResponse.data;
 
         let totalTokens = 0;

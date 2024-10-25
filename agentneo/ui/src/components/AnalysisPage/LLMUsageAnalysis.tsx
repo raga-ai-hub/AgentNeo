@@ -101,7 +101,7 @@ const LLMUsageAnalysis: React.FC<LLMUsageProps> = ({ projectId }) => {
       let totalCalls = 0;
 
       for (const trace of traces) {
-        const traceResponse = await axios.get(`/api/traces/${trace.id}`);
+        const traceResponse = await axios.get(`/api/analysis_traces/${trace.id}`);
         const traceData = traceResponse.data;
         
         traceData.llm_calls.forEach((call: LLMCall) => {

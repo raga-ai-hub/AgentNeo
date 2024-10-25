@@ -38,7 +38,7 @@ const TimeAnalysis: React.FC = () => {
         const traces = tracesResponse.data;
 
         for (const trace of traces) {
-          const traceResponse = await axios.get(`/api/traces/${trace.id}`);
+          const traceResponse = await axios.get(`/api/analysis_traces/${trace.id}`);
           const traceData = traceResponse.data;
 
           // Sum up LLM call times

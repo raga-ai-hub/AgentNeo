@@ -47,7 +47,7 @@ const PerformanceMetrics: React.FC = () => {
 
       for (const trace of traces) {
         try {
-          const response = await axios.get(`/api/traces/${trace.id}`);
+          const response = await axios.get(`/api/analysis_traces/${trace.id}`);
           const traceData = response.data;
 
           totalLLMCalls += traceData.llm_calls.length;

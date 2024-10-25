@@ -65,7 +65,7 @@ const ToolPerformanceAnalysis: React.FC = () => {
       let totalNetworkCalls = 0;
 
       for (const trace of traces) {
-        const traceResponse = await axios.get(`/api/traces/${trace.id}`);
+        const traceResponse = await axios.get(`/api/analysis_traces/${trace.id}`);
         const traceData = traceResponse.data;
 
         for (const toolCall of traceData.tool_calls) {
