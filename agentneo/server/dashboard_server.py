@@ -15,7 +15,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import SQLAlchemyError
 
 from ..utils import get_db_path
-from ..data import ProjectInfoModel, TraceModel
+from ..data import ProjectInfoModel, TraceModel, AgentCallModel
 
 # Configure logging
 logging.basicConfig(
@@ -115,7 +115,21 @@ def get_trace(trace_id):
             trace = (
                 session.query(TraceModel)
                 .options(
+                    joinedload(TraceModel.agent_calls).joinedload(
+                        AgentCallModel.llm_calls
+                    ),
+                    joinedload(TraceModel.agent_calls).joinedload(
+                        AgentCallModel.tool_calls
+                    ),
+                    joinedload(TraceModel.agent_calls).joinedload(
+                        AgentCallModel.user_interactions
+                    ),
+                    joinedload(TraceModel.agent_calls).joinedload(
+                        AgentCallModel.errors
+                    ),
                     joinedload(TraceModel.llm_calls),
+                    joinedload(TraceModel.tool_calls),
+                    joinedload(TraceModel.user_interactions),
                     joinedload(TraceModel.errors),
                     joinedload(TraceModel.system_info),
                 )
@@ -123,6 +137,79 @@ def get_trace(trace_id):
             )
             if trace is None:
                 return jsonify({"error": "Trace not found"}), 404
+
+            def format_agent_call(agent_call):
+                return {
+                    "id": agent_call.id,
+                    "name": agent_call.name,
+                    "start_time": agent_call.start_time,
+                    "end_time": agent_call.end_time,
+                    "llm_calls": [
+                        format_llm_call(call) for call in agent_call.llm_calls
+                    ],
+                    "tool_calls": [
+                        format_tool_call(call) for call in agent_call.tool_calls
+                    ],
+                    "user_interactions": [
+                        format_user_interaction(ui)
+                        for ui in agent_call.user_interactions
+                    ],
+                    "errors": [format_error(error) for error in agent_call.errors],
+                }
+
+            def format_llm_call(call):
+                return {
+                    "id": call.id,
+                    "name": call.name,
+                    "model": call.model,
+                    "input_prompt": call.input_prompt,
+                    "output": call.output,
+                    "tool_call": call.tool_call,
+                    "start_time": call.start_time,
+                    "end_time": call.end_time,
+                    "duration": call.duration,
+                    "token_usage": call.token_usage,
+                    "cost": call.cost,
+                    "memory_used": call.memory_used,
+                    "errors": [format_error(error) for error in call.errors],
+                    "user_interactions": [
+                        format_user_interaction(ui) for ui in call.user_interactions
+                    ],
+                }
+
+            def format_tool_call(call):
+                return {
+                    "id": call.id,
+                    "name": call.name,
+                    "input_parameters": call.input_parameters,
+                    "output": call.output,
+                    "start_time": call.start_time,
+                    "end_time": call.end_time,
+                    "duration": call.duration,
+                    "memory_used": call.memory_used,
+                    "network_calls": call.network_calls,
+                    "errors": [format_error(error) for error in call.errors],
+                    "user_interactions": [
+                        format_user_interaction(ui) for ui in call.user_interactions
+                    ],
+                }
+
+            def format_user_interaction(ui):
+                return {
+                    "id": ui.id,
+                    "interaction_type": ui.interaction_type,
+                    "content": ui.content,
+                    "timestamp": ui.timestamp,
+                }
+
+            def format_error(error):
+                return {
+                    "id": error.id,
+                    "error_type": error.error_type,
+                    "error_message": error.error_message,
+                    "timestamp": error.timestamp,
+                }
+
             return jsonify(
                 {
                     "id": trace.id,
@@ -130,26 +217,30 @@ def get_trace(trace_id):
                     "start_time": trace.start_time,
                     "end_time": trace.end_time,
                     "duration": trace.duration,
+                    "agent_calls": [
+                        format_agent_call(call) for call in trace.agent_calls
+                    ],
                     "llm_calls": [
-                        {
-                            "id": call.id,
-                            "name": call.name,
-                            "start_time": call.start_time,
-                            "end_time": call.end_time,
-                            "duration": call.duration,
-                            "token_usage": call.token_usage,
-                            "cost": call.cost,
-                        }
+                        format_llm_call(call)
                         for call in trace.llm_calls
+                        if call.agent_id is None
+                    ],
+                    "tool_calls": [
+                        format_tool_call(call)
+                        for call in trace.tool_calls
+                        if call.agent_id is None
+                    ],
+                    "user_interactions": [
+                        format_user_interaction(ui)
+                        for ui in trace.user_interactions
+                        if ui.agent_id is None
                     ],
                     "errors": [
-                        {
-                            "id": error.id,
-                            "error_type": error.error_type,
-                            "error_message": error.error_message,
-                            "timestamp": error.timestamp,
-                        }
+                        format_error(error)
                         for error in trace.errors
+                        if error.agent_id is None
+                        and error.tool_call_id is None
+                        and error.llm_call_id is None
                     ],
                     "system_info": (
                         {
