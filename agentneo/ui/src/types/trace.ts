@@ -6,11 +6,12 @@ export interface Project {
 export interface TraceHistoryItem {
     id: string;
     start_time: string;
+    end_time: string;
     duration: number;
-    llm_call_count: number;
-    tool_call_count: number;
-    agent_call_count: number;
-    error_count: number;
+    total_llm_calls: number;
+    total_tool_calls: number;
+    total_agent_calls: number;
+    total_errors: number;
 }
 
 export interface TraceComponent {

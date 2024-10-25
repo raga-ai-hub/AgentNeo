@@ -92,7 +92,18 @@ def get_project(project_id):
 def get_project_traces(project_id):
     try:
         with Session() as session:
-            traces = session.query(TraceModel).filter_by(project_id=project_id).all()
+            traces = (
+                session.query(TraceModel)
+                .filter_by(project_id=project_id)
+                .options(
+                    joinedload(TraceModel.agent_calls),
+                    joinedload(TraceModel.llm_calls),
+                    joinedload(TraceModel.tool_calls),
+                    joinedload(TraceModel.user_interactions),
+                    joinedload(TraceModel.errors),
+                )
+                .all()
+            )
             return jsonify(
                 [
                     {
@@ -100,6 +111,11 @@ def get_project_traces(project_id):
                         "start_time": t.start_time,
                         "end_time": t.end_time,
                         "duration": t.duration,
+                        "total_agent_calls": len(t.agent_calls),
+                        "total_llm_calls": len(t.llm_calls),
+                        "total_tool_calls": len(t.tool_calls),
+                        "total_user_interactions": len(t.user_interactions),
+                        "total_errors": len(t.errors),
                     }
                     for t in traces
                 ]
@@ -210,7 +226,7 @@ def get_trace(trace_id):
                     "timestamp": error.timestamp,
                 }
 
-            return jsonify(
+            response = jsonify(
                 {
                     "id": trace.id,
                     "project_id": trace.project_id,
@@ -256,8 +272,15 @@ def get_trace(trace_id):
                         if trace.system_info
                         else None
                     ),
+                    "total_agent_calls": len(trace.agent_calls),
+                    "total_llm_calls": len(trace.llm_calls),
+                    "total_tool_calls": len(trace.tool_calls),
+                    "total_user_interactions": len(trace.user_interactions),
+                    "total_errors": len(trace.errors),
                 }
             )
+
+            return response
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
 

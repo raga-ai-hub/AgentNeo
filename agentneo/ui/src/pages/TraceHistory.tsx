@@ -29,7 +29,13 @@ const TraceHistory: React.FC = () => {
         setIsLoading(true);
         try {
           const fetchedTraces = await fetchTraces(selectedProject);
-          setTraces(fetchedTraces);
+          setTraces(fetchedTraces.map(trace => ({
+            ...trace,
+            llm_call_count: trace.total_llm_calls,
+            tool_call_count: trace.total_tool_calls,
+            agent_call_count: trace.total_agent_calls,
+            error_count: trace.total_errors
+          })));
         } catch (error) {
           console.error('Error loading traces:', error);
         } finally {
@@ -39,6 +45,9 @@ const TraceHistory: React.FC = () => {
         setTraces([]);
       }
     };
+
+    console.log('Traces:', traces);
+
 
     loadTraces();
   }, [selectedProject]);
