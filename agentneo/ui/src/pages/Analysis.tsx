@@ -3,7 +3,7 @@ import PerformanceMetrics from '../components/AnalysisPage/PerformanceMetrics';
 import LLMUsageAnalysis from '../components/AnalysisPage/LLMUsageAnalysis';
 import ToolPerformanceAnalysis from '../components/AnalysisPage/ToolPerformanceAnalysis';
 import ErrorAnalysis from '../components/AnalysisPage/ErrorAnalysis';
-import CostOptimizationInsights from '../components/AnalysisPage/CostOptimizationInsights';
+import TimeAnalysis from '../components/AnalysisPage/TimeAnalysis';
 import TracePerformanceComparison from '../components/AnalysisPage/TracePerformanceComparison';
 import TopPerformanceCriteria from '../components/AnalysisPage/TopPerformanceCriteria';
 import Sidebar from '../components/Sidebar';
@@ -74,7 +74,7 @@ const Analysis: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <ErrorAnalysis />
-              <CostOptimizationInsights />
+              <TimeAnalysis />
             </div>
             <TracePerformanceComparison />
             <TopPerformanceCriteria />
