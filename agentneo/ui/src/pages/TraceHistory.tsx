@@ -29,15 +29,21 @@ const TraceHistory: React.FC = () => {
         setIsLoading(true);
         try {
           const fetchedTraces = await fetchTraces(selectedProject);
-          setTraces(fetchedTraces.map(trace => ({
-            ...trace,
-            total_llm_calls: trace.total_llm_calls,
-            total_tool_calls: trace.total_tool_calls,
-            total_agent_calls: trace.total_agent_calls,
-            total_errors: trace.total_errors
-          })));
+          if (Array.isArray(fetchedTraces)) {
+            setTraces(fetchedTraces.map(trace => ({
+              ...trace,
+              total_llm_calls: trace.total_llm_calls || 0,
+              total_tool_calls: trace.total_tool_calls || 0,
+              total_agent_calls: trace.total_agent_calls || 0,
+              total_errors: trace.total_errors || 0
+            })));
+          } else {
+            console.error('Fetched traces is not an array:', fetchedTraces);
+            setTraces([]);
+          }
         } catch (error) {
           console.error('Error loading traces:', error);
+          setTraces([]);
         } finally {
           setIsLoading(false);
         }
@@ -45,9 +51,6 @@ const TraceHistory: React.FC = () => {
         setTraces([]);
       }
     };
-
-    console.log('Traces:', traces);
-
 
     loadTraces();
   }, [selectedProject]);
@@ -57,6 +60,10 @@ const TraceHistory: React.FC = () => {
     setIsPanelOpen(true);
 
     try {
+      // const traceIdNumber = parseInt(traceId, 10);
+      // if (isNaN(traceIdNumber)) {
+      //   throw new Error('Invalid trace ID');
+      // }
       const traceData = await fetchTraceDetails(traceId);
       setSelectedTraceData(traceData);
     } catch (error) {

@@ -103,9 +103,7 @@ def launch_dashboard(port=3005):
         max_retries = 5
         for _ in range(max_retries):
             try:
-                response = requests.get(
-                    f"http://localhost:{free_port}/health", timeout=1
-                )
+                response = requests.get(f"http://localhost:{port}/health", timeout=1)
                 if response.status_code == 200:
                     logging.info(
                         f"Dashboard launched successfully. Access it at: http://localhost:{free_port}"
