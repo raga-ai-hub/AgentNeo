@@ -39,7 +39,7 @@ AgentNeo follows a modular architecture designed for flexibility and extensibili
        pass
    ```
 
-2. **Event Collection**
+2. **Trace Collection**
    - Capture function calls
    - Record timestamps
    - Collect metrics
