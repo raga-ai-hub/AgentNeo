@@ -50,7 +50,7 @@ def judge_tool_call_success(output: str) -> tuple[bool, str]:
     """
 
     response = litellm.completion(
-        model="gpt-4o-mini",
+        model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=150,
     )
@@ -73,7 +73,7 @@ def create_final_reason(success_rate: float, call_results: list) -> str:
     """
 
     response = litellm.completion(
-        model="gpt-4o-mini",
+        model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=200,
     )
