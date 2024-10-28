@@ -2,20 +2,33 @@
 
 import os
 import sys
+import time
 import logging
+import threading
 from flask import Flask, send_from_directory
 from waitress import serve
 from flask import request, abort
 from flask_cors import CORS
+from flask_caching import Cache
 
 from flask import jsonify
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.exc import SQLAlchemyError
 
 from ..utils import get_db_path
-from ..data import ProjectInfoModel, TraceModel, AgentCallModel
+from ..data import (
+    ProjectInfoModel,
+    TraceModel,
+    AgentCallModel,
+    LLMCallModel,
+    ToolCallModel,
+    UserInteractionModel,
+    SystemInfoModel,
+    ErrorModel,
+    MetricModel,
+)
 
 # Configure logging
 logging.basicConfig(
@@ -34,6 +47,11 @@ db_path = get_db_path()
 # Setup database connection
 engine = create_engine(db_path)
 Session = sessionmaker(bind=engine)
+
+
+cache = Cache(
+    app, config={"CACHE_TYPE": "simple", "CACHE_DEFAULT_TIMEOUT": 600}
+)  # Cache for 10 minutes
 
 
 # Remove X-Frame-Options header
@@ -247,30 +265,33 @@ def get_analysis_trace(trace_id):
     
     
 
+@cache.memoize(timeout=600)
 @app.route("/api/traces/<int:trace_id>", methods=["GET"])
 def get_trace(trace_id):
+    start_time = time.time()
     try:
         with Session() as session:
             trace = (
                 session.query(TraceModel)
                 .options(
-                    joinedload(TraceModel.agent_calls).joinedload(
+                    selectinload(TraceModel.agent_calls).selectinload(
                         AgentCallModel.llm_calls
                     ),
-                    joinedload(TraceModel.agent_calls).joinedload(
+                    selectinload(TraceModel.agent_calls).selectinload(
                         AgentCallModel.tool_calls
                     ),
-                    joinedload(TraceModel.agent_calls).joinedload(
+                    selectinload(TraceModel.agent_calls).selectinload(
                         AgentCallModel.user_interactions
                     ),
-                    joinedload(TraceModel.agent_calls).joinedload(
+                    selectinload(TraceModel.agent_calls).selectinload(
                         AgentCallModel.errors
                     ),
-                    joinedload(TraceModel.llm_calls),
-                    joinedload(TraceModel.tool_calls),
-                    joinedload(TraceModel.user_interactions),
-                    joinedload(TraceModel.errors),
-                    joinedload(TraceModel.system_info),
+                    selectinload(TraceModel.llm_calls),
+                    selectinload(TraceModel.tool_calls),
+                    selectinload(TraceModel.user_interactions),
+                    selectinload(TraceModel.errors),
+                    selectinload(TraceModel.system_info),
+                    selectinload(TraceModel.metrics),
                 )
                 .get(trace_id)
             )
@@ -397,13 +418,32 @@ def get_trace(trace_id):
                     ),
                 }
             )
+            end_time = time.time()
+            duration = end_time - start_time
+            logging.info(f"get_trace({trace_id}) took {duration:.2f} seconds")
+
+            return response
     except SQLAlchemyError as e:
+        end_time = time.time()
+        duration = end_time - start_time
+        logging.error(
+            f"get_trace({trace_id}) failed after {duration:.2f} seconds: {str(e)}"
+        )
         return jsonify({"error": str(e)}), 500
 
 
 @app.route("/health")
 def health_check():
     return "OK", 200
+
+
+@app.route("/api/cache/clear", methods=["POST"])
+def clear_cache():
+    try:
+        cache.clear()
+        return jsonify({"message": "Cache cleared successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/port")
@@ -420,16 +460,18 @@ def serve_static(path):
         return send_from_directory(app.static_folder, "index.html")
 
 
-@app.route("/shutdown", methods=["POST"])
+@app.route("/api/shutdown", methods=["POST"])
 def shutdown():
-    if request.remote_addr not in ["127.0.0.1", "::1"]:
-        abort(403)
-    func = request.environ.get("werkzeug.server.shutdown")
-    if func is None:
-        raise RuntimeError("Not running with the Werkzeug Server")
-    func()
-    logging.info("Dashboard server shutting down...")
-    return "Server shutting down..."
+    """Shutdown endpoint that works with Waitress."""
+    if request.remote_addr not in ["127.0.0.1", "::1", "localhost"]:
+        abort(403, "Shutdown only allowed from localhost")
+
+    def shutdown_server():
+        time.sleep(0.5)  # Brief delay to allow response to be sent
+        os._exit(0)
+
+    threading.Thread(target=shutdown_server).start()
+    return jsonify({"message": "Server shutting down..."}), 200
 
 
 def main():

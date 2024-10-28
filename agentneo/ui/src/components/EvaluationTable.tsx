@@ -7,12 +7,21 @@ interface EvaluationTableProps {
   sortedData: any[];
   requestSort: (key: string) => void;
   metricNames: string[];
+  onTraceSelect: (traceId: string) => void;
+  selectedTraceId: string | null;
 }
 
-const EvaluationTable: React.FC<EvaluationTableProps> = ({ sortedData, requestSort, metricNames }) => {
+const EvaluationTable: React.FC<EvaluationTableProps> = ({
+  sortedData,
+  requestSort,
+  metricNames,
+  onTraceSelect,
+  selectedTraceId
+}) => {
   const [expandedCells, setExpandedCells] = useState<Set<string>>(new Set());
 
-  const toggleCellExpansion = (cellId: string) => {
+  const toggleCellExpansion = (cellId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent row click when expanding cell
     setExpandedCells(prev => {
       const newSet = new Set(prev);
       if (newSet.has(cellId)) {
@@ -46,9 +55,9 @@ const EvaluationTable: React.FC<EvaluationTableProps> = ({ sortedData, requestSo
         return (
           <div key={cellId} className="mb-2">
             <span className="font-bold">{field.charAt(0).toUpperCase() + field.slice(1)}: </span>
-            <span 
+            <span
               className="cursor-pointer text-blue-600 hover:underline"
-              onClick={() => toggleCellExpansion(cellId)}
+              onClick={(e) => toggleCellExpansion(cellId, e)}
             >
               {isExpanded ? cellData : truncatedContent}
             </span>
@@ -80,8 +89,17 @@ const EvaluationTable: React.FC<EvaluationTableProps> = ({ sortedData, requestSo
       </TableHeader>
       <TableBody>
         {sortedData.map((row) => (
-          <TableRow key={row.trace_id}>
-            <TableCell>{row.trace_id}</TableCell>
+          <TableRow
+            key={row.trace_id}
+            onClick={() => onTraceSelect(row.trace_id)}
+            className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150 ease-in-out ${selectedTraceId === row.trace_id ? 'bg-purple-50 dark:bg-purple-900' : ''
+              }`}
+          >
+            <TableCell>
+              <span className="text-blue-600 hover:underline cursor-pointer">
+                {row.trace_id}
+              </span>
+            </TableCell>
             {metricNames.map(metric => (
               <TableCell key={`${row.trace_id}-${metric}`} className="align-top">
                 <div className="space-y-2">

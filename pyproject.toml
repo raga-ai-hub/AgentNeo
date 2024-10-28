@@ -38,7 +38,8 @@ dependencies = [
     "setuptools>=67",
     "litellm~=1.49.2",
     "openai~=1.51.2",
-    "langchain~=0.2.16"
+    "langchain~=0.2.16",
+    "flask_caching~=2.3.0",
 ]
 
 [project.optional-dependencies]

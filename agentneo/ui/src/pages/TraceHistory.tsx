@@ -30,13 +30,7 @@ const TraceHistory: React.FC = () => {
         try {
           const fetchedTraces = await fetchTraces(selectedProject);
           if (Array.isArray(fetchedTraces)) {
-            setTraces(fetchedTraces.map(trace => ({
-              ...trace,
-              total_llm_calls: trace.total_llm_calls || 0,
-              total_tool_calls: trace.total_tool_calls || 0,
-              total_agent_calls: trace.total_agent_calls || 0,
-              total_errors: trace.total_errors || 0
-            })));
+            setTraces(fetchedTraces);
           } else {
             console.error('Fetched traces is not an array:', fetchedTraces);
             setTraces([]);
@@ -175,16 +169,16 @@ const TraceHistory: React.FC = () => {
                       {trace.duration.toFixed(2)}s
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {trace.total_llm_calls}
+                      {trace.total_llm_calls ?? "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {trace.total_tool_calls}
+                      {trace.total_tool_calls ?? "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {trace.total_agent_calls}
+                      {trace.total_agent_calls ?? "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {trace.total_errors}
+                      {trace.total_errors ?? "-"}
                     </td>
                   </tr>
                 ))
