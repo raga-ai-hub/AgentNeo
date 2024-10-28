@@ -14,73 +14,47 @@ A: Use pip to update to the latest version:
 pip install --upgrade agentneo
 ```
 
-## Technical Questions
+## Privacy & Security
 
-### Q: How do I save trace data for later analysis?
-A: Trace data is automatically saved in the specified storage location:
-```python
-neo_session = AgentNeo(
-    session_name="my_session",
-    storage_path="./my_traces"  # Custom storage location
-)
-```
+### Q: Is my data safe with AgentNeo? What about privacy?
+A: Yes, your data is completely safe. AgentNeo operates entirely on your local system and does not transmit any data externally. All data, including traces and logs, are stored locally on your machine. We do not collect any telemetry data or usage statistics - your privacy is our priority.
 
-### Q: Can I export trace data?
-A: Yes, you can export data in various formats:
-```python
-from agentneo import export_traces
+The only external communications are the API calls you explicitly configure to your chosen LLM provider (like OpenAI or Anthropic). These calls are made using your own API keys and follow the privacy policies of those providers.
 
-export_traces(session_id="my_session", format="json")
-```
+### Q: Where is my data stored?
+A: All data is stored locally on your system:
+- Trace data: `{agentneo-package-path}/ui/dist/trace_data.db`
+- Logs: In your system's standard logging directory
+- Configuration: In your project directory
 
-### Q: How do I debug tracing issues?
-A: Enable debug mode:
-```python
-neo_session = AgentNeo(
-    session_name="my_session",
-    debug=True
-)
-```
+You have complete control over this data and can delete it at any time.
 
-## Performance Questions
+// ... existing questions ...
 
-### Q: How much overhead does tracing add?
-A: Tracing typically adds minimal overhead (<1ms per trace).
+## Privacy & Security
 
-### Q: Can I disable certain types of traces?
-A: Yes, you can configure trace levels:
-```python
-tracer = Tracer(
-    session=neo_session,
-    trace_level="minimal"  # or "full", "custom"
-)
-```
+### Q: Is my data safe with AgentNeo? What about privacy?
+A: Yes, your data is completely safe. AgentNeo operates entirely on your local system and does not transmit any data externally. All data, including traces and logs, are stored locally on your machine. We do not collect any telemetry data or usage statistics - your privacy is our priority.
+
+The only external communications are the API calls you explicitly configure to your chosen LLM provider (like OpenAI or Anthropic). These calls are made using your own API keys and follow the privacy policies of those providers.
+
+### Q: Where is my data stored?
+A: All data is stored locally on your system:
+- Trace data: `{agentneo-package-path}/ui/dist/trace_data.db`
+- Logs: In your system's standard logging directory
+- Configuration: In your project directory
+
+You have complete control over this data and can delete it at any time.
 
 ## Integration Questions
 
-### Q: Can I use AgentNeo with FastAPI?
-A: Yes, see the [Developer Guide](../developer-guide/advanced-usage.md) for FastAPI integration.
-
-### Q: How do I integrate with existing logging systems?
-A: AgentNeo can work alongside other logging systems:
-```python
-import logging
-from agentneo import configure_logging
-
-configure_logging(level=logging.INFO)
-```
+### Q: Can I use AgentNeo with other Agentic Framworks?
+A: Yes, see the [Developer Guide](../developer-guide/advanced-usage.md) for more information.
 
 ## Customization Questions
 
-### Q: Can I create custom metrics?
-A: Yes, see the [Metrics Guide](../metrics/supported-metrics.md#custom-metrics).
-
-### Q: How do I customize the dashboard?
-A: Dashboard customization options are available through configuration:
+### Q: How do I open the dashboard on a different port?
+A: You can specify a custom port when launching the dashboard:
 ```python
-launch_dashboard(
-    port=3000,
-    theme="dark",
-    custom_views=True
-)
+neo_session.launch_dashboard(port=8080)
 ```

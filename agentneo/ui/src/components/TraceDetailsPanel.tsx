@@ -181,7 +181,15 @@ const TraceDetailsPanel = ({ isOpen, onClose, traceData }) => {
       }
     };
 
-    traceData.agent_calls.forEach(call => processCall(call, 'agent'));
+    // Process agent calls
+    traceData.agent_calls?.forEach(call => processCall(call, 'agent'));
+
+    // Process standalone LLM calls
+    traceData.llm_calls?.forEach(call => processCall(call, 'llm'));
+
+    // Process standalone tool calls
+    traceData.tool_calls?.forEach(call => processCall(call, 'tool'));
+
     return allCalls.sort((a, b) => a.startTime - b.startTime);
   }, [traceData]);
 

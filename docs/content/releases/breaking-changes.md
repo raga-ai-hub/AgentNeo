@@ -7,7 +7,7 @@
 - Updated metric computation methods
 
 ```python
-# Old code (1.1.0)
+# Old code (1.1.2)
 from agentneo import Execution
 exe = Execution(session=neo_session)
 
@@ -18,13 +18,14 @@ eval = Evaluation(session=neo_session)
 
 ### Configuration Changes
 - Modified dashboard configuration structure
-- Updated storage backend options
+- Updated storage backend access method. Now the the Database is access through API Endpoints. This change is currently implemented in the Analytics and Trace History Pages. Gradually the access of DB from frontend TypeScript(.ts) would be completely phased out.
 
 ## Version 1.1.0
 
 ### API Changes
-- Restructured tracer initialization
+- Restructured Tracing
 - Modified event handling system
+- Remove node.js, npm dependency for dashboard
 
 ```python
 # Old code (1.0.0)

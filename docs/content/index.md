@@ -46,10 +46,6 @@ Welcome to AgentNeo! This documentation will help you understand and utilize Age
   - Complex Scenarios
   - Best Practices
   - Integration Examples
-- [Customization](developer-guide/customization.md)
-  - Custom Metrics
-  - Storage Adapters
-  - Dashboard Extensions
 
 ### Metrics and Evaluation
 - [Overview](metrics/overview.md)
@@ -81,9 +77,6 @@ Welcome to AgentNeo! This documentation will help you understand and utilize Age
 - [Common Issues](troubleshooting/common-issues.md)
   - Known Problems
   - Solutions
-- [Error Messages](troubleshooting/error-messages.md)
-  - Error Types
-  - Resolution Steps
 - [FAQ](troubleshooting/faq.md)
   - General Questions
   - Technical Issues
@@ -96,15 +89,8 @@ Welcome to AgentNeo! This documentation will help you understand and utilize Age
 - [Breaking Changes](releases/breaking-changes.md)
   - API Changes
   - Deprecations
-- [Migration Guide](releases/migration-guide.md)
-  - Version Updates
-  - Code Migration
 
 ### Reference
-- [Configuration](reference/configuration.md)
-  - Settings
-  - Options
-  - Defaults
 - [Glossary](reference/glossary.md)
   - Terms
   - Definitions
@@ -116,17 +102,15 @@ Welcome to AgentNeo! This documentation will help you understand and utilize Age
 ## Need Help?
 
 - 📘 Check our [FAQ](troubleshooting/faq.md) for quick answers
-- 💬 Join our [Discord Community](https://discord.gg/your-discord)
 - 🐛 Report issues on [GitHub](https://github.com/raga-ai-hub/agentneo/issues)
 - 🤝 Read our [Contributing Guidelines](contributing/guidelines.md)
-- 📧 Contact support at support@raga.ai
+- 📧 Contact support at <rehanlivelife@gmail.com>, <kiranscaria@outlook.com>
 
 ## Community
 
 - [GitHub](https://github.com/raga-ai-hub/agentneo)
-- [Discord](https://discord.gg/your-discord)
 - [Twitter](https://twitter.com/RagaAI)
 
 ## License
 
-AgentNeo is released under the MIT License. See the [LICENSE](https://github.com/raga-ai-hub/agentneo/blob/main/LICENSE) file for details.
+AgentNeo is released under the GNU General Public License v3.0 (GPLv3). See the [LICENSE](https://github.com/raga-ai-hub/agentneo/blob/main/LICENSE) file for details.

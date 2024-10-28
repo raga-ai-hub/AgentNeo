@@ -12,9 +12,7 @@ exe.evaluate(metric_list=['goal_decomposition_efficiency'])
 **Configuration Options:**
 ```python
 config = {
-    "model": "gpt-4-turbo",
-    "min_decomposition_steps": 2,
-    "max_decomposition_steps": 10
+    "model": "gpt-4o-mini",
 }
 ```
 
@@ -28,8 +26,7 @@ exe.evaluate(metric_list=['goal_fulfillment_rate'])
 **Configuration Options:**
 ```python
 config = {
-    "success_threshold": 0.8,
-    "partial_credit": True
+    "model": "gpt-4o-mini",
 }
 ```
 
@@ -70,19 +67,4 @@ exe.evaluate(
         'tool_call_success_rate'
     ]
 )
-```
-
-## Custom Metrics
-Create your own metrics by extending the base metric class:
-
-```python
-from agentneo.metrics import BaseMetric
-
-class CustomMetric(BaseMetric):
-    def __init__(self):
-        super().__init__(name="custom_metric")
-    
-    def compute(self, trace_data, config=None, metadata=None):
-        # Implement your metric computation
-        return {"score": result}
 ```

@@ -71,18 +71,3 @@ exe.evaluate(
     ]
 )
 ```
-
-## Custom Metrics
-Create your own metrics by extending the base metric class:
-
-```python
-from agentneo.metrics import BaseMetric
-
-class CustomMetric(BaseMetric):
-    def __init__(self):
-        super().__init__(name="custom_metric")
-    
-    def compute(self, trace_data, config=None, metadata=None):
-        # Implement your metric computation
-        return {"score": result}
-```
