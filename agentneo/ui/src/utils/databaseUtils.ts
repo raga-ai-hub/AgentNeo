@@ -5,19 +5,91 @@ import initSqlJs from 'sql.js';
 let SQL;
 let db;
 
+// export const initDatabase = async () => {
+//     if (!SQL) {
+//         console.log('Initializing SQL.js');
+//         SQL = await initSqlJs({ locateFile: file => `/${file}` });
+//     }
+//     if (!db) {
+//         console.log('Attempting to load trace_d.db');
+//         try {
+//             const response = await fetch('/trace_d.db');
+//             if (!response.ok) {
+//                 throw new Error(`HTTP error! status: ${response.status}`);
+//             }
+//             const arrayBuffer = await response.arrayBuffer();
+//             db = new SQL.Database(new Uint8Array(arrayBuffer));
+//             console.log('Database loaded successfully');
+//         } catch (error) {
+//             console.error('Error loading database:', error);
+//             console.log('Attempting to load from /dist/trace_d.db');
+//             const response = await fetch('/dist/trace_data.db');
+//             const arrayBuffer = await response.arrayBuffer();
+//             db = new SQL.Database(new Uint8Array(arrayBuffer));
+//             console.log('Database loaded successfully from /dist');
+//         }
+//     }
+//     return db;
+// };
+
 export const initDatabase = async () => {
     if (!SQL) {
         console.log('Initializing SQL.js');
         SQL = await initSqlJs({ locateFile: file => `/${file}` });
     }
     if (!db) {
-        console.log('Loading trace_data.db');
-        const response = await fetch('/trace_data.db');
-        const arrayBuffer = await response.arrayBuffer();
-        db = new SQL.Database(new Uint8Array(arrayBuffer));
-        console.log('Database loaded successfully');
+        const possiblePaths = ['/dist/trace_data.db'];
+
+        for (const path of possiblePaths) {
+            try {
+                console.log(`Attempting to load database from ${path}`);
+                const response = await fetch(path);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const arrayBuffer = await response.arrayBuffer();
+                db = new SQL.Database(new Uint8Array(arrayBuffer));
+                console.log(`Database loaded successfully from ${path}`);
+                break;
+            } catch (error) {
+                console.error(`Error loading database from ${path}:`, error);
+            }
+        }
+
+        if (!db) {
+            throw new Error('Failed to load database from any of the possible paths');
+        }
     }
     return db;
+};
+
+export const fetchAllProjects = async () => {
+    try {
+        await initDatabase();
+
+        console.log('Fetching all projects');
+
+        const result = db.exec(`
+          SELECT id, project_name
+          FROM project_info
+          ORDER BY id
+        `);
+
+        console.log('All projects query result:', result);
+
+        if (result[0] && result[0].values) {
+            return result[0].values.map(([id, project_name]) => ({
+                id,
+                name: project_name,
+            }));
+        }
+
+        console.log('No projects found');
+        return [];
+    } catch (error) {
+        console.error('Error in fetchAllProjects:', error);
+        throw error;
+    }
 };
 
 export const getDatabase = () => {
@@ -27,29 +99,29 @@ export const getDatabase = () => {
     return db;
 };
 
-export const fetchAllProjects = async () => {
-    await initDatabase();
+// export const fetchAllProjects = async () => {
+//     await initDatabase();
 
-    console.log('Fetching all projects');
+//     console.log('Fetching all projects');
 
-    const result = db.exec(`
-      SELECT id, project_name
-      FROM project_info
-      ORDER BY id
-    `);
+//     const result = db.exec(`
+//       SELECT id, project_name
+//       FROM project_info
+//       ORDER BY id
+//     `);
 
-    console.log('All projects query result:', result);
+//     console.log('All projects query result:', result);
 
-    if (result[0] && result[0].values) {
-        return result[0].values.map(([id, project_name]) => ({
-            id,
-            name: project_name,
-        }));
-    }
+//     if (result[0] && result[0].values) {
+//         return result[0].values.map(([id, project_name]) => ({
+//             id,
+//             name: project_name,
+//         }));
+//     }
 
-    console.log('No projects found');
-    return [];
-};
+//     console.log('No projects found');
+//     return [];
+// };
 
 export const fetchProjectInfo = async (projectId: number) => {
     await initDatabase();

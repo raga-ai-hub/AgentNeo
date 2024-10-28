@@ -1,4 +1,5 @@
 import os
+import logging
 
 
 def get_db_path():
@@ -7,7 +8,14 @@ def get_db_path():
     # First, try the local directory
     local_db_path = os.path.join(os.getcwd(), "agentneo", "ui", "dist", db_filename)
     if os.path.exists(os.path.dirname(local_db_path)):
+        logging.debug(f"Using local database: {local_db_path}")
         return f"sqlite:///{local_db_path}"
+
+    # Then, try the local "/dist" directory
+    local_dist_path = os.path.join(os.getcwd(), "dist", db_filename)
+    if os.path.exists(os.path.dirname(local_dist_path)):
+        logging.debug(f"Using local database: {local_dist_path}")
+        return f"sqlite:///{local_dist_path}"
 
     # If local directory doesn't exist, use the package directory
     package_dir = os.path.dirname(os.path.abspath(__file__))

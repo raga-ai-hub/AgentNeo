@@ -43,27 +43,6 @@ def add_header(response):
     return response
 
 
-@app.route("/", defaults={"path": ""})
-@app.route("/<path:path>")
-def serve_static(path):
-    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
-        return send_from_directory(app.static_folder, path)
-    else:
-        return send_from_directory(app.static_folder, "index.html")
-
-
-@app.route("/shutdown", methods=["POST"])
-def shutdown():
-    if request.remote_addr not in ["127.0.0.1", "::1"]:
-        abort(403)
-    func = request.environ.get("werkzeug.server.shutdown")
-    if func is None:
-        raise RuntimeError("Not running with the Werkzeug Server")
-    func()
-    logging.info("Dashboard server shutting down...")
-    return "Server shutting down..."
-
-
 @app.route("/api/projects", methods=["GET"])
 def get_projects():
     try:
@@ -113,7 +92,18 @@ def get_project(project_id):
 def get_project_traces(project_id):
     try:
         with Session() as session:
-            traces = session.query(TraceModel).filter_by(project_id=project_id).all()
+            traces = (
+                session.query(TraceModel)
+                .filter_by(project_id=project_id)
+                .options(
+                    joinedload(TraceModel.agent_calls),
+                    joinedload(TraceModel.llm_calls),
+                    joinedload(TraceModel.tool_calls),
+                    joinedload(TraceModel.user_interactions),
+                    joinedload(TraceModel.errors),
+                )
+                .all()
+            )
             return jsonify(
                 [
                     {
@@ -121,6 +111,11 @@ def get_project_traces(project_id):
                         "start_time": t.start_time,
                         "end_time": t.end_time,
                         "duration": t.duration,
+                        "total_agent_calls": len(t.agent_calls),
+                        "total_llm_calls": len(t.llm_calls),
+                        "total_tool_calls": len(t.tool_calls),
+                        "total_user_interactions": len(t.user_interactions),
+                        "total_errors": len(t.errors),
                     }
                     for t in traces
                 ]
@@ -136,9 +131,20 @@ def get_analysis_trace(trace_id):
             trace = (
                 session.query(TraceModel)
                 .options(
+                    joinedload(TraceModel.agent_calls).joinedload(
+                        AgentCallModel.llm_calls
+                    ),
+                    joinedload(TraceModel.agent_calls).joinedload(
+                        AgentCallModel.tool_calls
+                    ),
+                    joinedload(TraceModel.agent_calls).joinedload(
+                        AgentCallModel.user_interactions
+                    ),
+                    joinedload(TraceModel.agent_calls).joinedload(
+                        AgentCallModel.errors
+                    ),
                     joinedload(TraceModel.llm_calls),
                     joinedload(TraceModel.tool_calls),
-                    joinedload(TraceModel.agent_calls),
                     joinedload(TraceModel.user_interactions),
                     joinedload(TraceModel.errors),
                     joinedload(TraceModel.system_info),
@@ -148,73 +154,145 @@ def get_analysis_trace(trace_id):
             )
             if trace is None:
                 return jsonify({"error": "Trace not found"}), 404
-            return jsonify(
+
+            def format_agent_call(agent_call):
+                return {
+                    "id": agent_call.id,
+                    "name": agent_call.name,
+                    "start_time": agent_call.start_time,
+                    "end_time": agent_call.end_time,
+                    "llm_calls": [
+                        format_llm_call(call) for call in agent_call.llm_calls
+                    ],
+                    "tool_calls": [
+                        format_tool_call(call) for call in agent_call.tool_calls
+                    ],
+                    "user_interactions": [
+                        format_user_interaction(ui)
+                        for ui in agent_call.user_interactions
+                    ],
+                    "errors": [format_error(error) for error in agent_call.errors],
+                }
+
+            def format_llm_call(call):
+                return {
+                    "id": call.id,
+                    "name": call.name,
+                    "model": call.model,
+                    "input_prompt": call.input_prompt,
+                    "output": call.output,
+                    "tool_call": call.tool_call,
+                    "start_time": call.start_time,
+                    "end_time": call.end_time,
+                    "duration": call.duration,
+                    "token_usage": call.token_usage,
+                    "cost": call.cost,
+                    "memory_used": call.memory_used,
+                    "errors": [format_error(error) for error in call.errors],
+                    # "user_interactions": [
+                    #     format_user_interaction(ui) for ui in call.user_interactions
+                    # ],
+                }
+
+            def format_tool_call(call):
+                return {
+                    "id": call.id,
+                    "name": call.name,
+                    "input_parameters": call.input_parameters,
+                    "output": call.output,
+                    "start_time": call.start_time,
+                    "end_time": call.end_time,
+                    "duration": call.duration,
+                    "memory_used": call.memory_used,
+                    "network_calls": call.network_calls,
+                    "errors": [format_error(error) for error in call.errors],
+                    # "user_interactions": [
+                    #     format_user_interaction(ui) for ui in call.user_interactions
+                    # ],
+                }
+
+            def format_user_interaction(ui):
+                return {
+                    "id": ui.id,
+                    "interaction_type": ui.interaction_type,
+                    "content": ui.content,
+                    "timestamp": ui.timestamp,
+                }
+
+            def format_error(error):
+                return {
+                    "id": error.id,
+                    "error_type": error.error_type,
+                    "error_message": error.error_message,
+                    "timestamp": error.timestamp,
+                }
+
+            response = jsonify(
                 {
                     "id": trace.id,
                     "project_id": trace.project_id,
                     "start_time": trace.start_time,
                     "end_time": trace.end_time,
                     "duration": trace.duration,
+                    "agent_calls": [
+                        format_agent_call(call) for call in trace.agent_calls
+                    ],
                     "llm_calls": [
-                        {
-                            "id": call.id,
-                            "name": call.name,
-                            "model": call.model,
-                            "input_prompt": call.input_prompt,
-                            "output": call.output,
-                            "tool_call": call.tool_call,
-                            "start_time": call.start_time,
-                            "end_time": call.end_time,
-                            "duration": call.duration,
-                            "token_usage": call.token_usage,
-                            "cost": call.cost,
-                            "memory_used": call.memory_used,
-                        }
+                        format_llm_call(call)
                         for call in trace.llm_calls
+                        if call.agent_id is None
                     ],
                     "tool_calls": [
-                        {
-                            "id": call.id,
-                            "name": call.name,
-                            "input_parameters": call.input_parameters,
-                            "output": call.output,
-                            "start_time": call.start_time,
-                            "end_time": call.end_time,
-                            "duration": call.duration,
-                            "memory_used": call.memory_used,
-                            "network_calls": call.network_calls,
-                        }
+                        format_tool_call(call)
                         for call in trace.tool_calls
-                    ],
-                    "agent_calls": [
-                        {
-                            "id": call.id,
-                            "name": call.name,
-                            "start_time": call.start_time,
-                            "end_time": call.end_time,
-                            "llm_call_ids": call.llm_call_ids,
-                            "tool_call_ids": call.tool_call_ids,
-                            "user_interaction_ids": call.user_interaction_ids,
-                        }
-                        for call in trace.agent_calls
+                        if call.agent_id is None
                     ],
                     "user_interactions": [
-                        {
-                            "id": interaction.id,
-                            "interaction_type": interaction.interaction_type,
-                            "content": interaction.content,
-                            "timestamp": interaction.timestamp,
-                        }
-                        for interaction in trace.user_interactions
+                        format_user_interaction(ui)
+                        for ui in trace.user_interactions
+                        if ui.agent_id is None
                     ],
+                    # "tool_calls": [
+                    #     {
+                    #         "id": call.id,
+                    #         "name": call.name,
+                    #         "input_parameters": call.input_parameters,
+                    #         "output": call.output,
+                    #         "start_time": call.start_time,
+                    #         "end_time": call.end_time,
+                    #         "duration": call.duration,
+                    #         "memory_used": call.memory_used,
+                    #         "network_calls": call.network_calls,
+                    #     }
+                    #     for call in trace.tool_calls
+                    # ],
+                    # "agent_calls": [
+                    #     {
+                    #         "id": call.id,
+                    #         "name": call.name,
+                    #         "start_time": call.start_time,
+                    #         "end_time": call.end_time,
+                    #         "llm_call_ids": call.llm_call_ids,
+                    #         "tool_call_ids": call.tool_call_ids,
+                    #         "user_interaction_ids": call.user_interaction_ids,
+                    #     }
+                    #     for call in trace.agent_calls
+                    # ],
+                    # "user_interactions": [
+                    #     {
+                    #         "id": interaction.id,
+                    #         "interaction_type": interaction.interaction_type,
+                    #         "content": interaction.content,
+                    #         "timestamp": interaction.timestamp,
+                    #     }
+                    #     for interaction in trace.user_interactions
+                    # ],
                     "errors": [
-                        {
-                            "id": error.id,
-                            "error_type": error.error_type,
-                            "error_message": error.error_message,
-                            "timestamp": error.timestamp,
-                        }
+                        format_error(error)
                         for error in trace.errors
+                        if error.agent_id is None
+                        and error.tool_call_id is None
+                        and error.llm_call_id is None
                     ],
                     "system_info": (
                         {
@@ -230,6 +308,11 @@ def get_analysis_trace(trace_id):
                         if trace.system_info
                         else None
                     ),
+                    "total_agent_calls": len(trace.agent_calls),
+                    "total_llm_calls": len(trace.llm_calls),
+                    "total_tool_calls": len(trace.tool_calls),
+                    "total_user_interactions": len(trace.user_interactions),
+                    "total_errors": len(trace.errors),
                     "metrics": [
                         {
                             "id": metric.id,
@@ -247,6 +330,8 @@ def get_analysis_trace(trace_id):
                     ],
                 }
             )
+
+            return response
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
     
@@ -410,6 +495,32 @@ def health_check():
     return "OK", 200
 
 
+@app.route("/api/port")
+def get_port():
+    return jsonify({"port": os.environ.get("AGENTNEO_DASHBOARD_PORT", "3000")})
+
+
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def serve_static(path):
+    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, "index.html")
+
+
+@app.route("/shutdown", methods=["POST"])
+def shutdown():
+    if request.remote_addr not in ["127.0.0.1", "::1"]:
+        abort(403)
+    func = request.environ.get("werkzeug.server.shutdown")
+    if func is None:
+        raise RuntimeError("Not running with the Werkzeug Server")
+    func()
+    logging.info("Dashboard server shutting down...")
+    return "Server shutting down..."
+
+
 def main():
     import argparse
 
@@ -418,6 +529,7 @@ def main():
     args = parser.parse_args()
 
     port = args.port
+    os.environ["AGENTNEO_DASHBOARD_PORT"] = str(port)
 
     # Start the server
     logging.info(f"Starting dashboard server on port {port}")
