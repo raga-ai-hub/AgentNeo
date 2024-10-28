@@ -3,74 +3,66 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Loader2 } from 'lucide-react';
 import axios from 'axios';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-interface Project {
-  id: number;
-  project_name: string;
-}
+import { useProject } from '@/contexts/ProjectContext';
 
 interface ErrorData {
   error_type: string;
   count: number;
 }
 
+const ERROR_COLORS = {
+  gradient: ['#ef4444', '#f87171'],
+  stroke: '#dc2626'
+};
+
 const ErrorAnalysis: React.FC = () => {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  const { selectedProject, selectedTraceId } = useProject();
   const [errorData, setErrorData] = useState<ErrorData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchProjects();
-  }, []);
+  const fetchData = async () => {
+    if (!selectedProject) return;
 
-  useEffect(() => {
-    if (selectedProjectId) {
-      fetchErrorData(selectedProjectId);
-    }
-  }, [selectedProjectId]);
-
-  const fetchProjects = async () => {
-    try {
-      const response = await axios.get('/api/projects');
-      setProjects(response.data);
-      if (response.data.length > 0) {
-        setSelectedProjectId(response.data[0].id);
-      }
-    } catch (err) {
-      console.error('Error fetching projects:', err);
-      setError('Failed to fetch projects. Please try again later.');
-    }
-  };
-
-  const fetchErrorData = async (projectId: number) => {
     try {
       setIsLoading(true);
       setError(null);
       
-      const tracesResponse = await axios.get(`/api/projects/${projectId}/traces`);
-      const traces = tracesResponse.data;
-
       let errorCounts: Record<string, number> = {};
 
-      for (const trace of traces) {
-        const traceResponse = await axios.get(`/api/analysis_traces/${trace.id}`);
+      if (selectedTraceId) {
+        const traceResponse = await axios.get(`/api/analysis_traces/${selectedTraceId}`);
         const traceData = traceResponse.data;
 
-        for (const error of traceData.errors) {
+        traceData.errors.forEach((error: any) => {
           if (!errorCounts[error.error_type]) {
             errorCounts[error.error_type] = 0;
           }
           errorCounts[error.error_type]++;
+        });
+      } else {
+        const tracesResponse = await axios.get(`/api/projects/${selectedProject}/traces`);
+        const traces = tracesResponse.data;
+
+        for (const trace of traces) {
+          const traceResponse = await axios.get(`/api/analysis_traces/${trace.id}`);
+          const traceData = traceResponse.data;
+
+          traceData.errors.forEach((error: any) => {
+            if (!errorCounts[error.error_type]) {
+              errorCounts[error.error_type] = 0;
+            }
+            errorCounts[error.error_type]++;
+          });
         }
       }
 
-      const processedErrorData = Object.entries(errorCounts).map(([error_type, count]) => ({
-        error_type,
-        count,
-      }));
+      const processedErrorData = Object.entries(errorCounts)
+        .map(([error_type, count]) => ({
+          error_type,
+          count,
+        }))
+        .sort((a, b) => b.count - a.count);
 
       setErrorData(processedErrorData);
     } catch (err) {
@@ -79,6 +71,26 @@ const ErrorAnalysis: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  useEffect(() => {
+    if (selectedProject) {
+      fetchData();
+    }
+  }, [selectedProject, selectedTraceId]);
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-4 border rounded shadow">
+          <p className="font-bold">{label}</p>
+          <p style={{ color: ERROR_COLORS.stroke }}>
+            {`Count: ${payload[0].value}`}
+          </p>
+        </div>
+      );
+    }
+    return null;
   };
 
   const renderContent = () => {
@@ -97,7 +109,7 @@ const ErrorAnalysis: React.FC = () => {
           <p>{error}</p>
           <button
             className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            onClick={() => selectedProjectId && fetchErrorData(selectedProjectId)}
+            onClick={fetchData}
           >
             Retry
           </button>
@@ -105,44 +117,67 @@ const ErrorAnalysis: React.FC = () => {
       );
     }
 
+    if (!selectedProject) {
+      return <div className="text-center p-4">Please select a project to view analytics</div>;
+    }
+
     if (errorData.length === 0) {
-      return <div className="text-center p-4">No error</div>;
+      return <div className="text-center p-4">No errors found</div>;
     }
 
     return (
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={errorData}>
+      <ResponsiveContainer width="100%" height={400}>
+        <BarChart
+          data={errorData}
+          margin={{ top: 20, right: 30, left: 80, bottom: 120 }}
+        >
+          <defs>
+            <linearGradient id="errorGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={ERROR_COLORS.gradient[0]} />
+              <stop offset="100%" stopColor={ERROR_COLORS.gradient[1]} />
+            </linearGradient>
+          </defs>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="error_type" />
-          <YAxis />
-          <Tooltip />
-          <Bar dataKey="count" fill="#f87171" />
+          <XAxis
+            dataKey="error_type"
+            angle={-30}
+            textAnchor="end"
+            height={100}
+            interval={0}
+            label={{ 
+              value: "Error Type", 
+              position: "bottom",
+              offset: 80
+            }}
+          />
+          <YAxis
+            label={{ 
+              value: "Number of Occurrences",
+              angle: -90,
+              position: "insideLeft",
+              offset: -60,
+              style: { textAnchor: 'middle' }
+            }}
+          />
+          <Tooltip content={<CustomTooltip />} />
+          <Bar 
+            dataKey="count" 
+            fill="url(#errorGradient)"
+            stroke={ERROR_COLORS.stroke}
+            strokeWidth={1}
+            radius={[4, 4, 0, 0]}
+          />
         </BarChart>
       </ResponsiveContainer>
     );
   };
 
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader>
         <CardTitle>Error Analysis</CardTitle>
       </CardHeader>
       <CardContent>
-        <Select
-          value={selectedProjectId?.toString() || ''}
-          onValueChange={(value) => setSelectedProjectId(Number(value))}
-        >
-          <SelectTrigger className="w-[180px] mb-4">
-            <SelectValue placeholder="Select a project" />
-          </SelectTrigger>
-          <SelectContent>
-            {projects.map((project) => (
-              <SelectItem key={project.id} value={project.id.toString()}>
-                {project.project_name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
         {renderContent()}
       </CardContent>
     </Card>

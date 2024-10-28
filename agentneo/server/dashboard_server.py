@@ -142,6 +142,129 @@ def get_project_traces(project_id):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/analysis_traces/<int:trace_id>", methods=["GET"])
+def get_analysis_trace(trace_id):
+    try:
+        with Session() as session:
+            trace = (
+                session.query(TraceModel)
+                .options(
+                    joinedload(TraceModel.llm_calls),
+                    joinedload(TraceModel.tool_calls),
+                    joinedload(TraceModel.agent_calls),
+                    joinedload(TraceModel.user_interactions),
+                    joinedload(TraceModel.errors),
+                    joinedload(TraceModel.system_info),
+                    joinedload(TraceModel.metrics),
+                )
+                .get(trace_id)
+            )
+            if trace is None:
+                return jsonify({"error": "Trace not found"}), 404
+            return jsonify(
+                {
+                    "id": trace.id,
+                    "project_id": trace.project_id,
+                    "start_time": trace.start_time,
+                    "end_time": trace.end_time,
+                    "duration": trace.duration,
+                    "llm_calls": [
+                        {
+                            "id": call.id,
+                            "name": call.name,
+                            "model": call.model,
+                            "input_prompt": call.input_prompt,
+                            "output": call.output,
+                            "tool_call": call.tool_call,
+                            "start_time": call.start_time,
+                            "end_time": call.end_time,
+                            "duration": call.duration,
+                            "token_usage": call.token_usage,
+                            "cost": call.cost,
+                            "memory_used": call.memory_used,
+                        }
+                        for call in trace.llm_calls
+                    ],
+                    "tool_calls": [
+                        {
+                            "id": call.id,
+                            "name": call.name,
+                            "input_parameters": call.input_parameters,
+                            "output": call.output,
+                            "start_time": call.start_time,
+                            "end_time": call.end_time,
+                            "duration": call.duration,
+                            "memory_used": call.memory_used,
+                            "network_calls": call.network_calls,
+                        }
+                        for call in trace.tool_calls
+                    ],
+                    "agent_calls": [
+                        {
+                            "id": call.id,
+                            "name": call.name,
+                            "start_time": call.start_time,
+                            "end_time": call.end_time,
+                            "llm_call_ids": call.llm_call_ids,
+                            "tool_call_ids": call.tool_call_ids,
+                            "user_interaction_ids": call.user_interaction_ids,
+                        }
+                        for call in trace.agent_calls
+                    ],
+                    "user_interactions": [
+                        {
+                            "id": interaction.id,
+                            "interaction_type": interaction.interaction_type,
+                            "content": interaction.content,
+                            "timestamp": interaction.timestamp,
+                        }
+                        for interaction in trace.user_interactions
+                    ],
+                    "errors": [
+                        {
+                            "id": error.id,
+                            "error_type": error.error_type,
+                            "error_message": error.error_message,
+                            "timestamp": error.timestamp,
+                        }
+                        for error in trace.errors
+                    ],
+                    "system_info": (
+                        {
+                            "os_name": trace.system_info.os_name,
+                            "os_version": trace.system_info.os_version,
+                            "python_version": trace.system_info.python_version,
+                            "cpu_info": trace.system_info.cpu_info,
+                            "gpu_info": trace.system_info.gpu_info,
+                            "disk_info": trace.system_info.disk_info,
+                            "memory_total": trace.system_info.memory_total,
+                            "installed_packages": trace.system_info.installed_packages,
+                        }
+                        if trace.system_info
+                        else None
+                    ),
+                    "metrics": [
+                        {
+                            "id": metric.id,
+                            "metric_name": metric.metric_name,
+                            "score": metric.score,
+                            "reason": metric.reason,
+                            "result_detail": metric.result_detail,
+                            "config": metric.config,
+                            "start_time": metric.start_time,
+                            "end_time": metric.end_time,
+                            "duration": metric.duration,
+                            "timestamp": metric.timestamp,
+                        }
+                        for metric in trace.metrics
+                    ],
+                }
+            )
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+    
+    
+
 @cache.memoize(timeout=600)
 @app.route("/api/traces/<int:trace_id>", methods=["GET"])
 def get_trace(trace_id):
@@ -247,7 +370,7 @@ def get_trace(trace_id):
                     "timestamp": error.timestamp,
                 }
 
-            response = jsonify(
+            return jsonify(
                 {
                     "id": trace.id,
                     "project_id": trace.project_id,
@@ -272,41 +395,6 @@ def get_trace(trace_id):
                         for ui in trace.user_interactions
                         if ui.agent_id is None
                     ],
-                    # "tool_calls": [
-                    #     {
-                    #         "id": call.id,
-                    #         "name": call.name,
-                    #         "input_parameters": call.input_parameters,
-                    #         "output": call.output,
-                    #         "start_time": call.start_time,
-                    #         "end_time": call.end_time,
-                    #         "duration": call.duration,
-                    #         "memory_used": call.memory_used,
-                    #         "network_calls": call.network_calls,
-                    #     }
-                    #     for call in trace.tool_calls
-                    # ],
-                    # "agent_calls": [
-                    #     {
-                    #         "id": call.id,
-                    #         "name": call.name,
-                    #         "start_time": call.start_time,
-                    #         "end_time": call.end_time,
-                    #         "llm_call_ids": call.llm_call_ids,
-                    #         "tool_call_ids": call.tool_call_ids,
-                    #         "user_interaction_ids": call.user_interaction_ids,
-                    #     }
-                    #     for call in trace.agent_calls
-                    # ],
-                    # "user_interactions": [
-                    #     {
-                    #         "id": interaction.id,
-                    #         "interaction_type": interaction.interaction_type,
-                    #         "content": interaction.content,
-                    #         "timestamp": interaction.timestamp,
-                    #     }
-                    #     for interaction in trace.user_interactions
-                    # ],
                     "errors": [
                         format_error(error)
                         for error in trace.errors
@@ -328,26 +416,6 @@ def get_trace(trace_id):
                         if trace.system_info
                         else None
                     ),
-                    "total_agent_calls": len(trace.agent_calls),
-                    "total_llm_calls": len(trace.llm_calls),
-                    "total_tool_calls": len(trace.tool_calls),
-                    "total_user_interactions": len(trace.user_interactions),
-                    "total_errors": len(trace.errors),
-                    "metrics": [
-                        {
-                            "id": metric.id,
-                            "metric_name": metric.metric_name,
-                            "score": metric.score,
-                            "reason": metric.reason,
-                            "result_detail": metric.result_detail,
-                            "config": metric.config,
-                            "start_time": metric.start_time,
-                            "end_time": metric.end_time,
-                            "duration": metric.duration,
-                            "timestamp": metric.timestamp,
-                        }
-                        for metric in trace.metrics
-                    ],
                 }
             )
             end_time = time.time()
