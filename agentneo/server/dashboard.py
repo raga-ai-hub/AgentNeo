@@ -1,10 +1,11 @@
 import os
 import sys
 import time
-import logging
-import subprocess
+import psutil
 import socket
+import logging
 import requests
+import subprocess
 
 # Configure logging
 logging.basicConfig(
@@ -46,9 +47,11 @@ def launch_dashboard(port=3005):
         if free_port is None:
             logging.error(f"No free ports available starting from {port}")
             return
-        logging.info(f"Using port {free_port}")
-    else:
-        free_port = port
+        port = free_port
+        logging.info(f"Using port {port}")
+
+    # Set the environment variable with the port
+    os.environ["AGENTNEO_DASHBOARD_PORT"] = str(port)
 
     # Start the dashboard server in a new detached subprocess
     command = [
@@ -56,7 +59,7 @@ def launch_dashboard(port=3005):
         "-m",
         "agentneo.server.dashboard_server",
         "--port",
-        str(free_port),
+        str(port),
     ]
 
     logging.debug(f"Command to be executed: {' '.join(command)}")
@@ -101,9 +104,7 @@ def launch_dashboard(port=3005):
         max_retries = 5
         for _ in range(max_retries):
             try:
-                response = requests.get(
-                    f"http://localhost:{free_port}/health", timeout=1
-                )
+                response = requests.get(f"http://localhost:{port}/health", timeout=1)
                 if response.status_code == 200:
                     logging.info(
                         f"Dashboard launched successfully. Access it at: http://localhost:{free_port}"
@@ -124,13 +125,44 @@ def launch_dashboard(port=3005):
     )
 
 
+def get_process_by_port(port):
+    """Find process using the specified port."""
+    for proc in psutil.process_iter(["pid", "name", "connections"]):
+        try:
+            connections = proc.connections()
+            for conn in connections:
+                if conn.laddr.port == port:
+                    return proc
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+    return None
+
+
 def close_dashboard(port=3005):
-    """Closes the dashboard by sending a shutdown request."""
+    """Closes the dashboard by sending a shutdown request or killing the process if necessary."""
     try:
-        response = requests.post(f"http://localhost:{port}/shutdown")
+        # First try graceful shutdown
+        response = requests.post(f"http://localhost:{port}/shutdown", timeout=5)
         if response.status_code == 200:
             logging.info("Dashboard closed successfully.")
-        else:
-            logging.warning("Failed to close the dashboard.")
+            return True
     except Exception as e:
-        logging.error(f"Error closing dashboard: {e}")
+        logging.warning(f"Graceful shutdown failed: {e}")
+
+    # If graceful shutdown fails, try to force kill the process
+    try:
+        process = get_process_by_port(port)
+        if process:
+            process.terminate()  # Try graceful termination first
+            try:
+                process.wait(timeout=3)  # Wait for process to terminate
+            except psutil.TimeoutExpired:
+                process.kill()  # Force kill if termination doesn't work
+            logging.info(f"Dashboard process on port {port} forcefully terminated.")
+            return True
+        else:
+            logging.warning(f"No process found using port {port}")
+    except Exception as e:
+        logging.error(f"Failed to forcefully terminate dashboard process: {e}")
+
+    return False

@@ -3,6 +3,7 @@ from typing import Dict, Any
 import litellm
 import os
 
+
 def execute_tool_call_success_rate(
     trace_json: Dict[str, Any], config: Dict[str, Any]
 ) -> Dict[str, Any]:
@@ -33,6 +34,7 @@ def execute_tool_call_success_rate(
         },
     }
 
+
 def judge_tool_call_success(output: str) -> tuple[bool, str]:
     prompt = f"""
     Analyze the following tool call output and determine if it was successful or if it contains an error:
@@ -55,6 +57,7 @@ def judge_tool_call_success(output: str) -> tuple[bool, str]:
 
     result = json.loads(response.choices[0].message.content)
     return result["success"], result["reason"]
+
 
 def create_final_reason(success_rate: float, call_results: list) -> str:
     prompt = f"""

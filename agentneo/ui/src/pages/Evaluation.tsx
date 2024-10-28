@@ -10,6 +10,9 @@ import { ClipboardCheck } from 'lucide-react';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useProject } from '../contexts/ProjectContext';
 import { fetchEvaluationData } from '../utils/databaseUtils';
+import TraceDetailsPanel from '../components/TraceDetailsPanel';
+import { fetchTraceDetails } from '../utils/api';
+import type { DetailedTraceComponents } from '../types/trace';
 import { Button } from "@/components/ui/button";
 
 const metricNames = [
@@ -22,14 +25,17 @@ const metricNames = [
 const Evaluation: React.FC = () => {
   const { isCollapsed } = useSidebar();
   const { selectedProject, setSelectedProject, projects } = useProject();
-  const [selectedTraceId, setSelectedTraceId] = useState<string>('all');
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' } | null>(null);
   const [evaluationData, setEvaluationData] = useState<any[]>([]);
   const [filteredData, setFilteredData] = useState<any[]>([]);
-  const [allTraces, setAllTraces] = useState<{id: string, name: string}[]>([]);
+  const [allTraces, setAllTraces] = useState<{ id: string, name: string }[]>([]);
+  const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
+  const [selectedTraceData, setSelectedTraceData] = useState<DetailedTraceComponents | null>(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -58,10 +64,10 @@ const Evaluation: React.FC = () => {
 
     const filtered = evaluationData.filter(item => {
       const itemDate = new Date(item.start_time);
-      
+
       // Set the start of the day for startDate if it exists
       const startOfDay = startDate ? new Date(startDate.setHours(0, 0, 0, 0)) : null;
-      
+
       // Set the end of the day for endDate if it exists
       const endOfDay = endDate ? new Date(endDate.setHours(23, 59, 59, 999)) : null;
 
@@ -139,18 +145,37 @@ const Evaluation: React.FC = () => {
     });
   }, [filteredData]);
 
+  const handleTraceSelect = async (traceId: string) => {
+    setSelectedTraceId(traceId);
+    setIsPanelOpen(true);
+
+    try {
+      const traceData = await fetchTraceDetails(traceId);
+      setSelectedTraceData(traceData);
+    } catch (error) {
+      console.error('Error fetching trace details:', error);
+      setSelectedTraceData(null);
+    }
+  };
+
+  const handleCloseSidebar = () => {
+    setIsPanelOpen(false);
+    setSelectedTraceId(null);
+    setSelectedTraceData(null);
+  };
+
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
       <Sidebar />
-      <div className="flex-1 overflow-y-auto">
+      <div className={`flex-1 overflow-y-auto p-8 transition-all duration-300 ${isPanelOpen ? 'mr-96' : ''}`}>
         <div className="p-8">
           <div className="flex items-center mb-6">
             <ClipboardCheck className="mr-2 h-8 w-8 text-indigo-600 dark:text-indigo-400" />
             <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Evaluation</h1>
           </div>
           <div className="grid grid-cols-4 gap-4 mb-6">
-            <Select 
-              value={selectedProject?.toString() || ''} 
+            <Select
+              value={selectedProject?.toString() || ''}
               onValueChange={(value) => setSelectedProject(Number(value))}
             >
               <SelectTrigger>
@@ -186,13 +211,13 @@ const Evaluation: React.FC = () => {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={400}>
-                <LineChart 
-                  data={metricsData} 
+                <LineChart
+                  data={metricsData}
                   margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="name" 
+                  <XAxis
+                    dataKey="name"
                     interval={0}
                     tick={({ x, y, payload, index }) => {
                       const totalLabels = metricsData.length;
@@ -212,11 +237,11 @@ const Evaluation: React.FC = () => {
 
                       return (
                         <g transform={`translate(${x},${y})`}>
-                          <text 
-                            x={xOffset} 
-                            y={0} 
-                            dy={16} 
-                            textAnchor={textAnchor} 
+                          <text
+                            x={xOffset}
+                            y={0}
+                            dy={16}
+                            textAnchor={textAnchor}
                             fill="#666"
                             fontSize={12}
                           >
@@ -249,14 +274,21 @@ const Evaluation: React.FC = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="mb-4"
               />
-              <EvaluationTable 
-                sortedData={sortedData} 
+              <EvaluationTable
+                sortedData={sortedData}
                 requestSort={requestSort}
                 metricNames={metricNames}
+                onTraceSelect={handleTraceSelect}  
+                selectedTraceId={selectedTraceId}
               />
             </CardContent>
           </Card>
         </div>
+        <TraceDetailsPanel
+          isOpen={isPanelOpen}
+          onClose={handleCloseSidebar}
+          traceData={selectedTraceData}
+        />
       </div>
     </div>
   );
