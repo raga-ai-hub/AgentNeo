@@ -37,12 +37,12 @@ const ToolPerformanceAnalysis: React.FC = () => {
 
   const chartColors = {
     calls: {
-      gradient: ['#4CAF50', '#81C784'], // Green gradient
-      stroke: '#2E7D32'
+      gradient: ['#6366F1', '#818CF8'], // Vibrant indigo
+      stroke: '#4F46E5'
     },
     time: {
-      gradient: ['#2196F3', '#64B5F6'], // Blue gradient
-      stroke: '#1565C0'
+      gradient: ['#F472B6', '#F9A8D4'], // Bright pink
+      stroke: '#EC4899'
     }
   };
 

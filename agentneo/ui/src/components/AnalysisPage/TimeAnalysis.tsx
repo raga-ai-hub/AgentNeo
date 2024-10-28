@@ -24,16 +24,17 @@ interface ColorConfigs {
 
 const COLORS: ColorConfigs = {
   'LLM Calls': {
-    gradient: ['#3b82f6', '#60a5fa'],
-    stroke: '#2563eb',
-    fill: '#3b82f6'
+    gradient: ['#9333EA', '#A855F7'], // Vibrant purple
+    stroke: '#7E22CE',
+    fill: '#9333EA'
   },
   'Tool Calls': {
-    gradient: ['#10b981', '#34d399'],
-    stroke: '#059669',
-    fill: '#10b981'
+    gradient: ['#EA580C', '#FB923C'], // Vibrant orange
+    stroke: '#C2410C',
+    fill: '#EA580C'
   }
 };
+
 
 const TimeAnalysis: React.FC = () => {
   const { selectedProject, selectedTraceId } = useProject();

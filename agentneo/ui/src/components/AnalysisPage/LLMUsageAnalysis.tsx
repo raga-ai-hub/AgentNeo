@@ -19,37 +19,37 @@ interface ColorConfigs {
 
 const TOKEN_COLORS: ColorConfigs = {
   Input: {
-    gradient: ['#3b82f6', '#60a5fa'],
-    stroke: '#2563eb',
-    text: '#2563eb'
+    gradient: ['#FF6B6B', '#FF8787'], // Vibrant coral red
+    stroke: '#FF4949',
+    text: '#FF4949'
   },
   Output: {
-    gradient: ['#10b981', '#34d399'],
-    stroke: '#059669',
-    text: '#059669'
+    gradient: ['#4ECDC4', '#45B7AF'], // Bright turquoise
+    stroke: '#2FB4A9',
+    text: '#2FB4A9'
   },
   Reasoning: {
-    gradient: ['#f59e0b', '#fbbf24'],
-    stroke: '#d97706',
-    text: '#d97706'
+    gradient: ['#FFD93D', '#FFE566'], // Bright yellow
+    stroke: '#FFD000',
+    text: '#CC9900'
   }
 };
 
 const COST_COLORS: ColorConfigs = {
   InputCost: {
-    gradient: ['#3b82f6', '#60a5fa'],
-    stroke: '#2563eb',
-    text: '#2563eb'
+    gradient: ['#845EC2', '#9B72D3'], // Rich purple
+    stroke: '#7048B6',
+    text: '#7048B6'
   },
   OutputCost: {
-    gradient: ['#10b981', '#34d399'],
-    stroke: '#059669',
-    text: '#059669'
+    gradient: ['#FF8066', '#FF9B85'], // Bright coral
+    stroke: '#FF6B52',
+    text: '#FF6B52'
   },
   ReasoningCost: {
-    gradient: ['#f59e0b', '#fbbf24'],
-    stroke: '#d97706',
-    text: '#d97706'
+    gradient: ['#00C2A8', '#1ADBC2'], // Vibrant teal
+    stroke: '#00A894',
+    text: '#00A894'
   }
 };
 
