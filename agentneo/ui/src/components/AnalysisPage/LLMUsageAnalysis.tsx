@@ -5,22 +5,53 @@ import { Loader2 } from 'lucide-react';
 import axios from 'axios';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { useProject } from '@/contexts/ProjectContext';
 
-const TOKEN_COLORS = {
-  Input: '#3b82f6',
-  Output: '#10b981',
-  Reasoning: '#f59e0b'
-};
-
-const COST_COLORS = {
-  InputCost: '#60a5fa',
-  OutputCost: '#34d399',
-  ReasoningCost: '#fbbf24'
-};
-
-interface LLMUsageProps {
-  projectId: number;
+interface ColorConfig {
+  gradient: string[];
+  stroke: string;
+  text: string;
 }
+
+interface ColorConfigs {
+  [key: string]: ColorConfig;
+}
+
+const TOKEN_COLORS: ColorConfigs = {
+  Input: {
+    gradient: ['#3b82f6', '#60a5fa'],
+    stroke: '#2563eb',
+    text: '#2563eb'
+  },
+  Output: {
+    gradient: ['#10b981', '#34d399'],
+    stroke: '#059669',
+    text: '#059669'
+  },
+  Reasoning: {
+    gradient: ['#f59e0b', '#fbbf24'],
+    stroke: '#d97706',
+    text: '#d97706'
+  }
+};
+
+const COST_COLORS: ColorConfigs = {
+  InputCost: {
+    gradient: ['#3b82f6', '#60a5fa'],
+    stroke: '#2563eb',
+    text: '#2563eb'
+  },
+  OutputCost: {
+    gradient: ['#10b981', '#34d399'],
+    stroke: '#059669',
+    text: '#059669'
+  },
+  ReasoningCost: {
+    gradient: ['#f59e0b', '#fbbf24'],
+    stroke: '#d97706',
+    text: '#d97706'
+  }
+};
 
 interface TokenUsage {
   input: number;
@@ -40,13 +71,20 @@ interface LLMCall {
   cost: string;
 }
 
-const LLMUsageAnalysis: React.FC<LLMUsageProps> = ({ projectId }) => {
+interface Summary {
+  totalTokens: number;
+  totalCost: number;
+  totalCalls: number;
+}
+
+const LLMUsageAnalysis: React.FC = () => {
+  const { selectedProject, selectedTraceId } = useProject();
   const [tokenData, setTokenData] = useState<any[]>([]);
   const [costData, setCostData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPercentage, setShowPercentage] = useState(false);
-  const [summary, setSummary] = useState({
+  const [summary, setSummary] = useState<Summary>({
     totalTokens: 0,
     totalCost: 0,
     totalCalls: 0
@@ -86,13 +124,40 @@ const LLMUsageAnalysis: React.FC<LLMUsageProps> = ({ projectId }) => {
     });
   };
 
+  const processLLMCall = (
+    call: LLMCall, 
+    tokenUsage: Record<string, TokenUsage>, 
+    costUsage: Record<string, CostUsage>
+  ) => {
+    const modelName = call.model;
+    if (!tokenUsage[modelName]) {
+      tokenUsage[modelName] = { input: 0, completion: 0, reasoning: 0 };
+      costUsage[modelName] = { input: 0, output: 0, reasoning: 0 };
+    }
+    
+    const tokens = parseJsonString(call.token_usage) as TokenUsage;
+    const costs = parseJsonString(call.cost) as CostUsage;
+    
+    tokenUsage[modelName].input += tokens.input || 0;
+    tokenUsage[modelName].completion += tokens.completion || 0;
+    tokenUsage[modelName].reasoning += tokens.reasoning || 0;
+    
+    costUsage[modelName].input += costs.input || 0;
+    costUsage[modelName].output += costs.output || 0;
+    costUsage[modelName].reasoning += costs.reasoning || 0;
+
+    return {
+      tokens: tokens.input + tokens.completion + tokens.reasoning,
+      cost: costs.input + costs.output + costs.reasoning
+    };
+  };
+
   const fetchData = async () => {
+    if (!selectedProject) return;
+
     try {
       setIsLoading(true);
       setError(null);
-      
-      const tracesResponse = await axios.get(`/api/projects/${projectId}/traces`);
-      const traces = tracesResponse.data;
       
       let llmTokenUsage: Record<string, TokenUsage> = {};
       let llmCostUsage: Record<string, CostUsage> = {};
@@ -100,31 +165,31 @@ const LLMUsageAnalysis: React.FC<LLMUsageProps> = ({ projectId }) => {
       let totalCost = 0;
       let totalCalls = 0;
 
-      for (const trace of traces) {
-        const traceResponse = await axios.get(`/api/analysis_traces/${trace.id}`);
+      if (selectedTraceId) {
+        const traceResponse = await axios.get(`/api/analysis_traces/${selectedTraceId}`);
         const traceData = traceResponse.data;
         
         traceData.llm_calls.forEach((call: LLMCall) => {
-          const modelName = call.model;
-          if (!llmTokenUsage[modelName]) {
-            llmTokenUsage[modelName] = { input: 0, completion: 0, reasoning: 0 };
-            llmCostUsage[modelName] = { input: 0, output: 0, reasoning: 0 };
-          }
-          const tokenUsage = parseJsonString(call.token_usage) as TokenUsage;
-          const costUsage = parseJsonString(call.cost) as CostUsage;
-          
-          llmTokenUsage[modelName].input += tokenUsage.input || 0;
-          llmTokenUsage[modelName].completion += tokenUsage.completion || 0;
-          llmTokenUsage[modelName].reasoning += tokenUsage.reasoning || 0;
-          
-          llmCostUsage[modelName].input += costUsage.input || 0;
-          llmCostUsage[modelName].output += costUsage.output || 0;
-          llmCostUsage[modelName].reasoning += costUsage.reasoning || 0;
-
-          totalTokens += (tokenUsage.input || 0) + (tokenUsage.completion || 0) + (tokenUsage.reasoning || 0);
-          totalCost += (costUsage.input || 0) + (costUsage.output || 0) + (costUsage.reasoning || 0);
+          const { tokens, cost } = processLLMCall(call, llmTokenUsage, llmCostUsage);
+          totalTokens += tokens;
+          totalCost += cost;
           totalCalls++;
         });
+      } else {
+        const tracesResponse = await axios.get(`/api/projects/${selectedProject}/traces`);
+        const traces = tracesResponse.data;
+        
+        for (const trace of traces) {
+          const traceResponse = await axios.get(`/api/analysis_traces/${trace.id}`);
+          const traceData = traceResponse.data;
+          
+          traceData.llm_calls.forEach((call: LLMCall) => {
+            const { tokens, cost } = processLLMCall(call, llmTokenUsage, llmCostUsage);
+            totalTokens += tokens;
+            totalCost += cost;
+            totalCalls++;
+          });
+        }
       }
 
       const formattedTokenData = Object.entries(llmTokenUsage).map(([model, usage]) => ({
@@ -155,22 +220,38 @@ const LLMUsageAnalysis: React.FC<LLMUsageProps> = ({ projectId }) => {
   };
 
   useEffect(() => {
-    fetchData();
-  }, [projectId]);
+    if (selectedProject) {
+      fetchData();
+    }
+  }, [selectedProject, selectedTraceId]);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const total = payload.reduce((sum: number, pld: any) => sum + (pld.value || 0), 0);
+      const isCost = payload[0].name.includes('Cost');
+      const colors = isCost ? COST_COLORS : TOKEN_COLORS;
+      
       return (
         <div className="bg-white p-4 border rounded shadow">
-          <p className="font-bold">{`${label}`}</p>
-          {payload.map((pld: any) => (
-            <p key={pld.name} style={{ color: pld.fill }}>
-              {`${pld.name}: ${showPercentage ? (pld.value || 0).toFixed(2) + '%' : formatNumber(pld.value)}`}
-            </p>
-          ))}
+          <p className="font-bold">{label}</p>
+          {payload.map((pld: any) => {
+            const colorKey = pld.dataKey;
+            return (
+              <p key={pld.name} style={{ color: colors[colorKey]?.text }}>
+                {`${pld.name}: ${showPercentage 
+                  ? `${(pld.value || 0).toFixed(2)}%` 
+                  : isCost 
+                    ? `$${formatNumber(pld.value)}` 
+                    : Math.round(pld.value).toLocaleString()}`}
+              </p>
+            );
+          })}
           <p className="font-bold mt-2">
-            {`Total: ${showPercentage ? '100%' : formatNumber(total)}`}
+            {`Total: ${showPercentage 
+              ? '100%' 
+              : isCost 
+                ? `$${formatNumber(total)}` 
+                : Math.round(total).toLocaleString()}`}
           </p>
         </div>
       );
@@ -178,29 +259,64 @@ const LLMUsageAnalysis: React.FC<LLMUsageProps> = ({ projectId }) => {
     return null;
   };
 
-  const renderChart = (data: any[], title: string, dataKeys: string[], colors: Record<string, string>) => (
+  const renderChart = (data: any[], title: string, dataKeys: string[], colors: ColorConfigs) => (
     <div>
       <h3 className="text-lg font-semibold mb-2">{title}</h3>
       <ResponsiveContainer width="100%" height={400}>
         <BarChart
           data={showPercentage ? calculatePercentages(data) : data}
-          margin={{
-            top: 20,
-            right: 30,
-            left: 20,
-            bottom: 5,
-          }}
+          margin={{ top: 20, right: 30, left: 80, bottom: 120 }}
         >
+          {dataKeys.map((key) => (
+            <defs key={`gradient-${key}`}>
+              <linearGradient id={`${key}Gradient`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={colors[key].gradient[0]} />
+                <stop offset="100%" stopColor={colors[key].gradient[1]} />
+              </linearGradient>
+            </defs>
+          ))}
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="model" />
-          <YAxis 
-            tickFormatter={(value) => showPercentage ? `${value.toFixed(0)}%` : formatNumber(value)}
+          <XAxis 
+            dataKey="model"
+            angle={-20}
+            textAnchor="end"
+            height={100}
+            interval={0}
+            label={{ 
+              value: "Model Name", 
+              position: "bottom",
+              offset: 80
+            }}
+          />
+          <YAxis
+            tickFormatter={(value) => {
+              if (showPercentage) return `${value.toFixed(0)}%`;
+              if (title.includes("Cost")) return `$${formatNumber(value)}`;
+              return Math.round(value).toLocaleString();
+            }}
             domain={showPercentage ? [0, 100] : [0, 'auto']}
+            label={{ 
+              value: title.includes("Cost") 
+                ? (showPercentage ? "% of Cost" : "Cost (USD)") 
+                : (showPercentage ? "% of Tokens" : "Number of Tokens"),
+              angle: -90,
+              position: "insideLeft",
+              offset: -60,
+              style: { textAnchor: 'middle' }
+            }}
           />
           <Tooltip content={<CustomTooltip />} />
           <Legend />
           {dataKeys.map((key) => (
-            <Bar key={key} dataKey={key} stackId="a" fill={colors[key]} />
+            <Bar 
+              key={key} 
+              dataKey={key} 
+              stackId="a" 
+              fill={`url(#${key}Gradient)`}
+              stroke={colors[key].stroke}
+              strokeWidth={1}
+              radius={[4, 4, 0, 0]}
+            />
           ))}
         </BarChart>
       </ResponsiveContainer>
@@ -231,6 +347,10 @@ const LLMUsageAnalysis: React.FC<LLMUsageProps> = ({ projectId }) => {
       );
     }
 
+    if (!selectedProject) {
+      return <div className="text-center p-4">Please select a project to view analytics</div>;
+    }
+
     if (tokenData.length === 0 || costData.length === 0) {
       return <div className="text-center p-4">No LLM usage data available</div>;
     }
@@ -243,6 +363,7 @@ const LLMUsageAnalysis: React.FC<LLMUsageProps> = ({ projectId }) => {
           <p>Total Cost: ${formatNumber(summary.totalCost)}</p>
           <p>Total LLM Calls: {summary.totalCalls.toLocaleString()}</p>
         </div>
+
         <div className="flex items-center space-x-2">
           <Switch
             id="percentage-mode"
@@ -251,6 +372,7 @@ const LLMUsageAnalysis: React.FC<LLMUsageProps> = ({ projectId }) => {
           />
           <Label htmlFor="percentage-mode">Show as percentage</Label>
         </div>
+
         {renderChart(tokenData, "Token Usage", ["Input", "Output", "Reasoning"], TOKEN_COLORS)}
         {renderChart(costData, "Cost Analysis", ["InputCost", "OutputCost", "ReasoningCost"], COST_COLORS)}
       </div>

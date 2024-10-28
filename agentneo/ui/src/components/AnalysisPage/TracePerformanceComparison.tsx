@@ -1,10 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, ResponsiveContainer } from 'recharts';
+import { 
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Legend
+} from 'recharts';
 import axios from 'axios';
-import { Loader2 } from 'lucide-react';
-import { useProject } from '../../contexts/ProjectContext';
+import { Loader2, Check, ChevronsUpDown } from 'lucide-react';
+import { useProject } from '@/contexts/ProjectContext';
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 interface TraceData {
   id: string;
@@ -12,10 +35,57 @@ interface TraceData {
   avgResponseTime: number;
   totalTokens: number;
   totalCost: number;
-  memoryUsage: number;
+  avgMemoryUsage: number;
+  toolCallCount: number;
+  llmCallCount: number;
 }
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+const COLORS = [
+  { stroke: '#2563eb', fill: '#3b82f6' }, // blue
+  { stroke: '#059669', fill: '#10b981' }, // green
+  { stroke: '#dc2626', fill: '#ef4444' }, // red
+  { stroke: '#7c3aed', fill: '#8b5cf6' }, // purple
+  { stroke: '#ea580c', fill: '#f97316' }  // orange
+];
+
+const METRICS = [
+  { 
+    key: 'avgResponseTime',
+    label: 'Average Response Time per Call',
+    unit: 's',
+    format: (value: number) => `${value.toFixed(2)}s`
+  },
+  { 
+    key: 'totalTokens',
+    label: 'Total Tokens Used',
+    unit: '',
+    format: (value: number) => value.toFixed(0)
+  },
+  { 
+    key: 'totalCost',
+    label: 'Total Cost',
+    unit: '$',
+    format: (value: number) => `$${value.toFixed(4)}`
+  },
+  { 
+    key: 'avgMemoryUsage',
+    label: 'Average Memory Usage per Call',
+    unit: 'MB',
+    format: (value: number) => `${(value / (1024 * 1024)).toFixed(2)} MB`
+  },
+  { 
+    key: 'toolCallCount',
+    label: 'Number of Tool Calls',
+    unit: '',
+    format: (value: number) => value.toFixed(0)
+  },
+  { 
+    key: 'llmCallCount',
+    label: 'Number of LLM Calls',
+    unit: '',
+    format: (value: number) => value.toFixed(0)
+  }
+];
 
 const TracePerformanceComparison: React.FC = () => {
   const { selectedProject } = useProject();
@@ -23,14 +93,11 @@ const TracePerformanceComparison: React.FC = () => {
   const [selectedTraces, setSelectedTraces] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (selectedProject) {
-      fetchTraceData();
-    }
-  }, [selectedProject]);
+  const [open, setOpen] = useState(false);
 
   const fetchTraceData = async () => {
+    if (!selectedProject) return;
+
     try {
       setIsLoading(true);
       setError(null);
@@ -45,7 +112,7 @@ const TracePerformanceComparison: React.FC = () => {
         let totalTokens = 0;
         let totalCost = 0;
         let totalDuration = 0;
-        let totalMemoryUsed = 0;
+        let totalMemory = 0;
 
         traceData.llm_calls.forEach((call: any) => {
           const tokenUsage = JSON.parse(call.token_usage);
@@ -55,7 +122,7 @@ const TracePerformanceComparison: React.FC = () => {
           totalCost += cost.input + cost.output + cost.reasoning;
 
           totalDuration += call.duration;
-          totalMemoryUsed += call.memory_used;
+          totalMemory += call.memory_used || 0;
         });
 
         return {
@@ -64,12 +131,16 @@ const TracePerformanceComparison: React.FC = () => {
           avgResponseTime: totalDuration / traceData.llm_calls.length,
           totalTokens,
           totalCost,
-          memoryUsage: totalMemoryUsed / traceData.llm_calls.length,
+          avgMemoryUsage: totalMemory / traceData.llm_calls.length,
+          toolCallCount: traceData.tool_calls?.length || 0,
+          llmCallCount: traceData.llm_calls.length
         };
       }));
 
       setTraces(processedTraces);
-      setSelectedTraces(processedTraces.slice(0, 3).map(t => t.id));
+      if (processedTraces.length > 0 && selectedTraces.length === 0) {
+        setSelectedTraces([processedTraces[0].id]);
+      }
     } catch (err) {
       console.error('Error fetching trace data:', err);
       setError('Failed to fetch trace data. Please try again later.');
@@ -78,58 +149,97 @@ const TracePerformanceComparison: React.FC = () => {
     }
   };
 
-  const handleTraceToggle = (traceId: string) => {
-    setSelectedTraces(prev =>
-      prev.includes(traceId) ? prev.filter(t => t !== traceId) : [...prev, traceId]
-    );
-  };
+  useEffect(() => {
+    if (selectedProject) {
+      fetchTraceData();
+    }
+  }, [selectedProject]);
 
-  const normalizeData = (data: TraceData[]) => {
-    const subjects = ['avgResponseTime', 'totalTokens', 'totalCost', 'memoryUsage'];
-    const maxValues = subjects.reduce((acc, subject) => {
-      acc[subject] = Math.max(...data.map(d => d[subject as keyof TraceData] as number));
-      return acc;
-    }, {} as Record<string, number>);
-
-    return data.map(trace => ({
-      id: trace.id,
-      name: trace.name,
-      'Avg Response Time': (trace.avgResponseTime / maxValues.avgResponseTime) * 100,
-      'Total Tokens': (trace.totalTokens / maxValues.totalTokens) * 100,
-      'Total Cost': (trace.totalCost / maxValues.totalCost) * 100,
-      'Avg Memory Usage': (trace.memoryUsage / maxValues.memoryUsage) * 100,
+  const getComparisonData = () => {
+    const selectedTraceData = traces.filter(trace => selectedTraces.includes(trace.id));
+    return METRICS.map(({ key, label, unit }) => ({
+      metric: label,
+      unit,
+      ...selectedTraceData.reduce((acc, trace) => ({
+        ...acc,
+        [trace.name]: trace[key as keyof TraceData]
+      }), {})
     }));
   };
 
-  const chartData = normalizeData(traces).reduce((acc, trace) => {
-    Object.entries(trace).forEach(([key, value]) => {
-      if (key !== 'id' && key !== 'name') {
-        const existingEntry = acc.find(item => item.subject === key);
-        if (existingEntry) {
-          existingEntry[trace.id] = value;
-        } else {
-          acc.push({ subject: key, [trace.id]: value });
-        }
-      }
-    });
-    return acc;
-  }, [] as any[]);
+  const renderTraceSelector = () => (
+    <div className="w-full">
+      <Label className="text-base font-semibold mb-2 block">
+        Select Traces to Compare
+      </Label>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between"
+          >
+            {selectedTraces.length === 0 
+              ? "Select traces..."
+              : `${selectedTraces.length} trace${selectedTraces.length === 1 ? '' : 's'} selected`}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent 
+          className="w-[var(--radix-popover-trigger-width)] p-0" 
+          align="start"
+          side="bottom"
+          sideOffset={4}
+        >
+          <Command className="w-full">
+            <CommandInput placeholder="Search traces..." />
+            <CommandEmpty>No trace found.</CommandEmpty>
+            <CommandGroup className="max-h-[200px] overflow-y-auto">
+              {traces.map((trace) => (
+                <CommandItem
+                  key={trace.id}
+                  onSelect={() => {
+                    setSelectedTraces(current => 
+                      current.includes(trace.id)
+                        ? current.filter(id => id !== trace.id)
+                        : [...current, trace.id]
+                    );
+                    return false;
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      selectedTraces.includes(trace.id) ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {trace.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </Command>
+        </PopoverContent>
+      </Popover>
+      <p className="text-sm text-gray-500 mt-1">
+        Select multiple traces to compare their performance metrics
+      </p>
+    </div>
+  );
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="flex items-center justify-center h-64">
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center h-64">
           <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
           <span className="ml-2">Loading trace data...</span>
-        </CardContent>
-      </Card>
-    );
-  }
+        </div>
+      );
+    }
 
-  if (error) {
-    return (
-      <Card>
-        <CardContent className="text-center text-red-500 p-4">
+    if (error) {
+      return (
+        <div className="text-center text-red-500 p-4">
           <p>{error}</p>
           <button
             className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
@@ -137,49 +247,72 @@ const TracePerformanceComparison: React.FC = () => {
           >
             Retry
           </button>
-        </CardContent>
-      </Card>
+        </div>
+      );
+    }
+
+    if (!selectedProject) {
+      return <div className="text-center p-4">Please select a project to view comparison</div>;
+    }
+
+    return (
+      <div className="space-y-8 w-full">
+        {renderTraceSelector()}
+
+        {selectedTraces.length > 0 && (
+          <div className="space-y-6 bg-white rounded-lg p-6 shadow-sm w-full">
+            <div className="h-[500px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={getComparisonData()}
+                  layout="vertical"
+                  margin={{ top: 20, right: 50, left: 200, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" />
+                  <YAxis 
+                    dataKey="metric" 
+                    type="category"
+                    width={180}
+                    style={{ fontSize: '12px' }}
+                  />
+                  <Tooltip
+                    formatter={(value: number, name: string, props: any) => {
+                      const metric = METRICS.find(m => m.label === props.payload.metric);
+                      return metric ? metric.format(value) : value;
+                    }}
+                  />
+                  <Legend />
+                  {selectedTraces.map((traceId, index) => {
+                    const trace = traces.find(t => t.id === traceId);
+                    return (
+                      <Bar
+                        key={traceId}
+                        dataKey={trace?.name || ''}
+                        fill={COLORS[index % COLORS.length].fill}
+                      />
+                    );
+                  })}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+      </div>
     );
-  }
+  };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Trace Performance Comparison</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-wrap gap-4 mb-4">
-          <span>Select Traces to Compare:</span>
-          {traces.map((trace, index) => (
-            <label key={trace.id} className="flex items-center space-x-2">
-              <Checkbox
-                checked={selectedTraces.includes(trace.id)}
-                onCheckedChange={() => handleTraceToggle(trace.id)}
-              />
-              <span style={{ color: COLORS[index % COLORS.length] }}>{trace.name}</span>
-            </label>
-          ))}
-        </div>
-        <ResponsiveContainer width="100%" height={400}>
-          <RadarChart data={chartData}>
-            <PolarGrid />
-            <PolarAngleAxis dataKey="subject" />
-            <PolarRadiusAxis angle={30} domain={[0, 100]} />
-            {selectedTraces.map((traceId, index) => (
-              <Radar
-                key={traceId}
-                name={traces.find(t => t.id === traceId)?.name}
-                dataKey={traceId}
-                stroke={COLORS[index % COLORS.length]}
-                fill={COLORS[index % COLORS.length]}
-                fillOpacity={0.6}
-              />
-            ))}
-            <Legend />
-          </RadarChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
+    <div className="w-full px-4 md:px-6 lg:px-8">
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>Trace Performance Comparison</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {renderContent()}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
