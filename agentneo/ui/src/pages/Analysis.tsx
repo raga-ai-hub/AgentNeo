@@ -3,7 +3,7 @@ import PerformanceMetrics from '../components/AnalysisPage/PerformanceMetrics';
 import LLMUsageAnalysis from '../components/AnalysisPage/LLMUsageAnalysis';
 import ToolPerformanceAnalysis from '../components/AnalysisPage/ToolPerformanceAnalysis';
 import ErrorAnalysis from '../components/AnalysisPage/ErrorAnalysis';
-import CostOptimizationInsights from '../components/AnalysisPage/CostOptimizationInsights';
+import TimeAnalysis from '../components/AnalysisPage/TimeAnalysis';
 import TracePerformanceComparison from '../components/AnalysisPage/TracePerformanceComparison';
 import TopPerformanceCriteria from '../components/AnalysisPage/TopPerformanceCriteria';
 import Sidebar from '../components/Sidebar';
@@ -52,6 +52,7 @@ const Analysis: React.FC = () => {
               <Select
                 value={selectedTraceId || ''}
                 onValueChange={setSelectedTraceId}
+                disabled={!selectedProject}
               >
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="Select trace" />
@@ -67,17 +68,26 @@ const Analysis: React.FC = () => {
             </div>
           </div>
           <div className="space-y-6">
-            <PerformanceMetrics />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <LLMUsageAnalysis projectId={selectedProject} />
-              <ToolPerformanceAnalysis />
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <ErrorAnalysis />
-              <CostOptimizationInsights />
-            </div>
-            <TracePerformanceComparison />
-            <TopPerformanceCriteria />
+            {selectedProject && (
+              <>
+                <PerformanceMetrics />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <LLMUsageAnalysis />
+                  <ToolPerformanceAnalysis /> {/* Removed projectId prop */}
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <ErrorAnalysis />
+                  <TimeAnalysis />
+                </div>
+                <TracePerformanceComparison />
+                <TopPerformanceCriteria />
+              </>
+            )}
+            {!selectedProject && (
+              <div className="text-center p-8 text-gray-500">
+                Please select a project to view analytics
+              </div>
+            )}
           </div>
         </div>
       </div>

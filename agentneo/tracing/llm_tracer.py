@@ -7,8 +7,8 @@ from datetime import datetime
 import os
 
 from .user_interaction_tracer import UserInteractionTracer
-from .utils import calculate_cost, load_model_costs, convert_usage_to_dict
-from .llm_utils import extract_llm_output
+from ..utils.trace_utils import calculate_cost, load_model_costs, convert_usage_to_dict
+from ..utils.llm_utils import extract_llm_output
 from ..data import LLMCallModel
 
 
