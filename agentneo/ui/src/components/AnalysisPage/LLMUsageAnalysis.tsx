@@ -366,11 +366,11 @@ const LLMUsageAnalysis: React.FC = () => {
 
         <div className="flex items-center space-x-2">
           <Switch
-            id="percentage-mode"
+            id="llm-percentage-mode"
             checked={showPercentage}
             onCheckedChange={setShowPercentage}
           />
-          <Label htmlFor="percentage-mode">Show as percentage</Label>
+          <Label htmlFor="llm-percentage-mode">Show as percentage</Label>
         </div>
 
         {renderChart(tokenData, "Token Usage", ["Input", "Output", "Reasoning"], TOKEN_COLORS)}

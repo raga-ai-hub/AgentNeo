@@ -13,7 +13,6 @@ import { fetchEvaluationData } from '../utils/databaseUtils';
 import TraceDetailsPanel from '../components/TraceDetailsPanel';
 import { fetchTraceDetails } from '../utils/api';
 import type { DetailedTraceComponents } from '../types/trace';
-import { Button } from "@/components/ui/button";
 
 const metricNames = [
   'goal_decomposition_efficiency',
@@ -32,10 +31,9 @@ const Evaluation: React.FC = () => {
   const [evaluationData, setEvaluationData] = useState<any[]>([]);
   const [filteredData, setFilteredData] = useState<any[]>([]);
   const [allTraces, setAllTraces] = useState<{ id: string, name: string }[]>([]);
-  const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
+  const [selectedTraceId, setSelectedTraceId] = useState<string>('all');
   const [selectedTraceData, setSelectedTraceData] = useState<DetailedTraceComponents | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
-
 
   useEffect(() => {
     const fetchData = async () => {
@@ -44,19 +42,22 @@ const Evaluation: React.FC = () => {
         setEvaluationData(data);
         setFilteredData(data);
 
-        if (selectedTraceId === 'all') {
-          const uniqueTraces = new Set(data.map(item => item.trace_id));
-          setAllTraces([
-            { id: 'all', name: 'All Traces' },
-            ...Array.from(uniqueTraces).map(id => ({ id, name: `Trace ${id}` }))
-          ]);
-        }
+        // Extract unique trace IDs from the data
+        const uniqueTraces = Array.from(new Set(data.map(item => item.trace_id)));
+
+        // Create the traces array with 'All Traces' as the first option
+        const tracesArray = [
+          { id: 'all', name: 'All Traces' },
+          ...uniqueTraces.map(id => ({ id: id.toString(), name: `Trace ${id}` }))
+        ];
+
+        setAllTraces(tracesArray);
       }
     };
     fetchData();
-  }, [selectedProject, selectedTraceId]);
+  }, [selectedProject]); // Remove selectedTraceId from dependencies
 
-  const applyDateFilter = () => {
+  useEffect(() => {
     if (!startDate && !endDate) {
       setFilteredData(evaluationData);
       return;
@@ -64,11 +65,7 @@ const Evaluation: React.FC = () => {
 
     const filtered = evaluationData.filter(item => {
       const itemDate = new Date(item.start_time);
-
-      // Set the start of the day for startDate if it exists
       const startOfDay = startDate ? new Date(startDate.setHours(0, 0, 0, 0)) : null;
-
-      // Set the end of the day for endDate if it exists
       const endOfDay = endDate ? new Date(endDate.setHours(23, 59, 59, 999)) : null;
 
       const isAfterStart = startOfDay ? itemDate >= startOfDay : true;
@@ -78,10 +75,6 @@ const Evaluation: React.FC = () => {
     });
 
     setFilteredData(filtered);
-  };
-
-  useEffect(() => {
-    applyDateFilter();
   }, [startDate, endDate, evaluationData]);
 
   const prepareDataForTable = (data: any[]) => {
@@ -133,47 +126,74 @@ const Evaluation: React.FC = () => {
   const metricsData = useMemo(() => {
     return metricNames.map(metric => {
       const metricKey = metric.toLowerCase().replace(/ /g, '_');
-      const scores = filteredData
-        .filter(item => item[metricKey])
-        .map(item => item[metricKey].score || 0);
+      let scores;
+
+      if (selectedTraceId === 'all') {
+        // Calculate metrics across all traces
+        scores = filteredData
+          .filter(item => item[metricKey])
+          .map(item => item[metricKey].score || 0);
+      } else {
+        // Calculate metrics for selected trace only
+        scores = filteredData
+          .filter(item => item.trace_id.toString() === selectedTraceId && item[metricKey])
+          .map(item => item[metricKey].score || 0);
+      }
+
+      // If no scores available, return zeros
+      if (scores.length === 0) {
+        return {
+          name: metric,
+          min: 0,
+          max: 0,
+          avg: 0
+        };
+      }
+
       return {
         name: metric,
         min: Math.min(...scores),
         max: Math.max(...scores),
-        avg: scores.reduce((a, b) => a + b, 0) / scores.length || 0
+        avg: scores.reduce((a, b) => a + b, 0) / scores.length
       };
     });
-  }, [filteredData]);
+  }, [filteredData, selectedTraceId]);
 
   const handleTraceSelect = async (traceId: string) => {
     setSelectedTraceId(traceId);
-    setIsPanelOpen(true);
-
-    try {
-      const traceData = await fetchTraceDetails(traceId);
-      setSelectedTraceData(traceData);
-    } catch (error) {
-      console.error('Error fetching trace details:', error);
+    if (traceId !== 'all') {
+      setIsPanelOpen(true);
+      try {
+        const traceData = await fetchTraceDetails(traceId);
+        setSelectedTraceData(traceData);
+      } catch (error) {
+        console.error('Error fetching trace details:', error);
+        setSelectedTraceData(null);
+      }
+    } else {
+      setIsPanelOpen(false);
       setSelectedTraceData(null);
     }
   };
 
   const handleCloseSidebar = () => {
     setIsPanelOpen(false);
-    setSelectedTraceId(null);
+    setSelectedTraceId('all');
     setSelectedTraceData(null);
   };
 
   return (
-    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
+    <div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-gray-900">
       <Sidebar />
-      <div className={`flex-1 overflow-y-auto p-8 transition-all duration-300 ${isPanelOpen ? 'mr-96' : ''}`}>
-        <div className="p-8">
+      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${isPanelOpen ? 'mr-96' : ''}`}>
+        {/* Fixed Header */}
+        <div className="flex-shrink-0 p-8 bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center mb-6">
             <ClipboardCheck className="mr-2 h-8 w-8 text-indigo-600 dark:text-indigo-400" />
             <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Evaluation</h1>
           </div>
-          <div className="grid grid-cols-4 gap-4 mb-6">
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Select
               value={selectedProject?.toString() || ''}
               onValueChange={(value) => setSelectedProject(Number(value))}
@@ -189,9 +209,12 @@ const Evaluation: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={selectedTraceId} onValueChange={setSelectedTraceId}>
+            <Select
+              value={selectedTraceId}
+              onValueChange={(value) => handleTraceSelect(value)}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="Select Trace" />
+                <SelectValue placeholder="All Traces" />
               </SelectTrigger>
               <SelectContent>
                 {allTraces.map((trace) => (
@@ -201,89 +224,112 @@ const Evaluation: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
-            <DateTimePicker date={startDate} setDate={setStartDate} />
-            <DateTimePicker date={endDate} setDate={setEndDate} />
+            <DateTimePicker
+              date={startDate}
+              setDate={setStartDate}
+            />
+            <DateTimePicker
+              date={endDate}
+              setDate={setEndDate}
+            />
           </div>
-          <Button onClick={applyDateFilter} className="mb-6">Apply Date Filter</Button>
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Metrics Distribution</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart
-                  data={metricsData}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="name"
-                    interval={0}
-                    tick={({ x, y, payload, index }) => {
-                      const totalLabels = metricsData.length;
-                      let textAnchor: "start" | "middle" | "end";
-                      let xOffset: number;
-
-                      if (index === 0) {
-                        textAnchor = "start";
-                        xOffset = 0;
-                      } else if (index === totalLabels - 1) {
-                        textAnchor = "end";
-                        xOffset = 0;
-                      } else {
-                        textAnchor = "middle";
-                        xOffset = 0;
-                      }
-
-                      return (
-                        <g transform={`translate(${x},${y})`}>
-                          <text
-                            x={xOffset}
-                            y={0}
-                            dy={16}
-                            textAnchor={textAnchor}
-                            fill="#666"
-                            fontSize={12}
-                          >
-                            {payload.value}
-                          </text>
-                        </g>
-                      );
-                    }}
-                    height={60}
-                  />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="min" stroke="#8884d8" />
-                  <Line type="monotone" dataKey="max" stroke="#82ca9d" />
-                  <Line type="monotone" dataKey="avg" stroke="#ffc658" />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Evaluation Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Input
-                type="text"
-                placeholder="Search..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="mb-4"
-              />
-              <EvaluationTable
-                sortedData={sortedData}
-                requestSort={requestSort}
-                metricNames={metricNames}
-                onTraceSelect={handleTraceSelect}  
-                selectedTraceId={selectedTraceId}
-              />
-            </CardContent>
-          </Card>
         </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto min-h-0">
+          <div className="p-8 space-y-6">
+            {selectedProject ? (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Metrics Distribution</CardTitle>
+                  </CardHeader>
+                  <CardContent className="h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={metricsData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="name"
+                          interval={0}
+                          tick={({ x, y, payload, index }) => {
+                            const totalLabels = metricsData.length;
+                            let textAnchor: "start" | "middle" | "end";
+                            let xOffset: number;
+
+                            if (index === 0) {
+                              textAnchor = "start";
+                              xOffset = 0;
+                            } else if (index === totalLabels - 1) {
+                              textAnchor = "end";
+                              xOffset = 0;
+                            } else {
+                              textAnchor = "middle";
+                              xOffset = 0;
+                            }
+
+                            return (
+                              <g transform={`translate(${x},${y})`}>
+                                <text
+                                  x={xOffset}
+                                  y={0}
+                                  dy={16}
+                                  textAnchor={textAnchor}
+                                  fill="#666"
+                                  fontSize={12}
+                                >
+                                  {payload.value}
+                                </text>
+                              </g>
+                            );
+                          }}
+                          height={60}
+                        />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Line type="monotone" dataKey="min" stroke="#8884d8" />
+                        <Line type="monotone" dataKey="max" stroke="#82ca9d" />
+                        <Line type="monotone" dataKey="avg" stroke="#ffc658" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Evaluation Details</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <Input
+                        type="text"
+                        placeholder="Search..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                      />
+                      <div className="overflow-auto">
+                        <EvaluationTable
+                          sortedData={sortedData}
+                          requestSort={requestSort}
+                          metricNames={metricNames}
+                          onTraceSelect={handleTraceSelect}
+                          selectedTraceId={selectedTraceId}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center text-gray-500 dark:text-gray-400">
+                  Please select a project to view analytics
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         <TraceDetailsPanel
           isOpen={isPanelOpen}
           onClose={handleCloseSidebar}

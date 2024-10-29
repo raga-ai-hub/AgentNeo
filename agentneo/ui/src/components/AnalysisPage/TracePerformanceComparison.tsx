@@ -276,11 +276,11 @@ const TracePerformanceComparison: React.FC = () => {
 
         <div className="flex items-center space-x-2">
           <Switch
-            id="percentage-mode"
+            id="trace-percentage-mode"
             checked={showPercentage}
             onCheckedChange={setShowPercentage}
           />
-          <Label htmlFor="percentage-mode">Show as percentage</Label>
+          <Label htmlFor="trace-percentage-mode">Show as percentage</Label>
         </div>
 
         {selectedTraces.length > 0 && (
@@ -351,7 +351,8 @@ const TracePerformanceComparison: React.FC = () => {
   }, [showDropdown]);
 
   return (
-    <div className="w-full px-4 md:px-6 lg:px-8">
+    // Remove the px-4 md:px-6 lg:px-8 classes that were limiting the width
+    <div className="w-full">
       <Card className="w-full">
         <CardHeader>
           <CardTitle>Trace Performance Comparison</CardTitle>
