@@ -5,7 +5,7 @@
 
 AgentNeo is an advanced, open-source **Agentic AI Application Observability, Monitoring, and Evaluation Framework**. Designed to elevate your AI development experience, AgentNeo provides deep insights into your AI agents, Large Language Model (LLM) calls, and tool interactions. By leveraging AgentNeo, you can build more efficient, cost-effective, and high-quality AI-driven solutions.
 
-![AgentNeo Overview](docs/assets/overview1.png)
+![AgentNeo](docs/assets/architecture.svg)
 
 ## ⚡ Why AgentNeo?
 
@@ -35,6 +35,8 @@ Install AgentNeo effortlessly using pip:
 ```bash
 pip install agentneo
 ```
+
+![AgentNeo Overview](docs/assets/overview.png)
 
 ## 🌟 Quick Start Guide
 
@@ -106,7 +108,7 @@ launch_dashboard(port=3000)
 
 Access the interactive dashboard by visiting `http://localhost:3000` in your web browser.
 
-![AgentNeo Evaluation](docs/assets/evaluation1.png)
+![Trace History Page](docs/assets/trace_history.png)
 
 ## 🔧 Advanced Usage
 
@@ -158,6 +160,9 @@ exe.evaluate(metric_list=['metric_name'], config={}, metadata={})
 #   }
 ```
 
+![AgentNeo Evaluation](docs/assets/evaluation.png)
+
+
 ### Execution Graph Visualization
 
 AgentNeo generates an execution graph that visualizes the flow of your AI application, including LLM calls, tool usage, and agent interactions. Explore this graph in the interactive dashboard to gain deeper insights.
@@ -174,7 +179,7 @@ The AgentNeo dashboard offers a comprehensive view of your AI application's perf
 - **Timeline of Events**
 
 
-![AgentNeo Analysis](docs/assets/analysis1.png)
+![AgentNeo Analysis](docs/assets/analytics.png)
 
 
 ### Launching the Dashboard
