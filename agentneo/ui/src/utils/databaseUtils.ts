@@ -12,7 +12,8 @@ export const initDatabase = async () => {
         SQL = await initSqlJs({ locateFile: file => `/${file}` });
     }
     if (!db) {
-        const possiblePaths = ['/agentneo/ui/dist/trace_data.db', '/dist/trace_data.db'];
+        // const possiblePaths = ['/agentneo/ui/dist/trace_data.db', '/dist/trace_data.db'];
+        const possiblePaths = ['/dist/trace_data.db'];
 
         for (const path of possiblePaths) {
             try {
@@ -29,13 +30,14 @@ export const initDatabase = async () => {
             } catch (error) {
                 console.error(`Error loading database from ${path}:`, error);
             }
-
-            if (!db) {
-                throw new Error('Failed to load database from any of the possible paths');
-            }
         }
-        return db;
-    };
+        
+        if (!db) {
+            throw new Error('Failed to load database from any of the possible paths');
+        }
+    }
+    return db;
+};
 
     export const fetchAllProjects = async () => {
         try {

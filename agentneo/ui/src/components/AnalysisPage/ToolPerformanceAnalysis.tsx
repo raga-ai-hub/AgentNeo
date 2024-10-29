@@ -199,11 +199,11 @@ const ToolPerformanceAnalysis: React.FC = () => {
 
         <div className="flex items-center space-x-2">
           <Switch
-            id="percentage-mode"
+            id="tool-percentage-mode"
             checked={showPercentage}
             onCheckedChange={setShowPercentage}
           />
-          <Label htmlFor="percentage-mode">Show as percentage</Label>
+          <Label htmlFor="tool-percentage-mode">Show as percentage</Label>
         </div>
 
         <div>
