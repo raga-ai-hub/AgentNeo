@@ -166,7 +166,7 @@ const TraceHistory: React.FC = () => {
                       {new Date(trace.start_time).toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      {trace.duration.toFixed(2)}s
+                      {trace.duration ? `${trace.duration.toFixed(2)}s` : "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                       {trace.total_llm_calls ?? "-"}
