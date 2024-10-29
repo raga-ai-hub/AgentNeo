@@ -12,8 +12,8 @@ export const initDatabase = async () => {
         SQL = await initSqlJs({ locateFile: file => `/${file}` });
     }
     if (!db) {
-        // const possiblePaths = ['/agentneo/ui/dist/trace_data.db', '/dist/trace_data.db'];
-        const possiblePaths = ['/dist/trace_data.db'];
+        const possiblePaths = ['/agentneo/ui/dist/trace_data.db', '/dist/trace_data.db'];
+        // const possiblePaths = ['/dist/trace_data.db'];
 
         for (const path of possiblePaths) {
             try {

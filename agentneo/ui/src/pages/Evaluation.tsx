@@ -13,7 +13,6 @@ import { fetchEvaluationData } from '../utils/databaseUtils';
 import TraceDetailsPanel from '../components/TraceDetailsPanel';
 import { fetchTraceDetails } from '../utils/api';
 import type { DetailedTraceComponents } from '../types/trace';
-import { Button } from "@/components/ui/button";
 
 const metricNames = [
   'goal_decomposition_efficiency',
@@ -32,10 +31,9 @@ const Evaluation: React.FC = () => {
   const [evaluationData, setEvaluationData] = useState<any[]>([]);
   const [filteredData, setFilteredData] = useState<any[]>([]);
   const [allTraces, setAllTraces] = useState<{ id: string, name: string }[]>([]);
-  const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
+  const [selectedTraceId, setSelectedTraceId] = useState<string>('all');
   const [selectedTraceData, setSelectedTraceData] = useState<DetailedTraceComponents | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
-
 
   useEffect(() => {
     const fetchData = async () => {
@@ -44,19 +42,22 @@ const Evaluation: React.FC = () => {
         setEvaluationData(data);
         setFilteredData(data);
 
-        if (selectedTraceId === 'all') {
-          const uniqueTraces = new Set(data.map(item => item.trace_id));
-          setAllTraces([
-            { id: 'all', name: 'All Traces' },
-            ...Array.from(uniqueTraces).map(id => ({ id, name: `Trace ${id}` }))
-          ]);
-        }
+        // Extract unique trace IDs from the data
+        const uniqueTraces = Array.from(new Set(data.map(item => item.trace_id)));
+        
+        // Create the traces array with 'All Traces' as the first option
+        const tracesArray = [
+          { id: 'all', name: 'All Traces' },
+          ...uniqueTraces.map(id => ({ id: id.toString(), name: `Trace ${id}` }))
+        ];
+        
+        setAllTraces(tracesArray);
       }
     };
     fetchData();
-  }, [selectedProject, selectedTraceId]);
+  }, [selectedProject]); // Remove selectedTraceId from dependencies
 
-  const applyDateFilter = () => {
+  useEffect(() => {
     if (!startDate && !endDate) {
       setFilteredData(evaluationData);
       return;
@@ -64,11 +65,7 @@ const Evaluation: React.FC = () => {
 
     const filtered = evaluationData.filter(item => {
       const itemDate = new Date(item.start_time);
-
-      // Set the start of the day for startDate if it exists
       const startOfDay = startDate ? new Date(startDate.setHours(0, 0, 0, 0)) : null;
-
-      // Set the end of the day for endDate if it exists
       const endOfDay = endDate ? new Date(endDate.setHours(23, 59, 59, 999)) : null;
 
       const isAfterStart = startOfDay ? itemDate >= startOfDay : true;
@@ -78,10 +75,6 @@ const Evaluation: React.FC = () => {
     });
 
     setFilteredData(filtered);
-  };
-
-  useEffect(() => {
-    applyDateFilter();
   }, [startDate, endDate, evaluationData]);
 
   const prepareDataForTable = (data: any[]) => {
@@ -133,34 +126,59 @@ const Evaluation: React.FC = () => {
   const metricsData = useMemo(() => {
     return metricNames.map(metric => {
       const metricKey = metric.toLowerCase().replace(/ /g, '_');
-      const scores = filteredData
-        .filter(item => item[metricKey])
-        .map(item => item[metricKey].score || 0);
+      let scores;
+      
+      if (selectedTraceId === 'all') {
+        // Calculate metrics across all traces
+        scores = filteredData
+          .filter(item => item[metricKey])
+          .map(item => item[metricKey].score || 0);
+      } else {
+        // Calculate metrics for selected trace only
+        scores = filteredData
+          .filter(item => item.trace_id.toString() === selectedTraceId && item[metricKey])
+          .map(item => item[metricKey].score || 0);
+      }
+  
+      // If no scores available, return zeros
+      if (scores.length === 0) {
+        return {
+          name: metric,
+          min: 0,
+          max: 0,
+          avg: 0
+        };
+      }
+  
       return {
         name: metric,
         min: Math.min(...scores),
         max: Math.max(...scores),
-        avg: scores.reduce((a, b) => a + b, 0) / scores.length || 0
+        avg: scores.reduce((a, b) => a + b, 0) / scores.length
       };
     });
-  }, [filteredData]);
+  }, [filteredData, selectedTraceId]); 
 
   const handleTraceSelect = async (traceId: string) => {
     setSelectedTraceId(traceId);
-    setIsPanelOpen(true);
-
-    try {
-      const traceData = await fetchTraceDetails(traceId);
-      setSelectedTraceData(traceData);
-    } catch (error) {
-      console.error('Error fetching trace details:', error);
+    if (traceId !== 'all') {
+      setIsPanelOpen(true);
+      try {
+        const traceData = await fetchTraceDetails(traceId);
+        setSelectedTraceData(traceData);
+      } catch (error) {
+        console.error('Error fetching trace details:', error);
+        setSelectedTraceData(null);
+      }
+    } else {
+      setIsPanelOpen(false);
       setSelectedTraceData(null);
     }
   };
 
   const handleCloseSidebar = () => {
     setIsPanelOpen(false);
-    setSelectedTraceId(null);
+    setSelectedTraceId('all');
     setSelectedTraceData(null);
   };
 
@@ -189,9 +207,12 @@ const Evaluation: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={selectedTraceId} onValueChange={setSelectedTraceId}>
+            <Select 
+              value={selectedTraceId} 
+              onValueChange={(value) => handleTraceSelect(value)}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="Select Trace" />
+                <SelectValue placeholder="All Traces" />
               </SelectTrigger>
               <SelectContent>
                 {allTraces.map((trace) => (
@@ -201,10 +222,15 @@ const Evaluation: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
-            <DateTimePicker date={startDate} setDate={setStartDate} />
-            <DateTimePicker date={endDate} setDate={setEndDate} />
+            <DateTimePicker 
+              date={startDate} 
+              setDate={setStartDate}
+            />
+            <DateTimePicker 
+              date={endDate} 
+              setDate={setEndDate}
+            />
           </div>
-          <Button onClick={applyDateFilter} className="mb-6">Apply Date Filter</Button>
           <Card className="mb-6">
             <CardHeader>
               <CardTitle>Metrics Distribution</CardTitle>
