@@ -44,13 +44,13 @@ const Evaluation: React.FC = () => {
 
         // Extract unique trace IDs from the data
         const uniqueTraces = Array.from(new Set(data.map(item => item.trace_id)));
-        
+
         // Create the traces array with 'All Traces' as the first option
         const tracesArray = [
           { id: 'all', name: 'All Traces' },
           ...uniqueTraces.map(id => ({ id: id.toString(), name: `Trace ${id}` }))
         ];
-        
+
         setAllTraces(tracesArray);
       }
     };
@@ -127,7 +127,7 @@ const Evaluation: React.FC = () => {
     return metricNames.map(metric => {
       const metricKey = metric.toLowerCase().replace(/ /g, '_');
       let scores;
-      
+
       if (selectedTraceId === 'all') {
         // Calculate metrics across all traces
         scores = filteredData
@@ -139,7 +139,7 @@ const Evaluation: React.FC = () => {
           .filter(item => item.trace_id.toString() === selectedTraceId && item[metricKey])
           .map(item => item[metricKey].score || 0);
       }
-  
+
       // If no scores available, return zeros
       if (scores.length === 0) {
         return {
@@ -149,7 +149,7 @@ const Evaluation: React.FC = () => {
           avg: 0
         };
       }
-  
+
       return {
         name: metric,
         min: Math.min(...scores),
@@ -157,7 +157,7 @@ const Evaluation: React.FC = () => {
         avg: scores.reduce((a, b) => a + b, 0) / scores.length
       };
     });
-  }, [filteredData, selectedTraceId]); 
+  }, [filteredData, selectedTraceId]);
 
   const handleTraceSelect = async (traceId: string) => {
     setSelectedTraceId(traceId);
@@ -183,15 +183,17 @@ const Evaluation: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
+    <div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-gray-900">
       <Sidebar />
-      <div className={`flex-1 overflow-y-auto p-8 transition-all duration-300 ${isPanelOpen ? 'mr-96' : ''}`}>
-        <div className="p-8">
+      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${isPanelOpen ? 'mr-96' : ''}`}>
+        {/* Fixed Header */}
+        <div className="flex-shrink-0 p-8 bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center mb-6">
             <ClipboardCheck className="mr-2 h-8 w-8 text-indigo-600 dark:text-indigo-400" />
             <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Evaluation</h1>
           </div>
-          <div className="grid grid-cols-4 gap-4 mb-6">
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Select
               value={selectedProject?.toString() || ''}
               onValueChange={(value) => setSelectedProject(Number(value))}
@@ -207,8 +209,8 @@ const Evaluation: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Select 
-              value={selectedTraceId} 
+            <Select
+              value={selectedTraceId}
               onValueChange={(value) => handleTraceSelect(value)}
             >
               <SelectTrigger>
@@ -222,94 +224,112 @@ const Evaluation: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
-            <DateTimePicker 
-              date={startDate} 
+            <DateTimePicker
+              date={startDate}
               setDate={setStartDate}
             />
-            <DateTimePicker 
-              date={endDate} 
+            <DateTimePicker
+              date={endDate}
               setDate={setEndDate}
             />
           </div>
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Metrics Distribution</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart
-                  data={metricsData}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="name"
-                    interval={0}
-                    tick={({ x, y, payload, index }) => {
-                      const totalLabels = metricsData.length;
-                      let textAnchor: "start" | "middle" | "end";
-                      let xOffset: number;
-
-                      if (index === 0) {
-                        textAnchor = "start";
-                        xOffset = 0;
-                      } else if (index === totalLabels - 1) {
-                        textAnchor = "end";
-                        xOffset = 0;
-                      } else {
-                        textAnchor = "middle";
-                        xOffset = 0;
-                      }
-
-                      return (
-                        <g transform={`translate(${x},${y})`}>
-                          <text
-                            x={xOffset}
-                            y={0}
-                            dy={16}
-                            textAnchor={textAnchor}
-                            fill="#666"
-                            fontSize={12}
-                          >
-                            {payload.value}
-                          </text>
-                        </g>
-                      );
-                    }}
-                    height={60}
-                  />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="min" stroke="#8884d8" />
-                  <Line type="monotone" dataKey="max" stroke="#82ca9d" />
-                  <Line type="monotone" dataKey="avg" stroke="#ffc658" />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Evaluation Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Input
-                type="text"
-                placeholder="Search..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="mb-4"
-              />
-              <EvaluationTable
-                sortedData={sortedData}
-                requestSort={requestSort}
-                metricNames={metricNames}
-                onTraceSelect={handleTraceSelect}  
-                selectedTraceId={selectedTraceId}
-              />
-            </CardContent>
-          </Card>
         </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto min-h-0">
+          <div className="p-8 space-y-6">
+            {selectedProject ? (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Metrics Distribution</CardTitle>
+                  </CardHeader>
+                  <CardContent className="h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={metricsData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="name"
+                          interval={0}
+                          tick={({ x, y, payload, index }) => {
+                            const totalLabels = metricsData.length;
+                            let textAnchor: "start" | "middle" | "end";
+                            let xOffset: number;
+
+                            if (index === 0) {
+                              textAnchor = "start";
+                              xOffset = 0;
+                            } else if (index === totalLabels - 1) {
+                              textAnchor = "end";
+                              xOffset = 0;
+                            } else {
+                              textAnchor = "middle";
+                              xOffset = 0;
+                            }
+
+                            return (
+                              <g transform={`translate(${x},${y})`}>
+                                <text
+                                  x={xOffset}
+                                  y={0}
+                                  dy={16}
+                                  textAnchor={textAnchor}
+                                  fill="#666"
+                                  fontSize={12}
+                                >
+                                  {payload.value}
+                                </text>
+                              </g>
+                            );
+                          }}
+                          height={60}
+                        />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Line type="monotone" dataKey="min" stroke="#8884d8" />
+                        <Line type="monotone" dataKey="max" stroke="#82ca9d" />
+                        <Line type="monotone" dataKey="avg" stroke="#ffc658" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Evaluation Details</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <Input
+                        type="text"
+                        placeholder="Search..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                      />
+                      <div className="overflow-auto">
+                        <EvaluationTable
+                          sortedData={sortedData}
+                          requestSort={requestSort}
+                          metricNames={metricNames}
+                          onTraceSelect={handleTraceSelect}
+                          selectedTraceId={selectedTraceId}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center text-gray-500 dark:text-gray-400">
+                  Please select a project to view analytics
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         <TraceDetailsPanel
           isOpen={isPanelOpen}
           onClose={handleCloseSidebar}

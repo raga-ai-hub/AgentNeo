@@ -85,9 +85,9 @@ const TraceHistory: React.FC = () => {
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-gray-900">
       <Sidebar />
-      <div className={`flex-1 flex flex-col h-screen transition-all duration-300 ${isPanelOpen ? 'mr-96' : ''}`}>
-        {/* Header Section - Fixed Height */}
-        <div className="p-8 bg-gray-100 dark:bg-gray-900">
+      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${isPanelOpen ? 'mr-96' : ''}`}>
+        {/* Fixed Header Section */}
+        <div className="flex-shrink-0 p-8 bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
           <div className="flex justify-between items-center mb-8">
             <div className="flex items-center">
               <History className="mr-2 h-8 w-8 text-indigo-600 dark:text-indigo-400" />
@@ -128,76 +128,75 @@ const TraceHistory: React.FC = () => {
           </Card>
         </div>
 
-        {/* Table Section - Scrollable */}
-        <div className="flex-1 overflow-hidden flex flex-col px-8 pb-8">
-          <div className="flex-1 bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden flex flex-col">
-            <div className="overflow-x-auto">
-              <div className="inline-block min-w-full align-middle">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className="bg-gray-50 dark:bg-gray-700">
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-hidden flex flex-col min-h-0 p-8">
+          {/* Table Container */}
+          <div className="flex-1 overflow-hidden flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div className="flex-1 overflow-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Start Time</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Duration</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">LLM Calls</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tool Calls</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Agent Calls</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Errors</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {isLoading ? (
                     <tr>
-                      <th className="sticky top-0 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
-                      <th className="sticky top-0 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Start Time</th>
-                      <th className="sticky top-0 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Duration</th>
-                      <th className="sticky top-0 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">LLM Calls</th>
-                      <th className="sticky top-0 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tool Calls</th>
-                      <th className="sticky top-0 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Agent Calls</th>
-                      <th className="sticky top-0 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Errors</th>
+                      <td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-300">
+                        Loading traces...
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {isLoading ? (
-                      <tr>
-                        <td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-300">
-                          Loading traces...
+                  ) : paginatedTraces.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-300">
+                        No traces found. {!selectedProject && "Please select a project."}
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedTraces.map((trace) => (
+                      <tr
+                        key={trace.id}
+                        onClick={() => handleTraceSelect(trace.id)}
+                        className={`hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-150 ease-in-out ${selectedTraceId === trace.id ? 'bg-purple-50 dark:bg-purple-900' : ''
+                          }`}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600 dark:text-indigo-400">
+                          {trace.id}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                          {new Date(trace.start_time).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                          {trace.duration ? `${trace.duration.toFixed(2)}s` : "-"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                          {trace.total_llm_calls ?? "-"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                          {trace.total_tool_calls ?? "-"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                          {trace.total_agent_calls ?? "-"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                          {trace.total_errors ?? "-"}
                         </td>
                       </tr>
-                    ) : paginatedTraces.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-300">
-                          No traces found. {!selectedProject && "Please select a project."}
-                        </td>
-                      </tr>
-                    ) : (
-                      paginatedTraces.map((trace) => (
-                        <tr
-                          key={trace.id}
-                          onClick={() => handleTraceSelect(trace.id)}
-                          className={`hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-150 ease-in-out ${selectedTraceId === trace.id ? 'bg-purple-50 dark:bg-purple-900' : ''
-                            }`}
-                        >
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600 dark:text-indigo-400">
-                            {trace.id}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                            {new Date(trace.start_time).toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                            {trace.duration ? `${trace.duration.toFixed(2)}s` : "-"}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                            {trace.total_llm_calls ?? "-"}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                            {trace.total_tool_calls ?? "-"}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                            {trace.total_agent_calls ?? "-"}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                            {trace.total_errors ?? "-"}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
 
-          {/* Pagination - Fixed at Bottom */}
-          <div className="mt-6 flex justify-between items-center">
+          {/* Fixed Footer Pagination */}
+          <div className="flex-shrink-0 mt-6 flex justify-between items-center">
             <Button
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
@@ -219,13 +218,13 @@ const TraceHistory: React.FC = () => {
             </Button>
           </div>
         </div>
-      </div>
 
-      <TraceDetailsPanel
-        isOpen={isPanelOpen}
-        onClose={handleCloseSidebar}
-        traceData={selectedTraceData}
-      />
+        <TraceDetailsPanel
+          isOpen={isPanelOpen}
+          onClose={handleCloseSidebar}
+          traceData={selectedTraceData}
+        />
+      </div>
     </div>
   );
 };
