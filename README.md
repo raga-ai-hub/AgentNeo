@@ -228,6 +228,10 @@ We are committed to continuously improving AgentNeo. Here's a glimpse of what's 
 
 For more details, explore the full [AgentNeo Documentation](https://docs.raga.ai/agentneo)
 
+##  Demo Video
+
+For reference, Watch a demo video [AgentNeo Demo Video](https://youtu.be/iDV3_Lwv8EY)
+
 ## 🤝 Contributing
 
 We warmly welcome contributions from the community! Whether it's reporting bugs, suggesting new features, or improving documentation, your input is invaluable.
