@@ -10,11 +10,11 @@ import {
   CartesianGrid,
   Legend
 } from 'recharts';
-import axios from 'axios';
 import { Loader2 } from 'lucide-react';
 import { useProject } from '@/contexts/ProjectContext';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { fetchTraces, fetchAnalysisTrace } from '@/utils/api';
 
 interface TraceData {
   id: string;
@@ -110,12 +110,10 @@ const TracePerformanceComparison: React.FC = () => {
       setIsLoading(true);
       setError(null);
 
-      const response = await axios.get(`/api/projects/${selectedProject}/traces`);
-      const tracesData = response.data;
+      const tracesData = await fetchTraces(selectedProject);
 
       const processedTraces = await Promise.all(tracesData.map(async (trace: any) => {
-        const traceResponse = await axios.get(`/api/analysis_traces/${trace.id}`);
-        const traceData = traceResponse.data;
+        const traceData = await fetchAnalysisTrace(trace.id);
 
         let totalTokens = 0;
         let totalCost = 0;
