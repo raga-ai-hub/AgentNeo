@@ -60,6 +60,10 @@ class LLMTracerMixin:
         self.patches.append((obj, method_name, original_method))
 
     def trace_llm_call(self, original_func, *args, **kwargs):
+        # Skip tracing if tracer is not active
+        if not self.is_active:
+            return original_func(*args, **kwargs)
+        
         start_time = datetime.now()
         start_memory = psutil.Process().memory_info().rss
 
@@ -205,8 +209,10 @@ class LLMTracerMixin:
         return data
 
     def unpatch_llm_calls(self):
+        # Restore original methods
         for obj, method_name, original_method in self.patches:
-            setattr(obj, method_name, original_method)
+            if hasattr(obj, method_name):  # Check if attribute exists
+                setattr(obj, method_name, original_method)
         self.patches.clear()
 
     def trace_llm(self, name: str):
