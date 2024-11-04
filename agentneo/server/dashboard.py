@@ -107,7 +107,7 @@ def launch_dashboard(port=3005):
                 response = requests.get(f"http://localhost:{port}/health", timeout=1)
                 if response.status_code == 200:
                     logging.info(
-                        f"Dashboard launched successfully. Access it at: http://localhost:{free_port}"
+                        f"Dashboard launched successfully. Access it at: http://localhost:{port}"
                     )
                     return
             except requests.RequestException:
@@ -121,7 +121,7 @@ def launch_dashboard(port=3005):
         return
 
     logging.info(
-        f"Dashboard launch attempt completed. If successful, access it at: http://localhost:{free_port}"
+        f"Dashboard launch attempt completed. If successful, access it at: http://localhost:{port}"
     )
 
 

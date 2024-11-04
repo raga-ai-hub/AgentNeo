@@ -26,7 +26,7 @@ Whether you're a seasoned AI developer or just starting out, AgentNeo offers rob
 
 ## 🛠 Requirements
 
-- **Python**: Version 3.8 or higher
+- **Python**: Version 3.9 or higher
 
 ## 📦 Installation
 
