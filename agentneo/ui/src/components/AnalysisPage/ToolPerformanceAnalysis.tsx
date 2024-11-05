@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Loader2 } from 'lucide-react';
-import axios from 'axios';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useProject } from '@/contexts/ProjectContext';
+import { fetchTraces, fetchAnalysisTrace } from '@/utils/api';
+
 
 interface ToolMetrics {
   name: string;
@@ -23,7 +24,7 @@ interface Trace {
   tool_calls: Array<{
     name: string;
     duration: number;
-    network_calls?: number;
+    network_calls?: Array<any>; // Updated type to reflect actual data structure
   }>;
 }
 
@@ -67,6 +68,8 @@ const ToolPerformanceAnalysis: React.FC = () => {
   };
 
   const fetchData = async () => {
+    if (!selectedProject) return;
+
     try {
       setIsLoading(true);
       setError(null);
@@ -76,8 +79,7 @@ const ToolPerformanceAnalysis: React.FC = () => {
       let totalNetworkCalls = 0;
 
       if (selectedTraceId) {
-        const traceResponse = await axios.get<Trace>(`/api/analysis_traces/${selectedTraceId}`);
-        const traceData = traceResponse.data;
+        const traceData = await fetchAnalysisTrace(selectedTraceId);
 
         for (const toolCall of traceData.tool_calls) {
           if (!toolMetrics[toolCall.name]) {
@@ -91,15 +93,14 @@ const ToolPerformanceAnalysis: React.FC = () => {
           toolMetrics[toolCall.name].avgResponseTime += toolCall.duration;
           toolMetrics[toolCall.name].count += 1;
           totalToolCalls += 1;
-          totalNetworkCalls += toolCall.network_calls || 0;
+          // Fix: Count the length of network_calls array
+          totalNetworkCalls += toolCall.network_calls?.length || 0;
         }
-      } else if (selectedProject) {
-        const tracesResponse = await axios.get(`/api/projects/${selectedProject}/traces`);
-        const traces = tracesResponse.data;
-
+      } else {
+        const traces = await fetchTraces(selectedProject);
+        
         for (const trace of traces) {
-          const traceResponse = await axios.get<Trace>(`/api/analysis_traces/${trace.id}`);
-          const traceData = traceResponse.data;
+          const traceData = await fetchAnalysisTrace(trace.id);
 
           for (const toolCall of traceData.tool_calls) {
             if (!toolMetrics[toolCall.name]) {
@@ -113,7 +114,8 @@ const ToolPerformanceAnalysis: React.FC = () => {
             toolMetrics[toolCall.name].avgResponseTime += toolCall.duration;
             toolMetrics[toolCall.name].count += 1;
             totalToolCalls += 1;
-            totalNetworkCalls += toolCall.network_calls || 0;
+            // Fix: Count the length of network_calls array
+            totalNetworkCalls += toolCall.network_calls?.length || 0;
           }
         }
       }

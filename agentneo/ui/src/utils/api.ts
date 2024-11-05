@@ -50,7 +50,10 @@ export const fetchTimelineData = async (projectId: number, traceId: string): Pro
     return response.json();
 }
 
-// export const initializeDatabase = async () => {
-//     const SQL = await initSqlJs();
-//     await initDatabase(SQL);
-// };
+
+export const fetchAnalysisTrace = async (traceId: string): Promise<any> => {
+    const baseUrl = await getBaseUrl();
+    const response = await fetch(`${baseUrl}/analysis_traces/${traceId}`);
+    if (!response.ok) throw new Error('Failed to fetch analysis trace');
+    return response.json();
+};

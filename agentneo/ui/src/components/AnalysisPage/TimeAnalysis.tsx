@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Treemap, ResponsiveContainer, Tooltip } from 'recharts';
-import axios from 'axios';
 import { Loader2 } from 'lucide-react';
 import { useProject } from '@/contexts/ProjectContext';
+import { fetchTraces, fetchAnalysisTrace } from '@/utils/api';
 
 interface TimeData {
   name: string;
@@ -35,7 +35,6 @@ const COLORS: ColorConfigs = {
   }
 };
 
-
 const TimeAnalysis: React.FC = () => {
   const { selectedProject, selectedTraceId } = useProject();
   const [timeData, setTimeData] = useState<TimeData[]>([]);
@@ -61,8 +60,7 @@ const TimeAnalysis: React.FC = () => {
       let totalToolTime = 0;
 
       if (selectedTraceId) {
-        const traceResponse = await axios.get(`/api/analysis_traces/${selectedTraceId}`);
-        const traceData = traceResponse.data;
+        const traceData = await fetchAnalysisTrace(selectedTraceId);
 
         totalLLMTime = traceData.llm_calls.reduce((sum: number, call: any) => {
           const duration = typeof call.duration === 'number' ? call.duration : 0;
@@ -74,12 +72,10 @@ const TimeAnalysis: React.FC = () => {
           return sum + duration;
         }, 0) || 0;
       } else {
-        const tracesResponse = await axios.get(`/api/projects/${selectedProject}/traces`);
-        const traces = tracesResponse.data;
+        const traces = await fetchTraces(selectedProject);
 
         for (const trace of traces) {
-          const traceResponse = await axios.get(`/api/analysis_traces/${trace.id}`);
-          const traceData = traceResponse.data;
+          const traceData = await fetchAnalysisTrace(trace.id);
 
           totalLLMTime += traceData.llm_calls.reduce((sum: number, call: any) => {
             const duration = typeof call.duration === 'number' ? call.duration : 0;
