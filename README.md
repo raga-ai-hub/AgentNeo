@@ -215,6 +215,8 @@ We are committed to continuously improving AgentNeo. Here's a glimpse of what's 
 | **Regression Testing Capabilities**       | 📝 Planned      |
 | **Agent Battleground for A/B Testing**    | 📝 Planned      |
 | **IDE Plugins Development**               | 📝 Planned      |
+| **VLM(Vision Language Model) Evaluation**       | 📝 Planned      |
+| **Voice Agents Evaluation**               | 📝 Planned      |
 
 ### Legend
 
