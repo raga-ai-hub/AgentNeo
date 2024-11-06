@@ -41,6 +41,14 @@ interface AgentCall {
   errors: any[];
 }
 
+interface AgentCallStats {
+  name: string;
+  count: number;
+  avgDuration: number;
+  avgToolCalls: number;
+  avgLLMCalls: number;
+}
+
 interface PackageInfo {
   name: string;
   version: string;
@@ -61,7 +69,33 @@ const Overview = () => {
   const [projectData, setProjectData] = useState<ProjectData | null>(null);
   const [systemInfo, setSystemInfo] = useState<SystemData | null>(null);
   const [installedPackages, setInstalledPackages] = useState<PackageInfo[]>([]);
-  const [agentCalls, setAgentCalls] = useState<AgentCall[] | null>(null);
+  const [agentCalls, setAgentCalls] = useState<AgentCallStats[] | null>(null);
+
+  const processAgentCallStats = (traceDetails: any): AgentCallStats[] => {
+    if (!traceDetails?.agent_calls) return [];
+
+    // Group agent calls by name
+    const callsByName = traceDetails.agent_calls.reduce((acc: any, call: any) => {
+      if (!acc[call.name]) {
+        acc[call.name] = [];
+      }
+      acc[call.name].push({
+        duration: new Date(call.end_time).getTime() - new Date(call.start_time).getTime(),
+        toolCalls: call.tool_calls?.length || 0,
+        llmCalls: call.llm_calls?.length || 0,
+      });
+      return acc;
+    }, {});
+
+    // Calculate averages for each agent
+    return Object.entries(callsByName).map(([name, calls]: [string, any[]]) => ({
+      name,
+      count: calls.length,
+      avgDuration: Number((calls.reduce((sum, c) => sum + c.duration, 0) / calls.length / 1000).toFixed(2)), // Convert to seconds
+      avgToolCalls: Number((calls.reduce((sum, c) => sum + c.toolCalls, 0) / calls.length).toFixed(2)),
+      avgLLMCalls: Number((calls.reduce((sum, c) => sum + c.llmCalls, 0) / calls.length).toFixed(2)),
+    }));
+  };
 
   const loadProjectData = useCallback(async (projectId: number) => {
     if (!projectId) return;
@@ -119,6 +153,8 @@ const Overview = () => {
     try {
       const traceDetails = await fetchTraceDetails(traceId);
       setSelectedTrace(traceDetails);
+      // Process and set agent call statistics
+      setAgentCalls(processAgentCallStats(traceDetails));
     } catch (error) {
       console.error('Error loading trace data:', error);
       setError('Failed to load trace data');

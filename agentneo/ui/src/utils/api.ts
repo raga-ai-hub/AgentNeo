@@ -58,7 +58,7 @@ export const fetchTraces = async (projectId: number): Promise<TraceHistoryItem[]
     return response.json();
 };
 
-export const fetchTraceDetails = async (traceId: string): Promise<DetailedTraceComponents> => {
+export const fetchTraceDetails = async (traceId: string): Promise<any> => {
     const baseUrl = await getBaseUrl();
     const response = await fetch(`${baseUrl}/traces/${traceId}`);
     if (!response.ok) throw new Error('Failed to fetch trace details');
