@@ -88,20 +88,34 @@ def get_projects():
 def get_project(project_id):
     try:
         with Session() as session:
-            project = session.query(ProjectInfoModel).get(project_id)
+            project = (
+                session.query(ProjectInfoModel)
+                .options(joinedload(ProjectInfoModel.system_info))  # Add this line
+                .get(project_id)
+            )
             if project is None:
                 return jsonify({"error": "Project not found"}), 404
-            return jsonify(
-                {
-                    "id": project.id,
-                    "project_name": project.project_name,
-                    "start_time": project.start_time,
-                    "end_time": project.end_time,
-                    "duration": project.duration,
-                    "total_cost": project.total_cost,
-                    "total_tokens": project.total_tokens,
-                }
-            )
+            
+            # Add system_info to the response
+            return jsonify({
+                "id": project.id,
+                "project_name": project.project_name,
+                "start_time": project.start_time,
+                "end_time": project.end_time,
+                "duration": project.duration,
+                "total_cost": project.total_cost,
+                "total_tokens": project.total_tokens,
+                "system_info": {
+                    "os_name": project.system_info.os_name if project.system_info else None,
+                    "os_version": project.system_info.os_version if project.system_info else None,
+                    "python_version": project.system_info.python_version if project.system_info else None,
+                    "cpu_info": project.system_info.cpu_info if project.system_info else None,
+                    "gpu_info": project.system_info.gpu_info if project.system_info else None,
+                    "disk_info": project.system_info.disk_info if project.system_info else None,
+                    "memory_total": project.system_info.memory_total if project.system_info else None,
+                    "installed_packages": project.system_info.installed_packages if project.system_info else None,
+                } if project.system_info else None
+            })
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
 
@@ -430,6 +444,37 @@ def get_trace(trace_id):
             f"get_trace({trace_id}) failed after {duration:.2f} seconds: {str(e)}"
         )
         return jsonify({"error": str(e)}), 500
+
+# ... existing imports and code ...
+
+@app.route("/api/projects/<int:project_id>/metrics", methods=["GET"])
+def get_project_metrics(project_id):
+    try:
+        trace_id = request.args.get('trace_id', None)
+        with Session() as session:
+            query = session.query(MetricModel).filter(MetricModel.project_id == project_id)
+            
+            if trace_id and trace_id != 'all':
+                query = query.filter(MetricModel.trace_id == trace_id)
+            
+            metrics = query.all()
+            
+            return jsonify([{
+                'trace_id': metric.trace_id,
+                'metric_name': metric.metric_name,
+                'score': metric.score,
+                'reason': metric.reason,
+                'result_detail': metric.result_detail,
+                'start_time': metric.start_time,
+                'end_time': metric.end_time,
+                'duration': metric.duration,
+                'timestamp': metric.timestamp
+            } for metric in metrics])
+            
+    except SQLAlchemyError as e:
+        return jsonify({"error": str(e)}), 500
+
+# ... rest of the existing code ...
 
 
 @app.route("/health")
