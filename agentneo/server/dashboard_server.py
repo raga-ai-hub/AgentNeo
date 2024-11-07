@@ -444,15 +444,19 @@ def get_trace(trace_id):
             f"get_trace({trace_id}) failed after {duration:.2f} seconds: {str(e)}"
         )
         return jsonify({"error": str(e)}), 500
+    
 
-# ... existing imports and code ...
 
-@app.route("/api/projects/<int:project_id>/metrics", methods=["GET"])
-def get_project_metrics(project_id):
+@app.route("/api/projects/<int:project_id>/evaluation", methods=["GET"])
+def get_evaluation_data(project_id):
+    trace_id = request.args.get('trace_id')
     try:
-        trace_id = request.args.get('trace_id', None)
         with Session() as session:
-            query = session.query(MetricModel).filter(MetricModel.project_id == project_id)
+            # First get all traces for the project
+            trace_ids = session.query(TraceModel.id).filter(TraceModel.project_id == project_id)
+            
+            # Then query metrics for these traces
+            query = session.query(MetricModel).filter(MetricModel.trace_id.in_(trace_ids))
             
             if trace_id and trace_id != 'all':
                 query = query.filter(MetricModel.trace_id == trace_id)
@@ -465,16 +469,15 @@ def get_project_metrics(project_id):
                 'score': metric.score,
                 'reason': metric.reason,
                 'result_detail': metric.result_detail,
+                'config': metric.config,
                 'start_time': metric.start_time,
                 'end_time': metric.end_time,
                 'duration': metric.duration,
                 'timestamp': metric.timestamp
             } for metric in metrics])
-            
     except SQLAlchemyError as e:
         return jsonify({"error": str(e)}), 500
 
-# ... rest of the existing code ...
 
 
 @app.route("/health")

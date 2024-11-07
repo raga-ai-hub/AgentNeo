@@ -21,19 +21,6 @@ const getBaseUrl = async (): Promise<string> => {
     return BASE_URL;
 };
 
-// ... existing imports and code ...
-
-export const fetchMetrics = async (projectId: number, traceId: string | null): Promise<any[]> => {
-    const baseUrl = await getBaseUrl();
-    const url = traceId 
-        ? `${baseUrl}/projects/${projectId}/metrics?trace_id=${traceId}`
-        : `${baseUrl}/projects/${projectId}/metrics`;
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Failed to fetch metrics');
-    return response.json();
-};
-
-// ... rest of the existing code ...
 
 export const fetchProjects = async (): Promise<Project[]> => {
     const baseUrl = await getBaseUrl();
@@ -46,6 +33,17 @@ export const fetchProjectDetails = async (projectId: number): Promise<any> => {
     const baseUrl = await getBaseUrl();
     const response = await fetch(`${baseUrl}/projects/${projectId}`);
     if (!response.ok) throw new Error('Failed to fetch project details');
+    return response.json();
+};
+
+export const fetchEvaluationData = async (projectId: number, traceId?: string | null): Promise<any[]> => {
+    const baseUrl = await getBaseUrl();
+    const url = new URL(`${baseUrl}/projects/${projectId}/evaluation`);
+    if (traceId) {
+        url.searchParams.append('trace_id', traceId);
+    }
+    const response = await fetch(url.toString());
+    if (!response.ok) throw new Error('Failed to fetch evaluation data');
     return response.json();
 };
 
