@@ -101,7 +101,7 @@ const TracePerformanceComparison: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [showPercentage, setShowPercentage] = useState(false);
+  const [showPercentage, setShowPercentage] = useState(true);
 
   const fetchTraceData = async () => {
     if (!selectedProject) return;
