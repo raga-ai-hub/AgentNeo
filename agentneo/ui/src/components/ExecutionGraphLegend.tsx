@@ -1,21 +1,19 @@
+import React from 'react';
 import { Panel } from 'reactflow';
 import { nodeStylesByType } from './ExecutionGraphNodes';
 
 export const Legend = () => {
   return (
-    <Panel position="bottom-left" className="bg-white p-3 rounded-lg shadow-md">
-      <div className="text-sm font-medium mb-2">Node Types</div>
-      <div className="space-y-2">
-        {Object.entries(nodeStylesByType).map(([type, styles]) => (
-          <div key={type} className="flex items-center gap-2">
+    <Panel position="top-left" className="bg-white p-2 rounded shadow-md m-2">
+      <div className="text-sm font-semibold mb-2">Node Types</div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+        {Object.entries(nodeStylesByType).map(([type, style]) => (
+          <div key={type} className="flex items-center">
             <div
-              className="w-4 h-4 rounded"
-              style={{
-                backgroundColor: styles.backgroundColor,
-                border: `2px solid ${styles.borderColor}`,
-              }}
+              className={`w-3 h-3 rounded mr-2 ${style.className}`}
+              style={{ backgroundColor: style.backgroundColor }}
             />
-            <span className="capitalize">{type}</span>
+            <span className="capitalize text-xs">{type}</span>
           </div>
         ))}
       </div>

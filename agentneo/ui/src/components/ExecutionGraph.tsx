@@ -18,6 +18,7 @@ import 'reactflow/dist/style.css';
 import '../styles/ExecutionGraph.css';
 import { CustomNode, nodeTypes, nodeStylesByType } from './ExecutionGraphNodes';
 import { Legend } from './ExecutionGraphLegend';
+import { getLayoutedElements } from './ExecutionGraphLayout';
 import { useProject } from '../contexts/ProjectContext';
 
 interface GraphData {
@@ -25,13 +26,68 @@ interface GraphData {
   edges: Edge[];
 }
 
-const HORIZONTAL_SPACING = 180; // Reduced spacing
-const NODE_WIDTH = 160; // Slightly smaller nodes
+const calculateTotalCounts = (traceData: any) => {
+  let llmCount = traceData.llm_calls?.length || 0;
+  let toolCount = traceData.tool_calls?.length || 0;
+  let interactionCount = traceData.user_interactions?.length || 0;
+  let errorCount = traceData.errors?.length || 0;
+
+  // Add counts from agent calls
+  traceData.agent_calls?.forEach((agent: any) => {
+    llmCount += agent.llm_calls?.length || 0;
+    toolCount += agent.tool_calls?.length || 0;
+    interactionCount += agent.user_interactions?.length || 0;
+    errorCount += agent.errors?.length || 0;
+  });
+
+  return {
+    llmCount,
+    toolCount,
+    interactionCount,
+    errorCount
+  };
+};
+
+
+const formatDuration = (startTime: string, endTime: string) => {
+  const start = new Date(startTime).getTime();
+  const end = new Date(endTime).getTime();
+  const durationMs = end - start;
+  
+  if (durationMs < 1000) {
+    return `${durationMs}ms`;
+  } else if (durationMs < 60000) {
+    return `${(durationMs / 1000).toFixed(2)}s`;
+  } else {
+    return `${(durationMs / 60000).toFixed(2)}min`;
+  }
+};
+
+const getTotalCounts = (traceData: any) => {
+  let llmCount = traceData.llm_calls?.length || 0;
+  let toolCount = traceData.tool_calls?.length || 0;
+  let interactionCount = traceData.user_interactions?.length || 0;
+  let errorCount = traceData.errors?.length || 0;
+
+  // Add counts from agent calls
+  traceData.agent_calls?.forEach((agent: any) => {
+    llmCount += agent.llm_calls?.length || 0;
+    toolCount += agent.tool_calls?.length || 0;
+    interactionCount += agent.user_interactions?.length || 0;
+    errorCount += agent.errors?.length || 0;
+  });
+
+  return { llmCount, toolCount, interactionCount, errorCount };
+};
+
+
+const HORIZONTAL_SPACING = 180;
+const NODE_WIDTH = 160;
 const NODE_HEIGHT = 80;
-const TIME_PADDING = 50; // Padding for timeline positioning
+const TIME_PADDING = 50;
 
 const ExecutionGraph = () => {
-  const { selectedTraceId } = useProject();
+  const { selectedProject, selectedTraceId } = useProject();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -41,12 +97,12 @@ const ExecutionGraph = () => {
     const nodes: Node[] = [];
     const edges: Edge[] = [];
     let nodeId = 0;
-
-    // Helper function to get all nodes with their timing info
+  
     const getAllNodes = (traceData: any) => {
       const allNodes = [];
+      const counts = calculateTotalCounts(traceData);
       
-      // Add trace
+      // Update trace node
       allNodes.push({
         type: 'trace',
         id: `trace-${traceData.id}`,
@@ -54,14 +110,43 @@ const ExecutionGraph = () => {
         endTime: new Date(traceData.end_time).getTime(),
         data: {
           type: 'trace',
-          name: `Trace ${traceData.id}`,
+          name: traceData.name || `Trace ${traceData.id}`,
           startTime: traceData.start_time,
           endTime: traceData.end_time,
+          duration: formatDuration(traceData.start_time, traceData.end_time),
+          metadata: {
+            id: traceData.id,
+            agent_calls: traceData.agent_calls,
+            llm_calls: traceData.llm_calls,
+            tool_calls: traceData.tool_calls,
+            user_interactions: traceData.user_interactions,
+            errors: traceData.errors,
+            totalCounts: counts // Add total counts to metadata
+          }
         },
         parentId: null
       });
-
-      // Add agents
+  
+      // Process errors at trace level
+      traceData.errors?.forEach((error: any) => {
+        if (!error.agent_id && !error.tool_call_id && !error.llm_call_id) {
+          allNodes.push({
+            type: 'error',
+            id: `error-${error.id}`,
+            startTime: new Date(error.timestamp).getTime(),
+            endTime: new Date(error.timestamp).getTime(),
+            data: {
+              type: 'error',
+              name: error.error_type,
+              timestamp: error.timestamp,
+              metadata: error
+            },
+            parentId: `trace-${traceData.id}`
+          });
+        }
+      });
+  
+      // Add agents and their children
       traceData.agent_calls?.forEach((agent: any) => {
         allNodes.push({
           type: 'agent',
@@ -73,10 +158,12 @@ const ExecutionGraph = () => {
             name: agent.name,
             startTime: agent.start_time,
             endTime: agent.end_time,
+            duration: formatDuration(agent.start_time, agent.end_time),
+            metadata: agent
           },
           parentId: `trace-${traceData.id}`
         });
-
+  
         // Add LLM calls
         agent.llm_calls?.forEach((llm: any) => {
           allNodes.push({
@@ -87,14 +174,15 @@ const ExecutionGraph = () => {
             data: {
               type: 'llm',
               name: llm.name,
-              model: llm.model,
               startTime: llm.start_time,
               endTime: llm.end_time,
+              duration: formatDuration(llm.start_time, llm.end_time),
+              metadata: llm
             },
             parentId: `agent-${agent.id}`
           });
         });
-
+  
         // Add tool calls
         agent.tool_calls?.forEach((tool: any) => {
           allNodes.push({
@@ -107,12 +195,48 @@ const ExecutionGraph = () => {
               name: tool.name,
               startTime: tool.start_time,
               endTime: tool.end_time,
+              duration: formatDuration(tool.start_time, tool.end_time),
+              metadata: tool
+            },
+            parentId: `agent-${agent.id}`
+          });
+        });
+  
+        // Add user interactions
+        agent.user_interactions?.forEach((interaction: any) => {
+          allNodes.push({
+            type: 'interaction',
+            id: `interaction-${interaction.id}`,
+            startTime: new Date(interaction.timestamp).getTime(),
+            endTime: new Date(interaction.timestamp).getTime(),
+            data: {
+              type: 'interaction',
+              name: interaction.interaction_type,
+              timestamp: interaction.timestamp,
+              metadata: interaction
+            },
+            parentId: `agent-${agent.id}`
+          });
+        });
+  
+        // Add agent-level errors
+        agent.errors?.forEach((error: any) => {
+          allNodes.push({
+            type: 'error',
+            id: `error-${error.id}`,
+            startTime: new Date(error.timestamp).getTime(),
+            endTime: new Date(error.timestamp).getTime(),
+            data: {
+              type: 'error',
+              name: error.error_type,
+              timestamp: error.timestamp,
+              metadata: error
             },
             parentId: `agent-${agent.id}`
           });
         });
       });
-
+  
       return allNodes;
     };
 
@@ -121,12 +245,10 @@ const ExecutionGraph = () => {
     const maxTime = Math.max(...allNodes.map(n => n.endTime));
     const timeRange = maxTime - minTime;
 
-    // Helper function to calculate vertical position based on time
     const getYPosition = (startTime: number) => {
       return ((startTime - minTime) / timeRange) * (1000 - TIME_PADDING * 2) + TIME_PADDING;
     };
 
-    // Create nodes with proper positioning
     allNodes.forEach(node => {
       const xPos = node.parentId ? HORIZONTAL_SPACING * (node.type === 'llm' || node.type === 'tool' ? 2 : 1) : 0;
       const yPos = getYPosition(node.startTime);
@@ -134,7 +256,10 @@ const ExecutionGraph = () => {
       nodes.push({
         id: node.id,
         type: 'custom',
-        data: node.data,
+        data: {
+          ...node.data,
+          label: `${node.data.type}: ${node.data.name}`,
+        },
         position: { x: xPos, y: yPos },
         style: {
           width: NODE_WIDTH,
@@ -142,7 +267,6 @@ const ExecutionGraph = () => {
         },
       });
 
-      // Create edges
       if (node.parentId) {
         edges.push({
           id: `edge-${nodeId++}`,
@@ -174,12 +298,17 @@ const ExecutionGraph = () => {
     loadGraphData();
   }, [selectedTraceId, setNodes, setEdges]);
 
+  const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(
+    () => getLayoutedElements(nodes, edges, 'TB'),
+    [nodes, edges]
+  );
+
   const filteredNodes = useMemo(() => {
-    if (!searchTerm) return nodes;
-    return nodes.filter(node =>
+    if (!searchTerm) return layoutedNodes;
+    return layoutedNodes.filter(node =>
       node.data.label.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [nodes, searchTerm]);
+  }, [layoutedNodes, searchTerm]);
 
   const onInit = useCallback((instance) => {
     setReactFlowInstance(instance);
@@ -204,13 +333,25 @@ const ExecutionGraph = () => {
   return (
     <Card className="mt-8">
       <CardHeader>
-        <CardTitle className="text-2xl font-bold">Execution Timeline</CardTitle>
+        <CardTitle className="text-2xl font-bold">Execution Graph</CardTitle>
       </CardHeader>
       <CardContent>
+        <div className="mb-4 flex items-center space-x-2">
+          <Input
+            type="text"
+            placeholder="Search nodes..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-sm"
+          />
+          <Button variant="outline" size="icon" onClick={handleSearch}>
+            <Search className="h-4 w-4" />
+          </Button>
+        </div>
         <div style={{ height: '70vh' }} className="border rounded-lg overflow-hidden shadow-lg">
           <ReactFlow
-            nodes={nodes}
-            edges={edges}
+            nodes={filteredNodes}
+            edges={layoutedEdges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             nodeTypes={nodeTypes}
@@ -218,7 +359,7 @@ const ExecutionGraph = () => {
             fitView
             attributionPosition="bottom-left"
             minZoom={0.1}
-            maxZoom={2}
+            maxZoom={1.5}
             defaultEdgeOptions={{
               type: 'smoothstep',
               style: { strokeWidth: 2 },
