@@ -584,9 +584,9 @@ export const CustomNode = ({ data }: { data: any }) => {
       onMouseLeave={() => setIsHovered(false)}
       style={{
         backgroundColor: nodeStylesByType[data.type]?.backgroundColor || '#fff',
-        width: isExpanded ? '500px' : '300px', // Increased from 220px to 300px
-        minHeight: isExpanded ? '300px' : '160px', // Increased from 100px to 150px
-        maxHeight: isExpanded ? '800px' : '160px', // Increased max height
+        width: isExpanded ? '500px' : '300px', 
+        minHeight: isExpanded ? '300px' : '160px', 
+        maxHeight: isExpanded ? '800px' : '160px',
       }}
       data-type={data.type}
     >

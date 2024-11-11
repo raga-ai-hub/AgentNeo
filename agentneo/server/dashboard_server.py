@@ -90,7 +90,7 @@ def get_project(project_id):
         with Session() as session:
             project = (
                 session.query(ProjectInfoModel)
-                .options(joinedload(ProjectInfoModel.system_info))  # Add this line
+                .options(joinedload(ProjectInfoModel.system_info))  
                 .get(project_id)
             )
             if project is None:

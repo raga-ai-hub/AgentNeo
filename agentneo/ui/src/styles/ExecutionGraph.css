@@ -1,4 +1,3 @@
-/* Existing styles */
 .react-flow__node-custom {
     font-size: 10px;
     width: 180px;
@@ -81,7 +80,7 @@
     transform: translateY(-2px);
 }
 
-/* Existing node type styles */
+
 .custom-node.agent {
     background-color: #E6F3FF;
     border-color: #2196F3;
@@ -139,10 +138,9 @@
     font-size: 12px;
 }
 
-/* Update existing node container styles */
 .node-container {
-    font-size: 13px; /* Increased from 12px */
-    padding: 16px; /* Increased from 12px */
+    font-size: 13px;
+    padding: 16px;
     border-radius: 12px;
     color: #1a1a1a;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -154,42 +152,42 @@
 .node-header {
     display: flex;
     align-items: center;
-    gap: 10px; /* Increased from 8px */
-    margin-bottom: 12px; /* Increased from 8px */
+    gap: 10px; 
+    margin-bottom: 12px;
 }
 
 .node-icon {
-    font-size: 20px; /* Increased from 16px */
+    font-size: 20px;
 }
 
 .node-title {
     font-weight: 600;
-    font-size: 15px; /* Increased from 13px */
+    font-size: 15px;
     color: #374151;
 }
 
 .stat-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px; /* Increased from 8px */
-    margin-top: 12px; /* Increased from 8px */
+    gap: 12px; 
+    margin-top: 12px; 
 }
 
 .stat-item {
     display: flex;
     flex-direction: column;
-    gap: 4px; /* Increased from 2px */
+    gap: 4px;
 }
 
 .stat-label {
-    font-size: 11px; /* Increased from 10px */
+    font-size: 11px; 
     color: #6b7280;
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
 
 .stat-value {
-    font-size: 14px; /* Increased from 12px */
+    font-size: 14px; 
     font-weight: 500;
     color: #374151;
 }
