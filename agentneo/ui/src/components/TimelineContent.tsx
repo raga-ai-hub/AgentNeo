@@ -66,12 +66,12 @@ const TimelineContent: React.FC<TimelineContentProps> = ({
                       style={{
                         left: `${(eventStart / totalDuration) * 100}%`,
                         width: `${(eventDuration / totalDuration) * 100}%`,
-                        top: `${rows.indexOf(event.type) * 48}px`,
+                        top: `${rows.indexOf(event.row) * 48}px`, // Changed from event.type to event.row
                         height: '40px',
                       }}
                       onClick={() => handleEventClick(event)}
                     >
-                      <div className="w-full h-full rounded-sm" style={{ backgroundColor: getEventColor(event.type) }}></div>
+                      <div className="w-full h-full rounded-sm" style={{ backgroundColor: event.color }}></div>
                       <div className="absolute left-2 text-xs text-white truncate">{event.name}</div>
                     </div>
                   </TooltipTrigger>
@@ -79,6 +79,7 @@ const TimelineContent: React.FC<TimelineContentProps> = ({
                     <p>{event.name}</p>
                     <p>Start: {eventStart.toFixed(2)}s</p>
                     <p>Duration: {eventDuration.toFixed(2)}s</p>
+                    <p>Type: {event.type}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
