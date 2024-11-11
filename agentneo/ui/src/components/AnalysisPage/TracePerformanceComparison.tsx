@@ -178,12 +178,10 @@ const TracePerformanceComparison: React.FC = () => {
         unit
       };
       
-      // Fix: Explicitly type the values as number[]
       const values: number[] = selectedTraceData.map(trace => Number(trace[key as keyof TraceData]));
       const total = values.reduce((sum, val) => sum + val, 0);
 
       selectedTraceData.forEach(trace => {
-        // Fix: Explicitly convert value to number
         const value = Number(trace[key as keyof TraceData]);
         metricData[trace.name] = showPercentage ? (value / total * 100) : value;
       });
@@ -349,7 +347,6 @@ const TracePerformanceComparison: React.FC = () => {
   }, [showDropdown]);
 
   return (
-    // Remove the px-4 md:px-6 lg:px-8 classes that were limiting the width
     <div className="w-full">
       <Card className="w-full">
         <CardHeader>
