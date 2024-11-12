@@ -228,7 +228,7 @@ We are committed to continuously improving AgentNeo. Here's a glimpse of what's 
 
 ## 📚 Documentation
 
-For more details, explore the full [AgentNeo Documentation](https://docs.raga.ai/agentneo)
+For more details, explore the full [AgentNeo Documentation](https://agentneo.raga.ai)
 
 ##  Demo Video
 
