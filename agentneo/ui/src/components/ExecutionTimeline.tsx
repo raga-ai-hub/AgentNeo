@@ -9,6 +9,7 @@ import { TimelineData } from '../types/timeline';
 import { useProject } from '../contexts/ProjectContext';
 import { fetchTraceDetails } from '../utils/api';
 
+
 const ExecutionTimeline: React.FC = () => {
   const { selectedTraceId } = useProject();
   const [timelineData, setTimelineData] = useState<TimelineData[]>([]);
@@ -72,20 +73,22 @@ const ExecutionTimeline: React.FC = () => {
 
     // Add standalone tool calls (not associated with agents)
     traceData.tool_calls?.forEach((tool: any) => {
-    timelineEvents.push({
+      const duration = (new Date(tool.end_time).getTime() - new Date(tool.start_time).getTime()) / 1000;
+      timelineEvents.push({
         name: tool.name,
         startTime: tool.start_time,
         endTime: tool.end_time,
-        duration: (new Date(tool.end_time).getTime() - new Date(tool.start_time).getTime()) / 1000,
+        duration: duration,
         color: '#FBBC05',
         type: 'Tool',
         row: 'Tool',
+        isDot: duration < 0.1,
         details: {
-        // function: tool.function,
-        input: tool.input_parameters,
-        output: tool.output,
+          name: tool.name,
+          input: tool.input_parameters,
+          output: tool.output,
         }
-    });
+      });
     });
 
     // Process agent calls
@@ -127,16 +130,18 @@ const ExecutionTimeline: React.FC = () => {
 
       // Add tool calls
       agent.tool_calls?.forEach((tool: any) => {
+        const duration = (new Date(tool.end_time).getTime() - new Date(tool.start_time).getTime()) / 1000;
         timelineEvents.push({
           name: tool.name,
           startTime: tool.start_time,
           endTime: tool.end_time,
-          duration: (new Date(tool.end_time).getTime() - new Date(tool.start_time).getTime()) / 1000,
+          duration: duration,
           color: '#FBBC05',
           type: 'Tool',
           row: 'Tool',
+          isDot: duration < 0.1,
           details: {
-            // function: tool.function,
+            name: tool.name,
             input: tool.input_parameters,
             output: tool.output,
           }
@@ -146,14 +151,16 @@ const ExecutionTimeline: React.FC = () => {
       // Add user interactions
       agent.user_interactions?.forEach((interaction: any) => {
         timelineEvents.push({
-          name: interaction.interaction_type,
+          name: '', // Empty name for dot representation
           startTime: interaction.timestamp,
-          endTime: interaction.timestamp, // For instantaneous events
+          endTime: interaction.timestamp,
           duration: 0,
           color: '#9C27B0',
           type: 'Interaction',
           row: 'Interaction',
+          isDot: true, // Always render interactions as dots
           details: {
+            name: interaction.interaction_type, // Keep interaction type in details
             interaction_type: interaction.interaction_type,
             content: interaction.content
           }
@@ -191,6 +198,16 @@ const ExecutionTimeline: React.FC = () => {
     const startTimeMs = new Date(event.startTime).getTime();
     const firstEventMs = new Date(timelineData[0]?.startTime || 0).getTime();
     setCurrentTime((startTimeMs - firstEventMs) / 1000);
+  };
+
+  const getOverlappingEvents = (currentEvent: TimelineData) => {
+    return timelineData.filter(event => {
+      const currentStart = new Date(currentEvent.startTime).getTime();
+      const currentEnd = new Date(currentEvent.endTime).getTime();
+      const eventStart = new Date(event.startTime).getTime();
+      const eventEnd = new Date(event.endTime).getTime();
+      return (eventStart < currentEnd && eventEnd > currentStart);
+    });
   };
 
   useEffect(() => {
@@ -231,7 +248,10 @@ const ExecutionTimeline: React.FC = () => {
             </div>
           </div>
           <div className="w-1/4 pl-4 border-l border-gray-200">
-            <TimelineDetails selectedEvent={selectedEvent} />
+          <TimelineDetails 
+            selectedEvent={selectedEvent} 
+            overlappingEvents={selectedEvent ? getOverlappingEvents(selectedEvent) : []} 
+          />
           </div>
         </div>
       </CardContent>
