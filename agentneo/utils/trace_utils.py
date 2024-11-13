@@ -1,5 +1,6 @@
 import json
 from importlib import resources
+from dataclasses import asdict
 
 
 def convert_usage_to_dict(usage):
