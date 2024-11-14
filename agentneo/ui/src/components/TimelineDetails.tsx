@@ -16,6 +16,12 @@ import {
 interface TimelineDetailsProps {
   selectedEvent: TimelineData | null;
   overlappingEvents: TimelineData[];
+  counts: {
+    llms: number;
+    tools: number;
+    interactions: number;
+    errors: number;
+  };
 }
 
 const getEventIcon = (type: string) => {
@@ -42,7 +48,7 @@ const getEventColor = (type: string) => {
   }
 };
 
-const TimelineDetails: React.FC<TimelineDetailsProps> = ({ selectedEvent, overlappingEvents }) => {
+const TimelineDetails: React.FC<TimelineDetailsProps> = ({ selectedEvent, overlappingEvents, counts }) => {
   if (!selectedEvent) {
     return (
       <div className="h-full flex items-center justify-center text-gray-500 italic">
@@ -55,39 +61,6 @@ const TimelineDetails: React.FC<TimelineDetailsProps> = ({ selectedEvent, overla
     const startTime = new Date(event.startTime);
     const endTime = new Date(event.endTime);
     const duration = (endTime.getTime() - startTime.getTime()) / 1000;
-
-    // Calculate counts for trace and agent
-    const calculateCounts = (events: TimelineData[]) => {
-      const counts = {
-        llms: 0,
-        tools: 0,
-        interactions: 0,
-        errors: 0,
-      };
-
-      events.forEach(overlapEvent => {
-        switch (overlapEvent.type.toLowerCase()) {
-          case 'llm':
-            counts.llms++;
-            break;
-          case 'tool':
-            counts.tools++;
-            break;
-          case 'interaction':
-            counts.interactions++;
-            break;
-          case 'error':
-            counts.errors++;
-            break;
-          default:
-            break;
-        }
-      });
-
-      return counts;
-    };
-
-    const counts = calculateCounts(overlappingEvents);
 
     return (
       <div key={event.name} className="space-y-6">
@@ -119,7 +92,7 @@ const TimelineDetails: React.FC<TimelineDetailsProps> = ({ selectedEvent, overla
         </div>
 
         {/* Count Section for Trace and Agent */}
-        {(event.type.toLowerCase() === 'trace' || event.type.toLowerCase() === 'agent') && (
+        {(event.type.toLowerCase() === 'agent') && (
           <div className="space-y-3 bg-gray-50 p-3 rounded-lg">
             <div className="flex items-center space-x-2 text-gray-700">
               <Cpu className="w-4 h-4" />
@@ -143,6 +116,13 @@ const TimelineDetails: React.FC<TimelineDetailsProps> = ({ selectedEvent, overla
         {/* Details Section for LLM, Tool, and Interaction */}
         {event.details && (event.type.toLowerCase() === 'llm' || event.type.toLowerCase() === 'tool' || event.type.toLowerCase() === 'interaction') && (
           <div className="space-y-4">
+            {/* Parent Name */}
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <div className="flex items-center space-x-2 text-gray-700">
+                <span className="text-sm">Parent: {event.details.parentName}</span>
+              </div>
+            </div>
+
             {/* LLM Details */}
             {event.type.toLowerCase() === 'llm' && (
               <div className="bg-green-50 p-3 rounded-lg space-y-3">

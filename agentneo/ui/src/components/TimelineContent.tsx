@@ -69,9 +69,9 @@ const renderEvent = (event: TimelineData, index: number, overlappingEvents: Time
               width: isDot ? `${borderRadius * 2}px` : `${(eventDuration / totalDuration) * 100}%`,
               top: `${rows.indexOf(event.row) * 48 + 20}px`,
               height: '40px', // Keep the height consistent
-              transform: isDot ? 'translate(-50%, -50%)' : 'none',
+              transform: isDot ? 'translate(-50%, 30%)' : 'none',
               backgroundColor: event.color,
-              opacity: 0.6, // Add transparency
+              opacity: 0.8, // Add transparency
               transition: 'all 0.3s ease', // Smooth transition for hover effect
               borderRadius: `${borderRadius}px`, // Rounded corners
               boxShadow: overlappingEvents.length > 1 ? '0 0 10px rgba(0, 0, 0, 0.5)' : 'none', // Shadow for overlapping
@@ -86,7 +86,7 @@ const renderEvent = (event: TimelineData, index: number, overlappingEvents: Time
               }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.opacity = '0.6'; // Revert opacity
+              e.currentTarget.style.opacity = '0.8'; // Revert opacity
               e.currentTarget.style.backgroundColor = event.color; // Revert color
               const eventNameElement = e.currentTarget.querySelector('.event-name') as HTMLElement;
               if (eventNameElement) {

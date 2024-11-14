@@ -9,7 +9,6 @@ import { TimelineData } from '../types/timeline';
 import { useProject } from '../contexts/ProjectContext';
 import { fetchTraceDetails } from '../utils/api';
 
-
 const ExecutionTimeline: React.FC = () => {
   const { selectedTraceId } = useProject();
   const [timelineData, setTimelineData] = useState<TimelineData[]>([]);
@@ -39,21 +38,29 @@ const ExecutionTimeline: React.FC = () => {
 
     // Add main trace
     timelineEvents.push({
-        name: traceData.name || `Trace ${traceData.id}`,
-        startTime: traceData.start_time,
-        endTime: traceData.end_time,
-        duration: (new Date(traceData.end_time).getTime() - new Date(traceData.start_time).getTime()) / 1000,
-        color: '#4285F4',
-        type: 'Trace',
-        row: 'Main',
-        details: {
-          content: traceData.description || 'Main trace execution'
-        }
+      name: traceData.name || `Trace ${traceData.id}`,
+      startTime: traceData.start_time,
+      endTime: traceData.end_time,
+      duration: (new Date(traceData.end_time).getTime() - new Date(traceData.start_time).getTime()) / 1000,
+      color: '#4285F4',
+      type: 'Trace',
+      row: 'Main',
+      details: {
+        content: traceData.description || 'Main trace execution',
+        parentName: 'Standalone Trace'
+      },
+      counts: {
+        llms: traceData.llm_calls?.length || 0,
+        tools: traceData.tool_calls?.length || 0,
+        interactions: 0,
+        errors: 0,
+        agents: traceData.agent_calls?.length || 0, // Add agent count
+      }
     });
-  
-    // Add standalone LLM calls (not associated with agents)
+
+    // Add standalone LLM calls
     traceData.llm_calls?.forEach((llm: any) => {
-    timelineEvents.push({
+      timelineEvents.push({
         name: llm.name || 'LLM Call',
         startTime: llm.start_time,
         endTime: llm.end_time,
@@ -62,16 +69,15 @@ const ExecutionTimeline: React.FC = () => {
         type: 'LLM',
         row: 'LLM',
         details: {
-        model: llm.model,
-        // token_usage: llm.token_usage,
-        // cost: llm.cost,
-        input: llm.input_prompt,
-        output: llm.output,
+          model: llm.model,
+          input: llm.input_prompt,
+          output: llm.output,
+          parentName: 'Standalone LLM Call'
         }
-    });
+      });
     });
 
-    // Add standalone tool calls (not associated with agents)
+    // Add standalone tool calls
     traceData.tool_calls?.forEach((tool: any) => {
       const duration = (new Date(tool.end_time).getTime() - new Date(tool.start_time).getTime()) / 1000;
       timelineEvents.push({
@@ -81,18 +87,27 @@ const ExecutionTimeline: React.FC = () => {
         duration: duration,
         color: '#FBBC05',
         type: 'Tool',
-        row: 'Tool',
-        isDot: duration < 0.1,
+        row: 'Tool', // Ensure it stays in the 'Tool' row
+        isDot: duration < 0.1, // Keep this logic for visual representation
         details: {
           name: tool.name,
           input: tool.input_parameters,
           output: tool.output,
+          parentName: 'Standalone Tool Call'
         }
       });
     });
 
     // Process agent calls
     traceData.agent_calls?.forEach((agent: any) => {
+      const agentCounts = {
+        llms: agent.llm_calls?.length || 0,
+        tools: agent.tool_calls?.length || 0,
+        interactions: agent.user_interactions?.length || 0,
+        errors: agent.errors?.length || 0,
+        agents: 0, // No nested agents in this context
+      };
+
       // Add agent
       timelineEvents.push({
         name: agent.name,
@@ -104,8 +119,10 @@ const ExecutionTimeline: React.FC = () => {
         row: 'Agent',
         details: {
           agent: agent.name,
-          content: agent.description || 'Agent execution'
-        }
+          content: agent.description || 'Agent execution',
+          parentName: 'Standalone Agent'
+        },
+        counts: agentCounts
       });
 
       // Add LLM calls
@@ -120,10 +137,9 @@ const ExecutionTimeline: React.FC = () => {
           row: 'LLM',
           details: {
             model: llm.model,
-            // token_usage: llm.token_usage,
-            // cost: llm.cost,
             input: llm.input_prompt,
             output: llm.output,
+            parentName: agent.name
           }
         });
       });
@@ -138,12 +154,13 @@ const ExecutionTimeline: React.FC = () => {
           duration: duration,
           color: '#FBBC05',
           type: 'Tool',
-          row: 'Tool',
+          row: 'Tool', // Ensure it stays in the 'Tool' row
           isDot: duration < 0.1,
           details: {
             name: tool.name,
             input: tool.input_parameters,
             output: tool.output,
+            parentName: agent.name
           }
         });
       });
@@ -157,12 +174,13 @@ const ExecutionTimeline: React.FC = () => {
           duration: 0,
           color: '#9C27B0',
           type: 'Interaction',
-          row: 'Interaction',
-          isDot: true, // Always render interactions as dots
+          row: 'Interaction', // Ensure it stays in the 'Interaction' row
+          isDot: true,
           details: {
-            name: interaction.interaction_type, // Keep interaction type in details
+            name: interaction.interaction_type,
             interaction_type: interaction.interaction_type,
-            content: interaction.content
+            content: interaction.content,
+            parentName: agent.name
           }
         });
       });
@@ -176,9 +194,10 @@ const ExecutionTimeline: React.FC = () => {
           duration: 0,
           color: '#EA4335',
           type: 'Error',
-          row: 'Error',
+          row: 'Error', // Ensure it stays in the 'Error' row
           details: {
-            error_message: error.message
+            error_message: error.message,
+            parentName: agent.name
           }
         });
       });
@@ -248,10 +267,11 @@ const ExecutionTimeline: React.FC = () => {
             </div>
           </div>
           <div className="w-1/4 pl-4 border-l border-gray-200">
-          <TimelineDetails 
-            selectedEvent={selectedEvent} 
-            overlappingEvents={selectedEvent ? getOverlappingEvents(selectedEvent) : []} 
-          />
+            <TimelineDetails 
+              selectedEvent={selectedEvent} 
+              overlappingEvents={selectedEvent ? getOverlappingEvents(selectedEvent) : []} 
+              counts={selectedEvent?.counts || { llms: 0, tools: 0, interactions: 0, errors: 0, agents: 0 }}
+            />
           </div>
         </div>
       </CardContent>
