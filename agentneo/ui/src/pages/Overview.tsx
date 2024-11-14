@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LayoutDashboard } from 'lucide-react';
 import { useProject } from '../contexts/ProjectContext';
 import { fetchProjectDetails, fetchTraceDetails } from '../utils/api';
+import ExecutionTimeline from '../components/ExecutionTimeline';
 
 // Define interfaces to match component props
 interface ProjectData {
@@ -237,9 +238,13 @@ const Overview = () => {
               </div>
             </div>
 
-            {/* Middle row */}
+            {/* Middle row
             <div className="mb-8">
               <ExecutionGraph />
+            </div> */}
+            <div className="grid grid-cols-1 gap-8 mb-8">
+              <ExecutionGraph />
+              <ExecutionTimeline />
             </div>
 
             {/* Last row */}

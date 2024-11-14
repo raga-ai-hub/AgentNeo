@@ -100,13 +100,18 @@ export const CustomNode = ({ data }: { data: any }) => {
       case 'trace':
         const counts = data.metadata?.totalCounts || {};
         
-        // Calculate duration from all child nodes
+        // Get all nodes including nested ones within agent calls
         const allNodes = [
-          ...(data.metadata?.agent_calls || []),
+          ...(data.metadata?.agent_calls || []).flatMap(agent => [
+            agent,
+            ...(agent.llm_calls || []),
+            ...(agent.tool_calls || [])
+          ]),
           ...(data.metadata?.llm_calls || []),
           ...(data.metadata?.tool_calls || [])
         ];
-        
+
+        // Find earliest start time and latest end time
         const startTimes = allNodes
           .map(node => node.start_time)
           .filter(time => time)
@@ -116,12 +121,13 @@ export const CustomNode = ({ data }: { data: any }) => {
           .map(node => node.end_time)
           .filter(time => time)
           .map(time => new Date(time).getTime());
-        
-        const traceStartTime = startTimes.length ? new Date(Math.min(...startTimes)) : null;
-        const traceEndTime = endTimes.length ? new Date(Math.max(...endTimes)) : null;
-        const duration = traceStartTime && traceEndTime ? 
-          calculateDuration(traceStartTime.toISOString(), traceEndTime.toISOString()) : 
-          'N/A';
+
+        const traceStartTime = startTimes.length ? Math.min(...startTimes) : data.startTime;
+        const traceEndTime = endTimes.length ? Math.max(...endTimes) : data.endTime;
+        const duration = calculateDuration(
+          new Date(traceStartTime).toISOString(),
+          new Date(traceEndTime).toISOString()
+        );
         
         // Add direct calls to the stats
         const directLLMCalls = data.metadata?.llm_calls?.length || 0;
@@ -156,10 +162,10 @@ export const CustomNode = ({ data }: { data: any }) => {
               </div>
               <div className="text-xs mt-3 space-y-1">
                 <div className="truncate">
-                  <span className="text-gray-500">Start:</span> {traceStartTime ? formatTimestamp(traceStartTime.toISOString()) : 'N/A'}
+                  <span className="text-gray-500">Start:</span> {formatTimestamp(new Date(traceStartTime).toISOString())}
                 </div>
                 <div className="truncate">
-                  <span className="text-gray-500">End:</span> {traceEndTime ? formatTimestamp(traceEndTime.toISOString()) : 'N/A'}
+                  <span className="text-gray-500">End:</span> {formatTimestamp(new Date(traceEndTime).toISOString())}
                 </div>
               </div>
             </div>
@@ -294,13 +300,22 @@ export const CustomNode = ({ data }: { data: any }) => {
   const getExpandedContent = () => {
     switch (data.type) {
       case 'trace':
-        // Calculate start and end times from all child nodes
+        const counts = data.metadata?.totalCounts || {};
+        const directLLMCalls = data.metadata?.llm_calls || [];
+        const directToolCalls = data.metadata?.tool_calls || [];
+
+        // Get all nodes including nested ones within agent calls
         const allNodes = [
-          ...(data.metadata?.agent_calls || []),
+          ...(data.metadata?.agent_calls || []).flatMap(agent => [
+            agent,
+            ...(agent.llm_calls || []),
+            ...(agent.tool_calls || [])
+          ]),
           ...(data.metadata?.llm_calls || []),
           ...(data.metadata?.tool_calls || [])
         ];
-        
+
+        // Find earliest start time and latest end time
         const startTimes = allNodes
           .map(node => node.start_time)
           .filter(time => time)
@@ -310,25 +325,22 @@ export const CustomNode = ({ data }: { data: any }) => {
           .map(node => node.end_time)
           .filter(time => time)
           .map(time => new Date(time).getTime());
-        
-        const traceStartTime = startTimes.length ? new Date(Math.min(...startTimes)) : null;
-        const traceEndTime = endTimes.length ? new Date(Math.max(...endTimes)) : null;
-        const traceDuration = traceStartTime && traceEndTime ? 
-          calculateDuration(traceStartTime.toISOString(), traceEndTime.toISOString()) : 
-          'N/A';
 
-        const counts = data.metadata?.totalCounts || {};
-        const directLLMCalls = data.metadata?.llm_calls || [];
-        const directToolCalls = data.metadata?.tool_calls || [];
-        
+        const traceStartTime = startTimes.length ? Math.min(...startTimes) : data.startTime;
+        const traceEndTime = endTimes.length ? Math.max(...endTimes) : data.endTime;
+        const traceDuration = calculateDuration(
+          new Date(traceStartTime).toISOString(),
+          new Date(traceEndTime).toISOString()
+        );
+
         return (
           <div className="text-sm">
             <div className="font-bold mb-2">Trace Details</div>
             <div className="grid grid-cols-2 gap-2 mb-2">
               <div>Name: {formatValue(data.name)}</div>
               <div>Duration: {traceDuration}</div>
-              <div>Start: {traceStartTime ? formatTimestamp(traceStartTime.toISOString()) : 'N/A'}</div>
-              <div>End: {traceEndTime ? formatTimestamp(traceEndTime.toISOString()) : 'N/A'}</div>
+              <div>Start: {formatTimestamp(new Date(traceStartTime).toISOString())}</div>
+              <div>End: {formatTimestamp(new Date(traceEndTime).toISOString())}</div>
             </div>
 
             {/* Show agent calls if present */}
@@ -388,8 +400,6 @@ export const CustomNode = ({ data }: { data: any }) => {
                 <div>Total LLM Calls: {counts.llmCount || directLLMCalls.length}</div>
                 <div>Total Tool Calls: {counts.toolCount || directToolCalls.length}</div>
                 <div>Total Agents: {data.metadata?.agent_calls?.length || 0}</div>
-                {/* <div>Total Interactions: {data.metadata?.interaction_count || 0}</div> */}
-                {/* <div>Total Interactions: {data.metadata?.interactions?.length || 0}</div> */}
               </div>
             </div>
 

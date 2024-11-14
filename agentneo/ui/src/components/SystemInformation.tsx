@@ -26,7 +26,7 @@ const SystemInformation: React.FC<SystemInformationProps> = React.memo(({ system
         const parsed = JSON.parse(diskSpace);
         const available = (parsed.available).toFixed(2);
         const total = (parsed.total).toFixed(2);
-        return `${available} GB free of ${total} GB`;
+        return `${total} GB (${available} GB free)`;
       } catch (e) {
         return diskSpace; // Return original string if parsing fails
       }
@@ -36,7 +36,8 @@ const SystemInformation: React.FC<SystemInformationProps> = React.memo(({ system
 
   const formatMemory = (memory: string) => {
     if (!memory) return 'N/A';
-    return `${memory} GB`;
+    const memoryNumber = parseFloat(memory);
+    return `${memoryNumber.toFixed(2)} GB`;
   };
 
   const formatGPU = (gpu: string) => {
