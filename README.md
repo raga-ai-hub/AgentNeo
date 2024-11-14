@@ -215,6 +215,8 @@ We are committed to continuously improving AgentNeo. Here's a glimpse of what's 
 | **Regression Testing Capabilities**       | 📝 Planned      |
 | **Agent Battleground for A/B Testing**    | 📝 Planned      |
 | **IDE Plugins Development**               | 📝 Planned      |
+| **VLM(Vision Language Model) Evaluation**       | 📝 Planned      |
+| **Voice Agents Evaluation**               | 📝 Planned      |
 
 ### Legend
 
@@ -226,7 +228,11 @@ We are committed to continuously improving AgentNeo. Here's a glimpse of what's 
 
 ## 📚 Documentation
 
-For more details, explore the full [AgentNeo Documentation](https://docs.raga.ai/agentneo)
+For more details, explore the full [AgentNeo Documentation](https://agentneo.raga.ai)
+
+##  Demo Video
+
+For reference, Watch a demo video [AgentNeo Demo Video](https://youtu.be/iDV3_Lwv8EY)
 
 ## 🤝 Contributing
 
