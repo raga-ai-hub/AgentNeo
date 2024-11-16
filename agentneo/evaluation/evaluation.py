@@ -17,7 +17,7 @@ from .metrics import (
     execute_goal_fulfillment_metric,
     execute_tool_call_correctness_rate,
     execute_tool_call_success_rate,
-    execute_custom_metric,
+    execute_custom_evaluation_metric,
     execute_tool_selection_accuracy_metric,
     execute_tool_usage_efficiency_metric,
     execute_plan_adaptibility_metric,
@@ -72,8 +72,8 @@ class Evaluation:
                 trace_json=self.trace_data,
                 config=config,
             )
-        elif metric == "custom_llm_metric":
-            return execute_custom_metric(
+        elif metric == "custom_evaluation_metric":
+            return execute_custom_evaluation_metric(
                 trace_json=self.trace_data,
                 config=config,
                 custom_criteria=custom_criteria,

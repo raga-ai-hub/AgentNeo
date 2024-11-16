@@ -36,7 +36,7 @@ async def my_llm_function(max_tokens=512, model="gpt-4o-mini"):
 exe = Evaluation(session=neo_session, trace_id=tracer.trace_id)
 
 # run a single metric
-exe.evaluate(metric_list=['custom_llm_metric', 
+exe.evaluate(metric_list=['custom_evaluation_metric', 
                          ])
 
 # get your evaluated metrics results

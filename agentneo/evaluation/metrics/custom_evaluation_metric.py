@@ -277,7 +277,7 @@ def extract_conversations(trace_json: Dict[str, Any]) -> List[Dict]:
 
     return conversations
 
-def execute_custom_metric(
+def execute_custom_evaluation_metric(
     trace_json: Dict[str, Any], 
     config: Dict[str, Any],
     custom_criteria: Optional[Union[Dict[str, Any], str]] = None,
@@ -300,9 +300,12 @@ def execute_custom_metric(
         if custom_criteria and validate_rubric(custom_criteria):
             criteria = custom_criteria
             used_criteria = "custom"
-        else:
+        elif custom_criteria:
             criteria, custom_bool = extract_evaluation_criteria(custom_criteria)
             used_criteria = "custom" if custom_bool else "default"
+        else:
+            criteria = DEFAULT_RUBRIC
+            used_criteria = "default"
 
         # Extract conversations
         conversations = extract_conversations(trace_json)
@@ -392,7 +395,7 @@ def execute_custom_metric(
 # with open(json_path) as f:
 #     trace_json = json.load(f)
     
-# result_custom = execute_custom_metric(
+# result_custom = execute_custom_evaluation_metric(
 #     trace_json, 
 #     config, 
 #     custom_criteria=custom_rubric, 
@@ -402,7 +405,7 @@ def execute_custom_metric(
 # print(json.dumps(result_custom, indent=2))
 
 # # Example 2: Using default rubric
-# result_default = execute_custom_metric(
+# result_default = execute_custom_evaluation_metric(
 #     trace_json, 
 #     config, 
 #     custom_criteria=None, 

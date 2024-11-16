@@ -21,7 +21,7 @@ const metricNames = [
   'goal_fulfillment_rate',
   'tool_call_correctness_rate',
   'tool_call_success_rate',
-  'custom_llm_metric'
+  'custom_evaluation_metric'
 ];
 
 const Evaluation: React.FC = () => {
@@ -53,7 +53,7 @@ const Evaluation: React.FC = () => {
                 goal_fulfillment_rate: null,
                 tool_call_correctness_rate: null,
                 tool_call_success_rate: null,
-                custom_llm_metric: null
+                custom_evaluation_metric: null
               };
             }
             

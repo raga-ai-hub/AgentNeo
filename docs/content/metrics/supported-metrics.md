@@ -62,7 +62,7 @@ Enables users to define there own personlized metrics system
 ##### Default metrics
 
 ```python
-exe.evaluate(metric_list=['custom_llm_metric',],
+exe.evaluate(metric_list=['custom_evaluation_metric',],
                  )
 ```
 
@@ -77,7 +77,7 @@ prompt1 = """
     Use very strict scoring criteria where excellent means perfect execution.
     """
 
-exe.evaluate(metric_list=['custom_llm_metric',],
+exe.evaluate(metric_list=['custom_evaluation_metric',],
                  custom_criteria=prompt1)
 ```
 

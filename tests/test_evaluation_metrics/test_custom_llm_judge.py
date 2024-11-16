@@ -1,4 +1,4 @@
-from agentneo.evaluation.metrics.custom_llm_judge import validate_rubric, parse_timestamp, extract_conversations, get_model_response, extract_evaluation_criteria, execute_custom_metric, create_evaluation_prompt, DEFAULT_RUBRIC
+from agentneo.evaluation.metrics.custom_evaluation_metric import validate_rubric, parse_timestamp, extract_conversations, get_model_response, extract_evaluation_criteria, execute_custom_evaluation_metric, create_evaluation_prompt, DEFAULT_RUBRIC
 import pytest
 from unittest.mock import patch, MagicMock
 from datetime import datetime
@@ -176,7 +176,7 @@ def test_create_evaluation_prompt():
     assert "domain" in prompt
 
 @patch('litellm.completion')
-def test_execute_custom_metric_success(mock_completion, sample_trace_json, default_config, valid_custom_rubric):
+def test_execute_custom_evaluation_metric_success(mock_completion, sample_trace_json, default_config, valid_custom_rubric):
     """Test successful execution of custom metric evaluation."""
     # Arrange
     expected_score = 0.8
@@ -194,7 +194,7 @@ def test_execute_custom_metric_success(mock_completion, sample_trace_json, defau
     mock_completion.return_value = mock_response
     
     # Act
-    result = execute_custom_metric(
+    result = execute_custom_evaluation_metric(
         sample_trace_json,
         default_config,
         valid_custom_rubric
@@ -205,10 +205,10 @@ def test_execute_custom_metric_success(mock_completion, sample_trace_json, defau
     assert result["result"]["score"] == expected_score
     assert "recommendations" in result["result"]
 
-def test_execute_custom_metric_error(sample_trace_json, default_config):
+def test_execute_custom_evaluation_metric_error(sample_trace_json, default_config):
     """Test custom metric evaluation with error."""
     # Act
-    result = execute_custom_metric(
+    result = execute_custom_evaluation_metric(
         sample_trace_json,
         default_config,
         "invalid_criteria"
@@ -265,7 +265,7 @@ def test_extract_evaluation_criteria_empty_weights(mock_completion):
     assert is_custom is True
 
 @patch('litellm.completion')
-def test_execute_custom_metric_json_decode_error(mock_completion, sample_trace_json, default_config, valid_custom_rubric):
+def test_execute_custom_evaluation_metric_json_decode_error(mock_completion, sample_trace_json, default_config, valid_custom_rubric):
     """Test custom metric execution with JSON decode error in model response."""
     # Arrange
     mock_response = MagicMock()
@@ -275,7 +275,7 @@ def test_execute_custom_metric_json_decode_error(mock_completion, sample_trace_j
     mock_completion.return_value = mock_response
     
     # Act
-    result = execute_custom_metric(
+    result = execute_custom_evaluation_metric(
         sample_trace_json,
         default_config,
         valid_custom_rubric

@@ -259,13 +259,15 @@ if __name__ == "__main__":
     Evaluate based on user satisfaction and response accuracy
     """
 
-    # exe.evaluate(metric_list=['custom_llm_metric',],
+    # exe.evaluate(metric_list=['custom_evaluation_metric',])
+
+    # exe.evaluate(metric_list=['custom_evaluation_metric',],
     #              custom_criteria=CUSTOM_RUBRIC)
     
-    exe.evaluate(metric_list=['custom_llm_metric',],
+    exe.evaluate(metric_list=['custom_evaluation_metric',],
                  custom_criteria=prompt1)
     
-    # exe.evaluate(metric_list=['custom_llm_metric',],
+    # exe.evaluate(metric_list=['custom_evaluation_metric',],
     #              custom_criteria=prompt3)
 
     metric_results = exe.get_results()
