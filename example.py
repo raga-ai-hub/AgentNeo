@@ -23,7 +23,8 @@ async def my_llm_function(max_tokens=512, model="gpt-4o-mini"):
 
     response = client.chat.completions.create(
         model=model,
-        messages=[{"role": "user", "content": "HI How are you"}],
+        messages=[{"role": "user", "content": """Plan a trip to Paris from London for 7 days such that it include 
+                   food for all the 3 times a day, hotel booking and all other itenaries. make sure the total cost lies below $500"""}],
         max_tokens=max_tokens,
         temperature=0.7,
     )
@@ -35,7 +36,7 @@ async def my_llm_function(max_tokens=512, model="gpt-4o-mini"):
 exe = Evaluation(session=neo_session, trace_id=tracer.trace_id)
 
 # run a single metric
-exe.evaluate(metric_list=['goal_decomposition_efficiency', 
+exe.evaluate(metric_list=['custom_llm_metric', 
                          ])
 
 # get your evaluated metrics results
