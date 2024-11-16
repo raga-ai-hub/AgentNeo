@@ -235,8 +235,8 @@ if __name__ == "__main__":
         "0.5-1.0": "Excellent performance, meets or exceeds expectations"
         }
     }
-        # Example 1: Complete criteria with weights
-
+    
+    # Example 1: Complete criteria with weights
     prompt1 = """
     Evaluate the conversation based on:
     1. Technical accuracy (40%) - How accurate is the technical information
@@ -263,7 +263,7 @@ if __name__ == "__main__":
     #              custom_criteria=CUSTOM_RUBRIC)
     
     exe.evaluate(metric_list=['custom_llm_metric',],
-                 custom_criteria=prompt2)
+                 custom_criteria=prompt3)
     
     # exe.evaluate(metric_list=['custom_llm_metric',],
     #              custom_criteria=CUSTOM_RUBRIC)
