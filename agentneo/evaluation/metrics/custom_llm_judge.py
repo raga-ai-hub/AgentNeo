@@ -178,7 +178,30 @@ def validate_rubric(rubric: Dict[str, Any]) -> bool:
         # Validate total weights sum to approximately 1
         if not 0.99 <= total_weight <= 1.01:
             return False
-            
+
+        # Validate scoring guidelines
+        scoring_guidelines = rubric['scoring_guidelines']
+        if not isinstance(scoring_guidelines, dict) or not scoring_guidelines:
+            return False
+
+        # Validate scoring guideline ranges
+        for range_str in scoring_guidelines.keys():
+            try:
+                # Check if range string follows the format "X.X-X.X"
+                if not isinstance(range_str, str):
+                    return False
+                
+                lower, upper = map(float, range_str.split('-'))
+                # Validate range values are between 0 and 1
+                if not (0 <= lower <= 1 and 0 <= upper <= 1 and lower < upper):
+                    return False
+                    
+                # Validate range description
+                if not isinstance(scoring_guidelines[range_str], str):
+                    return False
+            except (ValueError, AttributeError):
+                return False
+               
         return True
         
     except Exception:

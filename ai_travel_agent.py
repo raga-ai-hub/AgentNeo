@@ -263,10 +263,10 @@ if __name__ == "__main__":
     #              custom_criteria=CUSTOM_RUBRIC)
     
     exe.evaluate(metric_list=['custom_llm_metric',],
-                 custom_criteria=prompt3)
+                 custom_criteria=prompt1)
     
     # exe.evaluate(metric_list=['custom_llm_metric',],
-    #              custom_criteria=CUSTOM_RUBRIC)
+    #              custom_criteria=prompt3)
 
     metric_results = exe.get_results()
     print(metric_results)
