@@ -20,7 +20,8 @@ const metricNames = [
   'goal_decomposition_efficiency',
   'goal_fulfillment_rate',
   'tool_call_correctness_rate',
-  'tool_call_success_rate'
+  'tool_call_success_rate',
+  'custom_evaluation_metric'
 ];
 
 const Evaluation: React.FC = () => {
@@ -51,7 +52,8 @@ const Evaluation: React.FC = () => {
                 goal_decomposition_efficiency: null,
                 goal_fulfillment_rate: null,
                 tool_call_correctness_rate: null,
-                tool_call_success_rate: null
+                tool_call_success_rate: null,
+                custom_evaluation_metric: null
               };
             }
             
