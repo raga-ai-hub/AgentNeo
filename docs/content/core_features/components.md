@@ -22,6 +22,15 @@ def llm_function(): pass
 @tracer.trace_tool("my_tool")
 def tool_function(): pass
 
+@tracer.trace_pinecone_upsert
+def upsert_data(data): pass
+
+@tracer.trace_pinecone_create_query_vector
+def create_query_vector(query_text):
+
+@tracer.trace_pinecone_similarity_search
+def similarity_search(query_vector):
+
 tracer.stop()
 ```
 
