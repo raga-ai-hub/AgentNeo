@@ -3,7 +3,7 @@ import requests
 from dotenv import load_dotenv
 from litellm import completion
 from openai import OpenAI
-
+from datetime import datetime
 
 load_dotenv()
 
@@ -208,14 +208,47 @@ if __name__ == "__main__":
 
     # Evaluate the performance
     exe = Evaluation(session=neo_session, trace_id=tracer.trace_id)
-    exe.evaluate(metric_list=['goal_decomposition_efficiency', 
-                         'goal_fulfillment_rate', 
-                         'tool_call_correctness_rate', 
-                         'tool_call_success_rate'])
-    # print the performance result
-    # metric_results = exe.get_results()
-    # print(metric_results)
-    
+    evaluations = [
+    {
+        "metric_list": ["goal_decomposition_efficiency"],
+    },
+    {
+        "metric_list": ["goal_fulfillment_rate"],
+    },
+    {
+        "metric_list": ["tool_call_correctness_rate"],
+    },
+    {
+        "metric_list": ["tool_call_success_rate"],
+    }
+    ]
+
+    start_time = datetime.now()
+    exe.evaluate(evaluations=evaluations)
+    end_time = datetime.now()
+    duration = (end_time - start_time).total_seconds()
+    print(f"Evaluation operation with Batches took {duration} seconds.")
+
+    evaluations = [
+        {
+            "metric_list":[
+            'goal_decomposition_efficiency',
+            'goal_fulfillment_rate',
+            'tool_call_correctness_rate',
+            'tool_call_success_rate'
+        ]
+        }
+    ]
+
+    start_time = datetime.now()
+    exe.evaluate(evaluations=evaluations, max_eval_workers=1, max_metric_workers=4)
+    end_time = datetime.now()
+    duration = (end_time - start_time).total_seconds()
+    print(f"Evaluation operation took {duration} seconds.")
+
+
+    # get your evaluated metrics results
+    metric_results = exe.get_results()    
 
     # Launch dashboard
     launch_dashboard(port=3000)
