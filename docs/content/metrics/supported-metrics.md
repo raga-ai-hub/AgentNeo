@@ -56,6 +56,32 @@ Measures the reliability of tool executions.
 exe.evaluate(metric_list=['tool_call_success_rate'])
 ```
 
+### 5. RAGChecker Evaluation
+Evaluates the RAG using the RAGChecker.
+
+```python
+exe.evaluate(metric_list=['ragchecker_evaluation'])
+```
+
+**Configuration Options:**
+```python
+config = {
+    "input_file": "path/to/file.txt",   # Path to the input file
+    "metric_type": "all",               # Type of metric to evaluate (all, reteriver, generator)
+    "model": "gpt-4o-mini",             # Model to use for RAGChecker
+    "checker_name": "gpt-4o-mini",      # Name of the checker model
+    "api_key": None,                    # litellm API key
+    "extractor_max_new_tokens": 1000,
+    "extractor_api_base": None,
+    "checker_api_base": None,
+    "batch_size_extractor": 32,
+    "batch_size_checker": 32,
+    "openai_api_key": None,             # Direct API key for OpenAI
+    "joint_check": True,
+    "joint_check_num": 5
+}
+```
+
 ## Using Multiple Metrics
 ```python
 # Evaluate multiple metrics together
