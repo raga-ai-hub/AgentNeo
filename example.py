@@ -39,41 +39,26 @@ exe = Evaluation(session=neo_session, trace_id=tracer.trace_id)
 
 evaluations = [
     {
-        "metric_list": ["goal_decomposition_efficiency"],
-    },
-    {
-        "metric_list": ["goal_fulfillment_rate"],
-    },
-    {
-        "metric_list": ["tool_call_correctness_rate"],
-    },
-    {
-        "metric_list": ["tool_call_success_rate"],
-    }
-]
-
-start_time = datetime.now()
-exe.evaluate(evaluations=evaluations)
-end_time = datetime.now()
-duration = (end_time - start_time).total_seconds()
-print(f"Evaluation operation took {duration} seconds.")
-
-evaluations = [
-    {
         "metric_list":[
         'goal_decomposition_efficiency',
         'goal_fulfillment_rate',
         'tool_call_correctness_rate',
         'tool_call_success_rate'
-    ]
+        ]
     }
 ]
+start_time = datetime.now()
+exe.evaluate(evaluations=evaluations, max_metric_workers=1)
+end_time = datetime.now()
+duration = (end_time - start_time).total_seconds()
+print(f"Evaluation operation took {duration} seconds.")
+
+
 start_time = datetime.now()
 exe.evaluate(evaluations=evaluations, max_metric_workers=4)
 end_time = datetime.now()
 duration = (end_time - start_time).total_seconds()
 print(f"Evaluation operation took {duration} seconds.")
-
 
 # get your evaluated metrics results
 metric_results = exe.get_results()
