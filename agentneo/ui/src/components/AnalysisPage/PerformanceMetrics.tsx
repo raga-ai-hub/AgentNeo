@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { ArrowUpIcon, ArrowDownIcon } from 'lucide-react'
 import { useProject } from '../../contexts/ProjectContext'
+import { useTheme } from '../../theme/ThemeProvider'
 import { fetchTraces, fetchAnalysisTrace } from '@/utils/api'
 
 const MetricCard: React.FC<{
@@ -9,8 +10,9 @@ const MetricCard: React.FC<{
   value: string
   previousValue: number
   currentValue: number
-  titleColor: string
-}> = ({ title, value, previousValue, currentValue, titleColor }) => {
+}> = ({ title, value, previousValue, currentValue }) => {
+  const { theme } = useTheme()
+
   const calculateChange = () => {
     if (previousValue === 0) return { value: '0%', isPositive: true }
     const change = ((currentValue - previousValue) / previousValue) * 100
@@ -23,15 +25,47 @@ const MetricCard: React.FC<{
   const { value: changeValue, isPositive } = calculateChange()
 
   return (
-    <Card>
+    <Card
+      className={`
+      ${
+        theme === 'dark'
+          ? 'border-gray-700 bg-gray-800'
+          : 'border-gray-200 bg-white'
+      }
+      border transition-colors duration-200
+    `}
+    >
       <CardContent className='p-4'>
-        <h3 className={`text-sm font-medium ${titleColor}`}>{title}</h3>
+        <h3
+          className={`
+          text-sm font-medium
+          ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}
+        `}
+        >
+          {title}
+        </h3>
         <div className='mt-2 flex items-baseline justify-between'>
-          <p className='text-2xl font-semibold'>{value}</p>
           <p
-            className={`flex items-center text-sm ${
-              isPositive ? 'text-green-600' : 'text-red-600'
-            }`}
+            className={`
+            text-2xl font-semibold
+            ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}
+          `}
+          >
+            {value}
+          </p>
+          <p
+            className={`
+            flex items-center text-sm
+            ${
+              isPositive
+                ? theme === 'dark'
+                  ? 'text-green-400'
+                  : 'text-green-600'
+                : theme === 'dark'
+                ? 'text-red-400'
+                : 'text-red-600'
+            }
+          `}
           >
             {isPositive ? (
               <ArrowUpIcon className='w-4 h-4 mr-1' />
@@ -68,6 +102,7 @@ interface MetricsData {
 }
 
 const PerformanceMetrics: React.FC = () => {
+  const { theme } = useTheme()
   const { selectedProject, selectedTraceId } = useProject()
   const [metrics, setMetrics] = useState<MetricsData>({
     current: {
@@ -166,36 +201,44 @@ const PerformanceMetrics: React.FC = () => {
   }, [selectedProject, selectedTraceId])
 
   return (
-    <div className='p-4 rounded-lg'>
-      <h2 className='text-xl font-semibold mb-4'>Performance Metrics</h2>
+    <div
+      className={`
+      p-4 rounded-lg
+      ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}
+    `}
+    >
+      <h2
+        className={`
+        text-xl font-semibold mb-4
+        ${theme === 'dark' ? 'text-gray-100' : 'text-gray-900'}
+      `}
+      >
+        Performance Metrics
+      </h2>
       <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
         <MetricCard
           title='Success Rate'
           value={`${metrics.current.successRate.toFixed(2)}%`}
           previousValue={metrics.previous.successRate}
           currentValue={metrics.current.successRate}
-          titleColor='text-purple-600'
         />
         <MetricCard
           title='Avg LLM Response Time'
           value={`${metrics.current.avgLLMResponseTime.toFixed(2)}s`}
           previousValue={metrics.previous.avgLLMResponseTime}
           currentValue={metrics.current.avgLLMResponseTime}
-          titleColor='text-purple-600'
         />
         <MetricCard
           title='Avg Tool Response Time'
           value={`${metrics.current.avgToolCallResponseTime.toFixed(2)}s`}
           previousValue={metrics.previous.avgToolCallResponseTime}
           currentValue={metrics.current.avgToolCallResponseTime}
-          titleColor='text-purple-600'
         />
         <MetricCard
           title='Avg Cost per LLM Call'
           value={`$${metrics.current.avgCostPerLLMCall.toFixed(4)}`}
           previousValue={metrics.previous.avgCostPerLLMCall}
           currentValue={metrics.current.avgCostPerLLMCall}
-          titleColor='text-purple-600'
         />
       </div>
     </div>
