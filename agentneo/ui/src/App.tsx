@@ -6,11 +6,11 @@ import Overview from './pages/Overview'
 import Analysis from './pages/Analysis'
 import TraceHistory from './pages/TraceHistory'
 import Evaluation from './pages/Evaluation'
-import { ThemeProvider } from '@/components/ThemeProvider'
+import { ThemeProvider } from '@/theme/ThemeProvider'
 
 function App () {
   return (
-    <ThemeProvider defaultTheme='dark' storageKey='vite-ui-theme'>
+    <ThemeProvider defaultTheme='system' storageKey='vite-ui-theme'>
       <ProjectProvider>
         <SidebarProvider>
           <Router>

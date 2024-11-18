@@ -27,7 +27,7 @@ const Sidebar: React.FC = () => {
       <div className='absolute inset-0 backdrop-blur-sm bg-white bg-opacity-5'></div>
       <div className='absolute inset-0 bg-gradient-to-tr from-transparent via-white to-transparent opacity-5'></div>
       <div className='relative z-10 flex-grow'>
-        <div className='flex items-center justify-between mb-100'>
+        <div className='flex items-center justify-between mb-8'>
           <div className='flex items-center'>
             <img
               src='/assets/logo.png'
