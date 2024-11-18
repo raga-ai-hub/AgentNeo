@@ -5,6 +5,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from typing import Optional
 import json
 import ast
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 
 from ..data import (
     ProjectInfoModel,
@@ -22,8 +24,6 @@ from .metrics import (
     execute_plan_adaptibility_metric,
 )
 
-from datetime import datetime
-
 class Evaluation:
     def __init__(self, session, trace_id):
         self.user_session = session
@@ -38,16 +38,40 @@ class Evaluation:
         self.trace_data = self.get_trace_data()
 
     def evaluate(self, metric_list=[], config={}, metadata={}):
-        for metric in metric_list:
-            start_time = datetime.now()   
-            result = self._execute_metric(metric, config, metadata)   
-            end_time = datetime.now()
-            duration = (end_time - start_time).total_seconds()
+        """
+        Evaluate a list of metrics in parallel.
+        """
+        results = []
+        with ThreadPoolExecutor() as executor:
+            # Submit all metrics for parallel execution
+            future_to_metric = {
+                executor.submit(self._execute_and_save_metric, metric, config, metadata): metric
+                for metric in metric_list
+            }
 
-            self._save_metric_result(metric, result, start_time, end_time, duration)
+            for future in as_completed(future_to_metric):
+                metric = future_to_metric[future]
+                try:
+                    # Get the result of the future
+                    result = future.result()
+                    results.append(result)
+                except Exception as e:
+                    print(f"Metric {metric} failed with exception: {e}")
 
         self.session.commit()
         self.session.close()
+
+    def _execute_and_save_metric(self, metric, config, metadata):
+        """
+        Execute a metric and save its result.
+        """
+        start_time = datetime.now()
+        result = self._execute_metric(metric, config, metadata)
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+
+        self._save_metric_result(metric, result, start_time, end_time, duration)
+        return result
 
     def _execute_metric(self, metric, config, metadata):
         if metric == 'goal_decomposition_efficiency':
@@ -74,7 +98,6 @@ class Evaluation:
         else:
             raise ValueError("provided metric name is not supported.")
         
-
     def _save_metric_result(self, metric, result, start_time, end_time, duration):
         metric_entry = MetricModel(
             trace_id=self.trace_id,
@@ -122,9 +145,8 @@ class Evaluation:
             
             return json_data[0]
 
-        except:
-            raise ValueError("Unable to load the trace data.")
-
+        except Exception as e:
+            raise ValueError(f"Unable to load the trace data: {e}")
 
     def serialize_trace(self, trace):
         """Convert a TraceModel object into a dictionary, including all related objects."""
@@ -149,12 +171,8 @@ class Evaluation:
                 {
                     'id': agent_call.id,
                     'name': agent_call.name,
-                    # 'input_parameters': self.parse_json_field(agent_call.input_parameters),
-                    # 'output': self.parse_json_field(agent_call.output),
                     'start_time': agent_call.start_time.isoformat() if agent_call.start_time else None,
                     'end_time': agent_call.end_time.isoformat() if agent_call.end_time else None,
-                    # 'duration': agent_call.duration,
-                    # 'memory_used': agent_call.memory_used
                     'llm_call_ids': self.parse_json_field(agent_call.llm_call_ids),
                     'tool_call_ids': self.parse_json_field(agent_call.tool_call_ids),
                     'user_interaction_ids': self.parse_json_field(agent_call.user_interaction_ids),
@@ -206,7 +224,6 @@ class Evaluation:
                 } for interaction in trace.user_interactions
             ]
         }
-    
 
     def parse_json_field(self, field):
         """Parse a JSON string field into a Python object, if necessary."""
