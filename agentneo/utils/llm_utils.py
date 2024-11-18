@@ -36,22 +36,16 @@ def extract_ollama_output(result):
     function_call = None
     tool_call = None
     token_usage = {}
-    cost = {}
+    cost = {
+        "input": 0,
+        "output": 0,
+        "reasoning": 0
+    }
 
     # Extract token usage information
     token_usage["input"] = result.get("prompt_eval_count", 0)
     token_usage["completion"] = result.get("eval_count", 0)
     token_usage["total_tokens"] = token_usage["input"] + token_usage["completion"]
-
-    # Extract cost information (durations in nanoseconds)
-    cost["total_duration_ns"] = result.get("total_duration", 0)
-    cost["load_duration_ns"] = result.get("load_duration", 0)
-    cost["eval_duration_ns"] = result.get("eval_duration", 0)
-
-    # Convert durations to seconds
-    cost["total_duration"] = cost["total_duration_ns"] / 1e9
-    cost["load_duration"] = cost["load_duration_ns"] / 1e9
-    cost["eval_duration"] = cost["eval_duration_ns"] / 1e9
 
     # Create a namespace object to store the extracted information
     class LLMDatum:
