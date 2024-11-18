@@ -20,6 +20,54 @@ except FileNotFoundError:
         config = json.load(file)
 
 
+def extract_ollama_output(result):
+    """
+    Extracts the LLM output data from an Ollama API result.
+
+    Args:
+        result (dict): The JSON response from the Ollama API.
+
+    Returns:
+        llm_data (LLMDatum): An object containing the extracted data.
+    """
+    # Initialize variables
+    model_name = result.get("model")
+    output_response = result.get("response", "")
+    function_call = None
+    tool_call = None
+    token_usage = {}
+    cost = {}
+
+    # Extract token usage information
+    token_usage["input"] = result.get("prompt_eval_count", 0)
+    token_usage["completion"] = result.get("eval_count", 0)
+    token_usage["total_tokens"] = token_usage["input"] + token_usage["completion"]
+
+    # Extract cost information (durations in nanoseconds)
+    cost["total_duration_ns"] = result.get("total_duration", 0)
+    cost["load_duration_ns"] = result.get("load_duration", 0)
+    cost["eval_duration_ns"] = result.get("eval_duration", 0)
+
+    # Convert durations to seconds
+    cost["total_duration"] = cost["total_duration_ns"] / 1e9
+    cost["load_duration"] = cost["load_duration_ns"] / 1e9
+    cost["eval_duration"] = cost["eval_duration_ns"] / 1e9
+
+    # Create a namespace object to store the extracted information
+    class LLMDatum:
+        pass
+
+    llm_data = LLMDatum()
+    llm_data.model_name = model_name
+    llm_data.output_response = output_response
+    llm_data.prompt = ""
+    llm_data.function_call = function_call
+    llm_data.tool_call = tool_call
+    llm_data.token_usage = token_usage
+    llm_data.cost = cost
+
+    return llm_data
+
 
 def extract_llm_output(result):
 

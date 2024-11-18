@@ -22,6 +22,10 @@ def llm_function(): pass
 @tracer.trace_tool("my_tool")
 def tool_function(): pass
 
+@tracer.trace_llm_ollama(name="ollama_llm_call1")
+def ollama_call(prompt, model="llama3.2", stream=False):
+pass
+
 tracer.stop()
 ```
 

@@ -38,6 +38,26 @@ def process_data(data):
 result = process_data(raw_data)
 ```
 
+### Ollama Tracing
+```python
+@tracer.trace_llm_ollama(name="ollama_llm_call1")
+def ollama_call(prompt, model="llama3.2", stream=False):
+    params = {
+        "model": model,
+        "prompt": prompt,
+        "stream": stream
+    }
+    url = "http://localhost:11434/api/generate"
+    response = requests.post(
+        url=url,
+        json=params
+    )
+        result = response.json()
+
+# Usage
+data = ollama_call("What is the capital of China?")
+```
+
 ### Agent Tracing
 ```python
 @tracer.trace_agent("task_agent")
