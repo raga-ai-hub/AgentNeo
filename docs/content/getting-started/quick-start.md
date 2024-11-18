@@ -114,6 +114,25 @@ def calculate_metrics(data):
     pass
 ```
 
+### Trace Ollama RESTAPI Calls
+
+```python
+@tracer.trace_llm_ollama(name="ollama_llm_call1")
+def ollama_call(prompt, model="llama3.2", stream=False):
+    params = {
+        "model": model,
+        "prompt": prompt,
+        "stream": stream
+    }
+    url = "http://localhost:11434/api/generate"
+    response = requests.post(
+        url=url,
+        json=params
+    )
+    result = response.json()
+    return result
+```
+
 ### Trace Agents
 ```python
 @tracer.trace_agent("my_agent")

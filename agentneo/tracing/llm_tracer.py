@@ -8,7 +8,7 @@ import os
 
 from .user_interaction_tracer import UserInteractionTracer
 from ..utils.trace_utils import calculate_cost, load_model_costs, convert_usage_to_dict
-from ..utils.llm_utils import extract_llm_output
+from ..utils.llm_utils import extract_llm_output, extract_ollama_output
 from ..data import LLMCallModel
 
 
@@ -251,3 +251,81 @@ class LLMTracerMixin:
                 )
 
         return decorator
+    
+    def trace_llm_ollama(self, name: str):
+        def decorator(func):
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
+                if not self.is_active:
+                    return func(*args, **kwargs)
+                start_time = datetime.now()
+                start_memory = psutil.Process().memory_info().rss
+
+                agent_id = self.current_agent_id.get()
+                llm_call_name = name
+
+                result = func(*args, **kwargs)
+
+                end_time = datetime.now()
+                end_memory = psutil.Process().memory_info().rss
+                memory_used = max(0, end_memory - start_memory)
+
+                # Extract the prompt from function arguments
+                prompt = self._extract_input(args, kwargs)
+
+                # Process the Ollama result
+                self.process_ollama_result(
+                    result, llm_call_name, prompt, start_time, end_time, memory_used, agent_id
+                )
+
+                return result
+            return wrapper
+        return decorator
+
+    def process_ollama_result(
+        self, result, name, prompt, start_time, end_time, memory_used, agent_id
+    ):
+        llm_data = extract_ollama_output(result)
+        llm_data.prompt = prompt
+        model = llm_data.model_name
+        prompt = llm_data.prompt
+        token_usage = llm_data.token_usage
+        cost = llm_data.cost
+
+        llm_call = LLMCallModel(
+            project_id=self.project_id,
+            trace_id=self.trace_id,
+            agent_id=agent_id,
+            name=name,
+            model=model,
+            input_prompt=prompt,
+            output=llm_data.output_response,
+            tool_call=llm_data.tool_call,
+            start_time=start_time,
+            end_time=end_time,
+            duration=(end_time - start_time).total_seconds(),
+            token_usage=json.dumps(token_usage),
+            cost=json.dumps(cost),
+            memory_used=memory_used,
+        )
+
+        with self.Session() as session:
+            session.add(llm_call)
+            session.commit()
+            session.refresh(llm_call)
+
+        self.trace_data.setdefault("llm_calls", []).append({
+            "id": llm_call.id,
+            "name": name,
+            "model": model,
+            "input_prompt": prompt,
+            "output": llm_data.output_response,
+            "tool_call": llm_data.tool_call,
+            "start_time": start_time,
+            "end_time": end_time,
+            "duration": (end_time - start_time).total_seconds(),
+            "token_usage": token_usage,
+            "cost": cost,
+            "memory_used": memory_used,
+            "agent_id": agent_id,
+        })

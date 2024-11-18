@@ -11,6 +11,7 @@ AgentNeo follows a modular architecture designed for flexibility and extensibili
 ### 1. Tracer Module
 - Decorators for instrumentation
 - Decorators for vector db (Pinecone)
+- Decorators for REST API (Ollama)
 - Event collection
 - Metric computation
 - Data buffering
@@ -36,6 +37,12 @@ AgentNeo follows a modular architecture designed for flexibility and extensibili
 1. **Instrumentation**
    ```python
    @tracer.trace_llm()
+   def your_function():
+       pass
+   ```
+
+   ```python
+   @tracer.trace_llm_ollama()
    def your_function():
        pass
    ```

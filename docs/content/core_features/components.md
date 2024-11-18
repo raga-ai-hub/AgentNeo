@@ -31,6 +31,10 @@ def create_query_vector(query_text):
 @tracer.trace_pinecone_similarity_search
 def similarity_search(query_vector):
 
+@tracer.trace_llm_ollama(name="ollama_llm_call1")
+def ollama_call(prompt, model="llama3.2", stream=False):
+pass
+
 tracer.stop()
 ```
 

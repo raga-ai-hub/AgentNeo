@@ -71,6 +71,29 @@ def similarity_search(query_vector, top_k=3):
     pass
 ```
 
+### Ollama API Support
+- Tracing LLM calls made to the Ollama API
+- Capturing input prompts and outputs
+- Monitoring performance metrics and resource utilization
+
+```python
+@tracer.trace_llm_ollama(name="ollama_llm_call_test")
+def ollama_call(prompt, model="llama3.2", stream=False):
+    params = {
+        "model": model,
+        "prompt": prompt,
+        "stream": stream
+    }
+    url = "http://localhost:11434/api/generate"
+    response = requests.post(
+        url=url,
+        json=params
+    )
+    result = response.json()
+    return result
+```
+
+
 ## Monitoring Features
 
 ### Real-time Dashboard
