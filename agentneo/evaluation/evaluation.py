@@ -37,18 +37,28 @@ class Evaluation:
 
         self.trace_data = self.get_trace_data()
 
-    def evaluate(self, metric_list=[], config={}, metadata={}):
+    def evaluate(self, metric_list=[], config={}, metadata={}, max_workers=None):
         """
         Evaluate a list of metrics in parallel.
+        
+        Parameters:
+        - metric_list: List of metrics to evaluate.
+        - config: Configuration settings for the evaluation.
+        - metadata: Metadata for the evaluation.
+        - max_workers: The maximum number of workers to use for parallel execution.
+        If None, it will use the default number of workers based on the system.
         """
         results = []
-        with ThreadPoolExecutor() as executor:
+        
+        # Use ThreadPoolExecutor with max_workers if provided
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
             # Submit all metrics for parallel execution
             future_to_metric = {
                 executor.submit(self._execute_and_save_metric, metric, config, metadata): metric
                 for metric in metric_list
             }
 
+            # Collect results as they are completed
             for future in as_completed(future_to_metric):
                 metric = future_to_metric[future]
                 try:
@@ -58,8 +68,10 @@ class Evaluation:
                 except Exception as e:
                     print(f"Metric {metric} failed with exception: {e}")
 
+        # Commit session and close it
         self.session.commit()
         self.session.close()
+
 
     def _execute_and_save_metric(self, metric, config, metadata):
         """

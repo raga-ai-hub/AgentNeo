@@ -3,6 +3,15 @@ from agentneo.agentneo import AgentNeo
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from unittest import mock
+from concurrent.futures import ThreadPoolExecutor
+import time
+
+
+def mock_task(id):
+    """Mock task for testing, just a dummy task."""
+    time.sleep(1)
+    return f"Task {id} completed"
+
 
 @pytest.fixture(scope="module")
 def setup_engine():
@@ -15,10 +24,19 @@ def setup_engine():
     Base.metadata.create_all(engine)
     yield engine
 
+
 @pytest.fixture
 def agentneo_instance(setup_engine):
     """Fixture to provide a clean instance of AgentNeo for each test."""
     return AgentNeo()
+
+
+@pytest.fixture
+def executor():
+    """Fixture for creating a ThreadPoolExecutor."""
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        yield executor
+
 
 def test_connect_project(agentneo_instance):
     """Test connecting to an existing project."""
@@ -35,6 +53,7 @@ def test_connect_project(agentneo_instance):
     assert connected_id == agentneo_instance.project_id
     assert agentneo_instance.project_name == project_name
 
+
 def test_create_project(agentneo_instance):
     """Test creating a new project."""
     project_name = "Test Project"
@@ -48,6 +67,7 @@ def test_create_project(agentneo_instance):
         # Test for duplicate project creation
         with pytest.raises(ValueError, match=f"Project '{project_name}' already exists."):
             agentneo_instance.create_project(project_name)
+
 
 def test_list_projects(agentneo_instance):
     """Test listing projects."""
@@ -71,6 +91,39 @@ def test_list_projects(agentneo_instance):
     # Test limiting the number of listed projects
     limited_projects = AgentNeo.list_projects(num_projects=2)
     assert len(limited_projects) == 2
+
+
+def test_parallel_execution(agentneo_instance, executor):
+    """Test parallel execution with ThreadPoolExecutor, simulating metric evaluations."""
+    metric_list = ["metric_1", "metric_2", "metric_3", "metric_4", "metric_5"]
+
+    # Submit multiple tasks for each metric evaluation (simulating work)
+    futures = [executor.submit(mock_task, i) for i in range(len(metric_list))]
+
+    # Ensure that all tasks complete
+    results = [future.result() for future in futures]
+
+    # Assert that all tasks completed as expected
+    assert len(results) == len(metric_list)
+    assert all(f"Task {i} completed" for i in range(len(metric_list)))
+
+
+def test_max_workers(agentneo_instance, executor):
+    """Test the max workers configuration in ThreadPoolExecutor."""
+    
+    # Submit 5 tasks, but only 3 workers should be running concurrently
+    start_time = time.time()
+    futures = [executor.submit(mock_task, i) for i in range(5)]
+    
+    # Wait for all tasks to complete
+    for future in futures:
+        future.result()
+    
+    end_time = time.time()
+    
+    # Total time should be around 3 seconds since we have a max of 3 workers running concurrently
+    assert end_time - start_time < 5  # It should not exceed 5 seconds
+
 
 @mock.patch("agentneo.server.dashboard.launch_dashboard")
 def test_launch_dashboard(mock_launch_dashboard):

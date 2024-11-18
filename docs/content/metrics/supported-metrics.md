@@ -58,13 +58,14 @@ exe.evaluate(metric_list=['tool_call_success_rate'])
 
 ## Using Multiple Metrics
 ```python
-# Evaluate multiple metrics together
+# Evaluate multiple metrics together 
 exe.evaluate(
     metric_list=[
         'goal_decomposition_efficiency',
         'goal_fulfillment_rate',
         'tool_call_correctness_rate',
         'tool_call_success_rate'
-    ]
+    ],
+    max_workers = 4  
 )
 ```
