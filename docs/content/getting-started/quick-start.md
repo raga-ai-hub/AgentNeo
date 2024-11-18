@@ -25,6 +25,24 @@ async def get_llm_response(prompt):
     # Your LLM call here
     pass
 ```
+### Trace Ollama RESTAPI Calls
+
+```python
+@tracer.trace_llm_ollama(name="ollama_llm_call1")
+def ollama_call(prompt, model="llama3.2", stream=False):
+    params = {
+        "model": model,
+        "prompt": prompt,
+        "stream": stream
+    }
+    url = "http://localhost:11434/api/generate"
+    response = requests.post(
+        url=url,
+        json=params
+    )
+    result = response.json()
+    return result
+```
 
 ### Trace Tools
 ```python
