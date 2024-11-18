@@ -1,12 +1,11 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.exc import SQLAlchemyError
-from typing import Optional
-import json
-import ast
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
+import json
+import ast
+from tqdm import tqdm
 
 from ..data import (
     ProjectInfoModel,
@@ -39,7 +38,7 @@ class Evaluation:
 
     def evaluate(self, metric_list=[], config={}, metadata={}, max_workers=None):
         """
-        Evaluate a list of metrics in parallel.
+        Evaluate a list of metrics in parallel with progress tracking.
         
         Parameters:
         - metric_list: List of metrics to evaluate.
@@ -50,7 +49,7 @@ class Evaluation:
         """
         results = []
         
-        # Use ThreadPoolExecutor with max_workers if provided
+        # Uses ThreadPoolExecutor with max_workers if provided
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             # Submit all metrics for parallel execution
             future_to_metric = {
@@ -58,31 +57,41 @@ class Evaluation:
                 for metric in metric_list
             }
 
-            # Collect results as they are completed
-            for future in as_completed(future_to_metric):
-                metric = future_to_metric[future]
-                try:
-                    # Get the result of the future
-                    result = future.result()
-                    results.append(result)
-                except Exception as e:
-                    print(f"Metric {metric} failed with exception: {e}")
+            # Initialize progress bar
+            with tqdm(total=len(future_to_metric), desc="Evaluating Metrics") as pbar:
+                # Collect results as they are completed
+                for future in as_completed(future_to_metric):
+                    metric = future_to_metric[future]
+                    try:
+                        result = future.result()
+                        results.append(result)
+                    except Exception as e:
+                        print(f"Metric {metric} failed with exception: {e}")
+                    finally:
+                        pbar.update(1)  # Update the progress bar after each metric completion
 
         # Commit session and close it
         self.session.commit()
         self.session.close()
-
 
     def _execute_and_save_metric(self, metric, config, metadata):
         """
         Execute a metric and save its result.
         """
         start_time = datetime.now()
-        result = self._execute_metric(metric, config, metadata)
+        try:
+            result = self._execute_metric(metric, config, metadata)
+        except ValueError as e:
+            print(f"Error executing metric {metric}: {e}")
+            return None
+        except Exception as e:
+            print(f"Unexpected error while executing metric {metric}: {e}")
+            return None
         end_time = datetime.now()
         duration = (end_time - start_time).total_seconds()
 
-        self._save_metric_result(metric, result, start_time, end_time, duration)
+        if result:
+            self._save_metric_result(metric, result, start_time, end_time, duration)
         return result
 
     def _execute_metric(self, metric, config, metadata):
@@ -109,15 +118,15 @@ class Evaluation:
             )
         else:
             raise ValueError("provided metric name is not supported.")
-        
+
     def _save_metric_result(self, metric, result, start_time, end_time, duration):
         metric_entry = MetricModel(
             trace_id=self.trace_id,
             metric_name=metric,
-            score = result['result']['score'],
-            reason = result['result']['reason'],
-            result_detail = result,
-            config = result['config'],
+            score=result['result']['score'],
+            reason=result['result']['reason'],
+            result_detail=result,
+            config=result['config'],
             start_time=start_time,
             end_time=end_time,
             duration=duration
@@ -130,10 +139,10 @@ class Evaluation:
         for result in results:
             result_dict = {
                 'metric_name': result.metric_name,
-                'score' : result.score,
-                'reason' : result.reason,
+                'score': result.score,
+                'reason': result.reason,
                 'result_detail': result.result_detail,
-                'config' : result.config,
+                'config': result.config,
                 'start_time': result.start_time.isoformat() if result.start_time else None,
                 'end_time': result.end_time.isoformat() if result.end_time else None,
                 'duration': result.duration
