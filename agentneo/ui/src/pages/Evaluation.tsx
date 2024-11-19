@@ -278,7 +278,7 @@ const Evaluation: React.FC = () => {
   return (
     <div
       className='flex h-screen overflow-hidden'
-      style={{ backgroundColor: themeStyles.background }}
+      style={{ backgroundColor: themeStyles.secondary.background }}
     >
       <Sidebar />
       <div
@@ -290,7 +290,7 @@ const Evaluation: React.FC = () => {
         <div
           className='flex-shrink-0 p-8'
           style={{
-            backgroundColor: themeStyles.background,
+            backgroundColor: themeStyles.secondary.background,
             borderBottom: `1px solid ${themeStyles.border}`
           }}
         >
