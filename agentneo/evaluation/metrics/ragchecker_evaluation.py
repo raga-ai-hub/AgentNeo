@@ -17,7 +17,7 @@ def calculate_overall_score(
     ) -> float:
         values = [metric_values[key] / 100 for key in weights.keys()]
         weight_values = list(weights.values())
-        return sum(v * w for v, w in zip(values, weight_values)) / sum(weight_values)
+        return round(sum(v * w for v, w in zip(values, weight_values)) / sum(weight_values) * 100, 2)
 
     metric_weights = {
         "overall": {"precision": 1.0, "recall": 1.0, "f1": 1.0},
@@ -53,7 +53,8 @@ def calculate_overall_score(
             )
 
         category_weights = {"overall": 0.33, "retriever": 0.33, "generator": 0.33}
-        return sum(scores[cat] * weight for cat, weight in category_weights.items())
+        final_score = sum(scores[cat] * weight for cat, weight in category_weights.items())
+        return round(final_score, 2)
 
     elif metric_type.lower() in ["retriever", "generator"]:
         metrics_dict = metrics[f"{metric_type}_metrics"]
