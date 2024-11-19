@@ -1,26 +1,30 @@
+export interface InteractionDetail {
+  interaction_type: string;
+  content: string;
+}
+
+export interface TimelineEventDetails {
+  name?: string;
+  parentName: string;
+  interactions?: InteractionDetail[];
+  model?: string;
+  input?: string;
+  output?: string;
+  content?: string;
+  error_message?: string;
+  agent?: string;
+}
+
 export interface TimelineData {
   name: string;
-  duration: number;
   startTime: string;
   endTime: string;
+  duration: number;
   color: string;
   type: string;
   row: string;
   isDot?: boolean;
-  details?: {
-    name?: string,
-    agent?: string;
-    function?: string;
-    input?: string;
-    output?: string;
-    model?: string;
-    token_usage?: number;
-    cost?: number;
-    error_message?: string;
-    interaction_type?: string;
-    content?: string;
-    parentName?: string;
-  };
+  details: TimelineEventDetails;
   counts?: {
     llms: number;
     tools: number;

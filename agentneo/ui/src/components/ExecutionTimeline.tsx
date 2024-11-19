@@ -105,7 +105,7 @@ const ExecutionTimeline: React.FC = () => {
         tools: agent.tool_calls?.length || 0,
         interactions: agent.user_interactions?.length || 0,
         errors: agent.errors?.length || 0,
-        agents: 0, // No nested agents in this context
+        agents: 0,
       };
 
       // Add agent
@@ -165,24 +165,45 @@ const ExecutionTimeline: React.FC = () => {
         });
       });
 
-      // Add user interactions
+      // Modified user interactions processing
       agent.user_interactions?.forEach((interaction: any) => {
-        timelineEvents.push({
-          name: '', // Empty name for dot representation
-          startTime: interaction.timestamp,
-          endTime: interaction.timestamp,
-          duration: 0,
-          color: '#9C27B0',
-          type: 'Interaction',
-          row: 'Interaction', // Ensure it stays in the 'Interaction' row
-          isDot: true,
-          details: {
-            name: interaction.interaction_type,
-            interaction_type: interaction.interaction_type,
-            content: interaction.content,
-            parentName: agent.name
+        const existingInteraction = timelineEvents.find(event => 
+          event.type === 'Interaction' && 
+          event.startTime === interaction.timestamp
+        );
+
+        if (existingInteraction) {
+          // Initialize interactions array if it doesn't exist
+          if (!existingInteraction.details.interactions) {
+            existingInteraction.details.interactions = [];
           }
-        });
+          
+          // Add new interaction to the array
+          existingInteraction.details.interactions.push({
+            interaction_type: interaction.interaction_type,
+            content: interaction.content
+          });
+        } else {
+          // Create new interaction event
+          timelineEvents.push({
+            name: '',
+            startTime: interaction.timestamp,
+            endTime: interaction.timestamp,
+            duration: 0,
+            color: '#9C27B0',
+            type: 'Interaction',
+            row: 'Interaction',
+            isDot: true,
+            details: {
+              name: 'Multiple Interactions',
+              parentName: agent.name,
+              interactions: [{
+                interaction_type: interaction.interaction_type,
+                content: interaction.content
+              }]
+            }
+          });
+        }
       });
 
       // Add errors
