@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 
 type Theme = 'dark' | 'light' | 'system'
+type AppliedTheme = 'dark' | 'light'
 
 type ThemeProviderProps = {
   children: React.ReactNode
@@ -9,12 +10,12 @@ type ThemeProviderProps = {
 }
 
 type ThemeProviderState = {
-  theme: Theme
+  theme: AppliedTheme
   setTheme: (theme: Theme) => void
 }
 
 const initialState: ThemeProviderState = {
-  theme: 'system',
+  theme: 'light',
   setTheme: () => null
 }
 
@@ -80,33 +81,53 @@ export function ThemeProvider ({
   storageKey = 'vite-ui-theme',
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
+  // Internal state to track the user's preference setting
+  const [userTheme, setUserTheme] = useState<Theme>(
     () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
   )
+
+  // Public state that only shows 'dark' or 'light'
+  const [theme, setTheme] = useState<AppliedTheme>('light')
 
   useEffect(() => {
     const root = window.document.documentElement
 
-    root.classList.remove('light', 'dark')
+    const applyTheme = (setting: Theme) => {
+      root.classList.remove('light', 'dark')
 
-    if (theme === 'system') {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)')
-        .matches
-        ? 'dark'
-        : 'light'
+      let newTheme: AppliedTheme
+      if (setting === 'system') {
+        newTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
+          ? 'dark'
+          : 'light'
+      } else {
+        newTheme = setting as AppliedTheme
+      }
 
-      root.classList.add(systemTheme)
-      return
+      root.classList.add(newTheme)
+      setTheme(newTheme)
     }
 
-    root.classList.add(theme)
-  }, [theme])
+    // Apply theme immediately
+    applyTheme(userTheme)
+
+    // Listen for system theme changes
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const handleChange = () => {
+      if (userTheme === 'system') {
+        applyTheme('system')
+      }
+    }
+
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [userTheme])
 
   const value = {
     theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme)
-      setTheme(theme)
+    setTheme: (newTheme: Theme) => {
+      localStorage.setItem(storageKey, newTheme)
+      setUserTheme(newTheme)
     }
   }
 

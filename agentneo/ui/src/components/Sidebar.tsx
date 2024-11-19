@@ -13,20 +13,44 @@ import {
 import { useSidebar } from '../contexts/SidebarContext'
 import { SidebarLink, SidebarExternalLink } from './SidebarComponents'
 import { ModeToggle } from '@/components/ModeToggle'
+import { useTheme } from '../theme/ThemeProvider'
 
 const Sidebar: React.FC = () => {
   const { isCollapsed, toggleSidebar } = useSidebar()
+  const { theme } = useTheme()
+
+  // Define theme-based styles that match the dashboard
+  const sidebarStyles = {
+    background:
+      theme === 'dark'
+        ? 'linear-gradient(to bottom, #2D1B69, #471069, #591069)'
+        : 'linear-gradient(to bottom, #8B5CF6, #7C3AED, #6D28D9)',
+    color: '#ffffff',
+    selectedBackground:
+      theme === 'dark' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255, 255, 255, 0.2)'
+  }
 
   return (
     <aside
-      className={`bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-400 text-white p-6 relative overflow-visible flex flex-col border-r border-white border-opacity-20 transition-all duration-300 ${
+      className={`relative overflow-visible flex flex-col transition-all duration-300 ${
         isCollapsed ? 'w-sidebar-collapsed' : 'w-sidebar-expanded'
       } fixed h-full`}
+      style={{
+        background: sidebarStyles.background
+      }}
     >
-      <div className='absolute inset-0 bg-black opacity-10'></div>
-      <div className='absolute inset-0 backdrop-blur-sm bg-white bg-opacity-5'></div>
-      <div className='absolute inset-0 bg-gradient-to-tr from-transparent via-white to-transparent opacity-5'></div>
-      <div className='relative z-10 flex-grow'>
+      {/* Overlay for depth effect */}
+      <div
+        className='absolute inset-0'
+        style={{
+          background:
+            theme === 'dark'
+              ? 'linear-gradient(45deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 100%)'
+              : 'linear-gradient(45deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)'
+        }}
+      ></div>
+
+      <div className='relative z-10 flex-grow p-6'>
         <div className='flex items-center justify-between mb-8'>
           <div className='flex items-center'>
             <img
@@ -36,14 +60,14 @@ const Sidebar: React.FC = () => {
             />
             {!isCollapsed && (
               <div>
-                <h1 className='text-2xl font-bold'>AgentNeo</h1>
-                <p className='text-sm text-white text-opacity-80 -mt-1'>
+                <h1 className='text-2xl font-bold text-white'>AgentNeo</h1>
+                <p className='text-sm text-white/80 -mt-1'>
                   by{' '}
                   <a
                     href='https://raga.ai'
                     target='_blank'
                     rel='noopener noreferrer'
-                    className='hover:underline'
+                    className='hover:underline text-white'
                   >
                     RagaAI
                   </a>
@@ -53,9 +77,10 @@ const Sidebar: React.FC = () => {
             {!isCollapsed && <ModeToggle />}
           </div>
         </div>
+
         <ScrollArea className='h-[calc(100vh-16rem)]'>
           <nav>
-            <ul className='space-y-4'>
+            <ul className='space-y-2'>
               <SidebarLink
                 to='/'
                 icon={LayoutDashboard}
@@ -85,8 +110,8 @@ const Sidebar: React.FC = () => {
         </ScrollArea>
       </div>
 
-      <div className='relative z-10 mt-auto pt-6 border-t border-white border-opacity-20'>
-        <ul className='space-y-4'>
+      <div className='text-white relative z-10 mt-auto p-6 border-t border-white/10'>
+        <ul className='space-y-2'>
           <SidebarExternalLink
             href='https://docs.raga.ai/agentneo'
             icon={BookOpen}
@@ -102,16 +127,22 @@ const Sidebar: React.FC = () => {
         </ul>
       </div>
 
-      <div className='absolute bottom-0 left-0 w-32 h-32 bg-white rounded-full opacity-5 -mb-16 -ml-16'></div>
+      {/* Toggle button with matching gradient */}
       <button
         onClick={toggleSidebar}
-        className={`absolute -right-6 top-1/2 transform -translate-y-1/2 w-12 h-12 rounded-full bg-gray-800 text-white flex items-center justify-center transition-all duration-200 z-20 focus:outline-none`}
+        className='absolute -right-6 top-1/2 transform -translate-y-1/2 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 z-20 focus:outline-none hover:opacity-90'
+        style={{
+          background:
+            theme === 'dark'
+              ? 'linear-gradient(135deg, #2D1B69, #471069)'
+              : 'linear-gradient(135deg, #8B5CF6, #6D28D9)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+        }}
       >
-        <div className='absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-400 rounded-full opacity-80'></div>
         {isCollapsed ? (
-          <ChevronRight className='h-6 w-6 relative z-10' />
+          <ChevronRight className='h-6 w-6 text-white' />
         ) : (
-          <ChevronLeft className='h-6 w-6 relative z-10' />
+          <ChevronLeft className='h-6 w-6 text-white' />
         )}
       </button>
     </aside>

@@ -92,7 +92,7 @@ const TraceHistory: React.FC = () => {
       className={`flex h-screen overflow-hidden 
       ${
         theme === 'dark'
-          ? 'bg-gray-900 text-white border-gray-700'
+          ? 'bg-gray-800 text-white border-gray-700'
           : 'bg-gray-100 text-gray-900 border-gray-200'
       }`}
     >
@@ -107,7 +107,7 @@ const TraceHistory: React.FC = () => {
           className={`flex-shrink-0 p-8 border-b 
           ${
             theme === 'dark'
-              ? 'bg-gray-900 border-gray-800 text-white'
+              ? 'bg-gray-800 border-gray-700 text-white'
               : 'bg-gray-100 border-gray-200 text-gray-800'
           }`}
         >
@@ -161,7 +161,7 @@ const TraceHistory: React.FC = () => {
             className={`mb-8 
             ${
               theme === 'dark'
-                ? 'bg-gray-800 border-gray-700'
+                ? 'bg-gray-900 border-gray-700'
                 : 'bg-white border-gray-200'
             }`}
           >
@@ -175,7 +175,7 @@ const TraceHistory: React.FC = () => {
                   className={`flex-grow 
                     ${
                       theme === 'dark'
-                        ? 'bg-gray-700 text-white border-gray-600 placeholder-gray-400'
+                        ? 'bg-gray-900 text-white border-gray-600 placeholder-gray-400'
                         : 'bg-white text-gray-900 border-gray-300'
                     }`}
                 />
@@ -202,7 +202,7 @@ const TraceHistory: React.FC = () => {
             className={`flex-1 overflow-hidden flex flex-col rounded-lg shadow 
             ${
               theme === 'dark'
-                ? 'bg-gray-800 border border-gray-700'
+                ? 'bg-gray-900 border border-gray-700'
                 : 'bg-white border border-gray-200'
             }`}
           >
@@ -211,7 +211,7 @@ const TraceHistory: React.FC = () => {
                 className={`min-w-full divide-y 
                 ${
                   theme === 'dark'
-                    ? 'divide-gray-700 text-white'
+                    ? 'divide-gray-900 text-white'
                     : 'divide-gray-200 text-gray-900'
                 }`}
               >
@@ -246,7 +246,7 @@ const TraceHistory: React.FC = () => {
                   className={`
                   ${
                     theme === 'dark'
-                      ? 'bg-gray-800 divide-gray-700'
+                      ? 'bg-gray-900 divide-gray-700'
                       : 'bg-white divide-gray-200'
                   }`}
                 >
