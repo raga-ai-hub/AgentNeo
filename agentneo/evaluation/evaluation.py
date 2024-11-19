@@ -20,6 +20,7 @@ from .metrics import (
     execute_tool_selection_accuracy_metric,
     execute_tool_usage_efficiency_metric,
     execute_plan_adaptibility_metric,
+    execute_response_latency_metric,
 )
 
 from datetime import datetime
@@ -68,6 +69,11 @@ class Evaluation:
             )
         elif metric == 'tool_call_success_rate':
             return execute_tool_call_success_rate(
+                trace_json=self.trace_data,
+                config=config,
+            )
+        elif metric == 'response_latency':
+            return execute_response_latency_metric(
                 trace_json=self.trace_data,
                 config=config,
             )
