@@ -58,7 +58,10 @@ exe.evaluate(metric_list=['tool_call_success_rate'])
 
 ## Using Multiple Metrics
 ```python
-# Evaluate multiple metrics together 
+# Evaluate multiple metrics together by specifying:
+# - "max_workers": Maximum number of workers to be used simultaneously.
+# - "max_evaluations_per_thread": Maximum evaluations to be performed in a single thread.
+
 exe.evaluate(
     metric_list=[
         'goal_decomposition_efficiency',
@@ -66,6 +69,7 @@ exe.evaluate(
         'tool_call_correctness_rate',
         'tool_call_success_rate'
     ],
-    max_workers = 4  
+    max_workers = 4 ,
+    max_evaluations_per_thread=2 
 )
 ```

@@ -5,7 +5,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 import json
 import ast
+import math
 from tqdm import tqdm
+import os
 
 from ..data import (
     ProjectInfoModel,
@@ -36,7 +38,14 @@ class Evaluation:
 
         self.trace_data = self.get_trace_data()
 
-    def evaluate(self, metric_list=[], config={}, metadata={}, max_workers=None):
+    @staticmethod
+    def chunk_metrics(metrics, chunk_size):
+        """Yield successive chunks of the metrics list."""
+        for i in range(0, len(metrics), chunk_size):
+            yield metrics[i:i + chunk_size]
+
+
+    def evaluate(self, metric_list=[], config={}, metadata={}, max_workers=None, max_evaluations_per_thread=None):
         """
         Evaluate a list of metrics in parallel with progress tracking.
         
@@ -45,34 +54,66 @@ class Evaluation:
         - config: Configuration settings for the evaluation.
         - metadata: Metadata for the evaluation.
         - max_workers: The maximum number of workers to use for parallel execution.
-        If None, it will use the default number of workers based on the system.
+        - max_evaluations_per_thread: Limit the number of evaluations a single thread handles.
         """
+        if not metric_list:
+            raise ValueError("The metric list cannot be empty.")
+
+        # Set default values for max_workers
+        if max_workers is None or max_workers <= 0:
+            max_workers = os.cpu_count()  # Use all available CPU threads
+
+        print(
+            f"\nParallel Processing Configuration:"
+            f"\n - max_workers: {max_workers}"
+            )
+        # Ensure max_workers doesn't exceed the number of metrics
+        max_workers = min(max_workers, len(metric_list))
+
+        # Calculate max_evaluations_per_thread, ensuring it's at least 1
+        if max_evaluations_per_thread is None or max_evaluations_per_thread <= 0:
+            max_evaluations_per_thread = max(1, math.ceil(len(metric_list) / max_workers))
+
+        print(
+            f" - max_evaluations_per_thread: {max_evaluations_per_thread}"
+        )
+
+        metric_chunks = list(self.chunk_metrics(metric_list, max_evaluations_per_thread))
         results = []
         
-        # Uses ThreadPoolExecutor with max_workers if provided
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            # Submit all metrics for parallel execution
-            future_to_metric = {
-                executor.submit(self._execute_and_save_metric, metric, config, metadata): metric
-                for metric in metric_list
+            future_to_chunk = {
+                executor.submit(self._process_metric_chunk, chunk, config, metadata): chunk
+                for chunk in metric_chunks
             }
-
-            # Initialize progress bar
-            with tqdm(total=len(future_to_metric), desc="Evaluating Metrics") as pbar:
-                # Collect results as they are completed
-                for future in as_completed(future_to_metric):
-                    metric = future_to_metric[future]
+            
+            with tqdm(total=len(metric_list), desc="Evaluating Metrics") as pbar:
+                for future in as_completed(future_to_chunk):
+                    chunk = future_to_chunk[future]
                     try:
-                        result = future.result()
-                        results.append(result)
+                        chunk_results = future.result()
+                        results.extend(chunk_results)
                     except Exception as e:
-                        print(f"Metric {metric} failed with exception: {e}")
+                        print(f"Chunk {chunk} failed with exception: {e}")
                     finally:
-                        pbar.update(1)  # Update the progress bar after each metric completion
-
-        # Commit session and close it
+                        pbar.update(len(chunk))
+        
         self.session.commit()
         self.session.close()
+
+
+
+    def _process_metric_chunk(self, chunk, config, metadata):
+        """
+        Process a chunk of metrics.
+        """
+        results = []
+        for metric in chunk:
+            result = self._execute_and_save_metric(metric, config, metadata)
+            if result:
+                results.append(result)
+        return results
+
 
     def _execute_and_save_metric(self, metric, config, metadata):
         """
