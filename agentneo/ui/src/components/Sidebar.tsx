@@ -24,7 +24,7 @@ const Sidebar: React.FC = () => {
     background:
       theme === 'dark'
         ? 'linear-gradient(to bottom, #2D1B69, #471069, #591069)'
-        : 'linear-gradient(to bottom, #8B5CF6, #7C3AED, #6D28D9)',
+        : 'linear-gradient(to bottom right, rgb(79, 70, 229), rgb(147, 51, 234), rgb(236, 72, 153))',
     color: '#ffffff',
     selectedBackground:
       theme === 'dark' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255, 255, 255, 0.2)'
@@ -34,21 +34,15 @@ const Sidebar: React.FC = () => {
     <aside
       className={`relative overflow-visible flex flex-col transition-all duration-300 ${
         isCollapsed ? 'w-sidebar-collapsed' : 'w-sidebar-expanded'
-      } fixed h-full`}
+      } fixed h-full border-r border-white border-opacity-20`}
       style={{
         background: sidebarStyles.background
       }}
     >
       {/* Overlay for depth effect */}
-      <div
-        className='absolute inset-0'
-        style={{
-          background:
-            theme === 'dark'
-              ? 'linear-gradient(45deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 100%)'
-              : 'linear-gradient(45deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)'
-        }}
-      ></div>
+      <div className="absolute inset-0 bg-black opacity-10"></div>
+      <div className="absolute inset-0 backdrop-blur-sm bg-white bg-opacity-5"></div>
+      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white to-transparent opacity-5"></div>
 
       <div className='relative z-10 flex-grow p-6'>
         <div className='flex items-center justify-between mb-8'>
@@ -80,7 +74,7 @@ const Sidebar: React.FC = () => {
 
         <ScrollArea className='h-[calc(100vh-16rem)]'>
           <nav>
-            <ul className='space-y-2'>
+            <ul className='space-y-4'>
               <SidebarLink
                 to='/'
                 icon={LayoutDashboard}
@@ -111,7 +105,7 @@ const Sidebar: React.FC = () => {
       </div>
 
       <div className='text-white relative z-10 mt-auto p-6 border-t border-white/10'>
-        <ul className='space-y-2'>
+        <ul className='space-y-4'>
           <SidebarExternalLink
             href='https://docs.raga.ai/agentneo'
             icon={BookOpen}
@@ -127,22 +121,23 @@ const Sidebar: React.FC = () => {
         </ul>
       </div>
 
+      <div className="absolute bottom-0 left-0 w-32 h-32 bg-white rounded-full opacity-5 -mb-16 -ml-16"></div>
+
       {/* Toggle button with matching gradient */}
       <button
         onClick={toggleSidebar}
-        className='absolute -right-6 top-1/2 transform -translate-y-1/2 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 z-20 focus:outline-none hover:opacity-90'
+        className='absolute -right-6 top-1/2 transform -translate-y-1/2 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 z-20 focus:outline-none'
         style={{
           background:
             theme === 'dark'
               ? 'linear-gradient(135deg, #2D1B69, #471069)'
-              : 'linear-gradient(135deg, #8B5CF6, #6D28D9)',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+              : 'linear-gradient(to bottom right, rgb(79, 70, 229), rgb(147, 51, 234), rgb(236, 72, 153))'
         }}
       >
         {isCollapsed ? (
-          <ChevronRight className='h-6 w-6 text-white' />
+          <ChevronRight className='h-6 w-6 relative z-10 text-white' />
         ) : (
-          <ChevronLeft className='h-6 w-6 text-white' />
+          <ChevronLeft className='h-6 w-6 relative z-10 text-white' />
         )}
       </button>
     </aside>
