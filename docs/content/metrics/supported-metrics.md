@@ -56,6 +56,29 @@ Measures the reliability of tool executions.
 exe.evaluate(metric_list=['tool_call_success_rate'])
 ```
 
+### 5. RAGChecker Evaluation
+Evaluates the RAG using the RAGAS.
+
+```python
+exe.evaluate(metric_list=['ragas_evaluation'],config=config)
+```
+
+**Configuration Options:**
+```python
+config = {
+    "input_file": "path/to/file.json",   # Path to the input file
+    "metrics": [
+            "context_precision",
+            "context_recall",
+            "faithfulness",
+            "answer_relevancy",
+            "context_entity_recall",
+        ]
+    "model": "gpt-4o-mini",                     # Model to use for RAGAS (Only openai models are supported)
+    "embeddings": "text-embedding-3-small",     # Embeddings to use for RAGAS (only openai embeddings are supported)
+}
+```
+
 ## Using Multiple Metrics
 ```python
 # Evaluate multiple metrics together

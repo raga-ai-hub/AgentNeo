@@ -1,0 +1,11 @@
+[
+    {
+        "user_input": "What is the capital of France?",
+        "response": "The capital of France is Paris.",
+        "reference": "Paris is the capital of France.",
+        "retrieved_contexts": ["Paris is the capital and largest city of France."]
+    }
+    
+]
+
+
