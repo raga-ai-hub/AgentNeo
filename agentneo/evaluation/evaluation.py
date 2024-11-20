@@ -20,6 +20,7 @@ from .metrics import (
     execute_tool_selection_accuracy_metric,
     execute_tool_usage_efficiency_metric,
     execute_plan_adaptibility_metric,
+    execute_error_detection_rate_metric,
 )
 
 from datetime import datetime
@@ -70,6 +71,11 @@ class Evaluation:
             return execute_tool_call_success_rate(
                 trace_json=self.trace_data,
                 config=config,
+            )
+        elif metric == 'error_detection_rate':
+            return execute_error_detection_rate_metric(
+                trace_json=self.trace_data,
+                config=config
             )
         else:
             raise ValueError("provided metric name is not supported.")

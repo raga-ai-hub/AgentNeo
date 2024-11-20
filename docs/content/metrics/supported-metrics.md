@@ -56,6 +56,20 @@ Measures the reliability of tool executions.
 exe.evaluate(metric_list=['tool_call_success_rate'])
 ```
 
+### 5. Error Detection Rate
+Measures the system's ability to detect and identify errors during execution.
+
+```python
+exe.evaluate(metric_list=['error_detection_rate'])
+```
+
+**Configuration Options:**
+```python
+config = {
+    "model": "gpt-4o-mini",
+}
+```
+
 ## Using Multiple Metrics
 ```python
 # Evaluate multiple metrics together
@@ -64,7 +78,8 @@ exe.evaluate(
         'goal_decomposition_efficiency',
         'goal_fulfillment_rate',
         'tool_call_correctness_rate',
-        'tool_call_success_rate'
+        'tool_call_success_rate',
+        'error_detection_rate
     ]
 )
 ```

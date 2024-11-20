@@ -26,7 +26,7 @@ Whether you're a seasoned AI developer or just starting out, AgentNeo offers rob
 
 ## 🛠 Requirements
 
-- **Python**: Version 3.8 or higher
+- **Python**: Version 3.9 or higher
 
 ## 📦 Installation
 
@@ -134,6 +134,7 @@ Manage multiple projects with ease.
 2. Goal Fulfillment Rate (goal_fulfillment_rate)
 3. Tool Call Correctness Rate (tool_call_correctness_rate)
 4. Tool Call Success Rate (tool_call_success_rate)
+5. Error Detection Rate (error_detection_rate)
 
 - **Run multiple metrics together**
 ```python

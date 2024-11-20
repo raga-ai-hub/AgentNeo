@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Loader2 } from 'lucide-react';
-import axios from 'axios';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useProject } from '@/contexts/ProjectContext';
+import { fetchTraces, fetchAnalysisTrace } from '@/utils/api';
 
 interface ColorConfig {
   gradient: string[];
@@ -166,8 +166,7 @@ const LLMUsageAnalysis: React.FC = () => {
       let totalCalls = 0;
 
       if (selectedTraceId) {
-        const traceResponse = await axios.get(`/api/analysis_traces/${selectedTraceId}`);
-        const traceData = traceResponse.data;
+        const traceData = await fetchAnalysisTrace(selectedTraceId);
         
         traceData.llm_calls.forEach((call: LLMCall) => {
           const { tokens, cost } = processLLMCall(call, llmTokenUsage, llmCostUsage);
@@ -176,12 +175,10 @@ const LLMUsageAnalysis: React.FC = () => {
           totalCalls++;
         });
       } else {
-        const tracesResponse = await axios.get(`/api/projects/${selectedProject}/traces`);
-        const traces = tracesResponse.data;
+        const traces = await fetchTraces(selectedProject);
         
         for (const trace of traces) {
-          const traceResponse = await axios.get(`/api/analysis_traces/${trace.id}`);
-          const traceData = traceResponse.data;
+          const traceData = await fetchAnalysisTrace(trace.id);
           
           traceData.llm_calls.forEach((call: LLMCall) => {
             const { tokens, cost } = processLLMCall(call, llmTokenUsage, llmCostUsage);

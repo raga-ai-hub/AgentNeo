@@ -24,7 +24,7 @@ pip install -e ".[dev]"
 ## Development Tools
 
 ### Required Tools
-- Python 3.8+
+- Python 3.9+
 - Git
 - pytest
 - black (code formatting)
