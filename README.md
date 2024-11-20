@@ -162,6 +162,34 @@ exe.evaluate(metric_list=['metric_name'], config={}, metadata={})
 
 ![AgentNeo Evaluation](docs/assets/evaluation.png)
 
+### 2. Security Features
+
+#### 1. Jailbreak Detection
+
+Jailbreak detection is a key feature designed to identify attempts to bypass the restrictions and guardrails put in place by AI models. This functionality helps ensure that the models are used ethically and within predefined safety limits. The detection mechanism uses a combination of pattern matching, semantic analysis, and other sophisticated techniques to identify potential security threats.
+
+##### Key Features:
+- **Pattern Matching:** Identifies common patterns and phrases often used in attempts to manipulate or trick AI models into performing restricted actions, such as providing harmful or unethical responses.
+- **Semantic Analysis:** Uses advanced NLP techniques to understand the meaning behind user inputs and detect subtle manipulations or ambiguous requests that could be indicative of a jailbreak attempt.
+- **Injection Scoring:** Each input is scored for potential jailbreak risk. If the score exceeds a predefined threshold, the prompt is flagged for review. This score is derived from analyzing the language and intent behind the prompt using a specialized schema from LangKit.
+- **Real-Time Detection:** The system can analyze user inputs in real-time, flagging potential jailbreak attempts before they can affect model output at high level.
+
+##### How It Works:
+1. **Input Analysis:** When a prompt is received, it is processed using LangKit, an advanced NLP toolkit. The toolkit evaluates the prompt based on a predefined schema.
+2. **Injection Score Calculation:** LangKit returns an "injection score" which indicates the likelihood of the prompt being an attempt to jailbreak the AI system. A higher score suggests a higher likelihood of a jailbreak attempt.
+3. **Threshold Check:** If the injection score exceeds the configured threshold (e.g., 0.4), the prompt is flagged as a potential jailbreak.
+
+##### How to Use:
+- To test and run jailbreak detection, use the provided Jupyter notebook linked below. This notebook allows you to run the code interactively and evaluate different prompts for their potential to bypass AI restrictions.
+  
+  - **Notebook Link:** [Jailbreak Detection Notebook](https://colab.research.google.com/drive/17ItF3hGVl2wca2tEMpesA1QmngjU3faL?usp=sharing)
+  - **Instructions:** 
+    1. Open the notebook link in Google Colab.
+    2. Upload your dataset or input prompts.
+    3. Run the cells to analyze the prompts for jailbreak attempts.
+    4. Review the results and adjust the threshold as needed to fine-tune the detection.
+
+![UI](img/ui2.png)
 
 ### Execution Graph Visualization
 

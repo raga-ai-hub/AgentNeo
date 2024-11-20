@@ -52,6 +52,7 @@ class ProjectInfoModel(Base):
     duration = Column(Float, nullable=True)
     total_cost = Column(Float, nullable=True)
     total_tokens = Column(Integer, nullable=True)
+    total_jailbreak_prompts = Column(Integer, nullable=True)
 
     traces = relationship("TraceModel", back_populates="project")
     user_interactions = relationship(

@@ -11,6 +11,7 @@ interface ProjectInfoProps {
     duration: number | null;
     total_cost: number | string | null;
     total_tokens: number | null;
+    total_jailbreak_prompts: number | null;
   } | null;
 }
 
@@ -70,6 +71,7 @@ const ProjectInformation: React.FC<ProjectInfoProps> = React.memo(({ projectData
           <InfoItem icon={<DollarSign className="w-5 h-5 text-green-600" />} label="Total Cost" value={formatCost(projectData.total_cost)} />
           <InfoItem icon={<Clock className="w-5 h-5 text-blue-600" />} label="Duration" value={calculateDuration()} />
           <InfoItem icon={<Coins className="w-5 h-5 text-yellow-600" />} label="Total Tokens" value={formatTokens(projectData.total_tokens)} />
+          <InfoItem icon={<AlertTriangle className="w-5 h-5 text-yellow-600" />} label="Total Jailbreak Prompts" value={String(projectData.total_jailbreak_prompts)} />
           <InfoItem icon={<Clock className="w-5 h-5 text-purple-600" />} label="Start Time" value={new Date(projectData.start_time).toLocaleString()} />
           <InfoItem icon={<Clock className="w-5 h-5 text-red-600" />} label="End Time" value={projectData.end_time ? new Date(projectData.end_time).toLocaleString() : 'In progress'} />
         </div>

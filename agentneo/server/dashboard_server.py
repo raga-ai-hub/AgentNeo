@@ -76,6 +76,7 @@ def get_projects():
                         "duration": p.duration,
                         "total_cost": p.total_cost,
                         "total_tokens": p.total_tokens,
+                        "total_jailbreak_prompts": p.total_jailbreak_prompts,
                     }
                     for p in projects
                 ]
@@ -100,6 +101,7 @@ def get_project(project_id):
                     "duration": project.duration,
                     "total_cost": project.total_cost,
                     "total_tokens": project.total_tokens,
+                    "total_jailbreak_prompts": project.total_jailbreak_prompts,
                 }
             )
     except SQLAlchemyError as e:

@@ -15,6 +15,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta
 import logging
+from langkit import injections, extract
+
 
 
 from ..data import (
@@ -137,7 +139,24 @@ class BaseTracer:
                 for llm_call in llm_calls
             )
 
-            # Accumulate costs and tokens instead of overwriting
+            total_jailbreak_prompts=0
+            schema = injections.init() # Initialize the schema for LangKit, which will be used for extracting data
+            
+            for llm_call in llm_calls:
+                input_prompt = llm_call.input_prompt
+
+                # Use the LangKit extract function to process the 'input_prompt'
+                # The 'extract' function takes a dictionary with the 'prompt' as a key-value pair
+                # and applies the schema to extract additional information
+                result = extract({"prompt": input_prompt}, schema=schema)
+
+                # Check if the 'injection' score of the prompt is above the threshold (0.4)
+                # The 'injection' score is stored as 'result['prompt.injection']' in the result from LangKit
+                # why 0.4? because it is the threshold for a prompt to be considered a jailbreak prompt(see the notebook https://colab.research.google.com/drive/17ItF3hGVl2wca2tEMpesA1QmngjU3faL?usp=sharing)
+                if result['prompt.injection'] > 0.4:
+                    total_jailbreak_prompts+=1
+
+            # Accumulate costs, tokens and jailbreak_prompts instead of overwriting
             if project.total_cost is None:
                 project.total_cost = 0
             project.total_cost += trace_cost
@@ -145,6 +164,10 @@ class BaseTracer:
             if project.total_tokens is None:
                 project.total_tokens = 0
             project.total_tokens += trace_tokens
+
+            if project.total_jailbreak_prompts is None:
+                project.total_jailbreak_prompts = 0
+            project.total_jailbreak_prompts += total_jailbreak_prompts
 
             session.commit()
 
@@ -159,6 +182,7 @@ class BaseTracer:
                 "duration": duration,
                 "total_cost": total_cost,
                 "total_tokens": total_tokens,
+                "total_jailbreak_prompts": total_jailbreak_prompts,
             }
         )
 

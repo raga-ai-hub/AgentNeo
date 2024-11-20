@@ -10,6 +10,7 @@ class ProjectInfo:
     duration: float = field(default=0)
     total_cost: float = field(default=0)
     total_tokens: int = field(default=0)
+    total_jailbreak_prompts: int = field(default=0)
 
 
 @dataclass

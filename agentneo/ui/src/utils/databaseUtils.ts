@@ -105,7 +105,7 @@ export const fetchProjectInfo = async (projectId: number) => {
 
     // Fetch basic project info
     const projectInfoResult = db.exec(`
-        SELECT id, project_name, start_time, end_time, duration
+        SELECT id, project_name, start_time, end_time, duration, total_jailbreak_prompts
         FROM project_info
         WHERE id = ?
     `, [projectId]);
@@ -117,7 +117,7 @@ export const fetchProjectInfo = async (projectId: number) => {
         return null;
     }
 
-    const [id, project_name, start_time, end_time, duration] = projectInfoResult[0].values[0];
+    const [id, project_name, start_time, end_time, duration, total_jailbreak_prompts] = projectInfoResult[0].values[0];
 
     // Fetch LLM calls for the project
     const llmCallsResult = db.exec(`
@@ -160,7 +160,8 @@ export const fetchProjectInfo = async (projectId: number) => {
         end_time,
         duration: duration !== null ? Number(duration) : null,
         total_tokens,
-        total_cost: formattedTotalCost
+        total_cost: formattedTotalCost,
+        total_jailbreak_prompts
     };
 
     console.log('Final project info:', result);
