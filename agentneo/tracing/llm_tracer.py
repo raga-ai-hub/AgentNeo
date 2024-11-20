@@ -10,13 +10,14 @@ from .user_interaction_tracer import UserInteractionTracer
 from ..utils.trace_utils import calculate_cost, load_model_costs, convert_usage_to_dict
 from ..utils.llm_utils import extract_llm_output
 from ..data import LLMCallModel
-
+from ..utils.security_utils import PIIObfuscation
 
 class LLMTracerMixin:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.patches = []
         self.model_costs = load_model_costs()
+        self.piiobfuscator = PIIObfuscation()
 
     def instrument_llm_calls(self):
         # Use wrapt to register post-import hooks
@@ -81,6 +82,10 @@ class LLMTracerMixin:
             sanitized_kwargs = self._sanitize_api_keys(kwargs)
 
             model_name = self._extract_model_name(sanitized_kwargs)
+            prompt = self._extract_input(sanitized_args, sanitized_kwargs) # Extract the prompts going to the LLM
+
+            sanitized_prompt = self.piiobfuscator.detect_and_mask_pii_secrets(prompt)
+
             try:
                 model = (
                     os.path.join("groq", model_name) if result.x_groq else model_name
@@ -92,7 +97,7 @@ class LLMTracerMixin:
                 result,
                 llm_call_name,
                 model,
-                self._extract_input(sanitized_args, sanitized_kwargs),
+                sanitized_prompt,
                 start_time,
                 end_time,
                 memory_used,
@@ -205,8 +210,8 @@ class LLMTracerMixin:
             return args[0] if args else ""
 
     def _sanitize_api_keys(self, data):
-        # Implement sanitization logic to remove API keys from data
-        return data
+        sanitized_data = self.piiobfuscator.detect_and_mask_pii_secrets(data)
+        return sanitized_data
 
     def unpatch_llm_calls(self):
         # Restore original methods
