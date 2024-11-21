@@ -9,6 +9,7 @@ Monitor and analyze LLM interactions with detailed metrics:
 - Cost tracking
 - Model parameters
 - Prompt analysis
+- Mask PII/Sensitive contents in prompt
 
 ```python
 @tracer.trace_llm("market_analysis")

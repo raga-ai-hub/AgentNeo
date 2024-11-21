@@ -209,7 +209,7 @@ class LLMTracerMixin:
             return args[0] if args else ""
 
     def _sanitize_api_keys(self, data):
-        sanitized_data = self.piiobfuscator.detect_and_mask_pii_secrets(data)
+        sanitized_data = self.piiobfuscator.detect_and_mask_pii_secrets(data=data, enable_advanced_pii_mask=True)
         return sanitized_data
 
     def unpatch_llm_calls(self):

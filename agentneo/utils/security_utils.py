@@ -113,7 +113,7 @@ class PIIObfuscation:
             Stored database record with original and obfuscated data
         """
         # Obfuscate the data
-        obfuscated_data = self.detect_and_mask_pii_secrets(data)
+        obfuscated_data = self.detect_and_mask_pii_secrets(data=data,enable_advanced_pii_mask=True)
         
         # Store both original and obfuscated data in database
         return self.store_obfuscated_data(
@@ -241,7 +241,7 @@ class PIIObfuscation:
                                     data: Any, 
                                     language="en", 
                                     use_default=True, 
-                                    enable_advanced_pii_mask=True, 
+                                    enable_advanced_pii_mask=False, 
                                     entities=None, 
                                     operators=None) -> Any:
         """
