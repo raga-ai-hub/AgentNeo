@@ -2,9 +2,50 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
+from sqlalchemy.sql import func
 
 Base = declarative_base()
 
+
+class PIIObfuscationTrace(Base):
+    """
+    SQLAlchemy model to store PII obfuscation traces
+    Establishes relationships with Trace and Project models
+    """
+    __tablename__ = 'pii_obfuscation_traces'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    trace_id = Column(Integer, ForeignKey('traces.id'), nullable=False)
+    project_id = Column(Integer, ForeignKey('project_info.id'), nullable=False)
+    
+    original_data = Column(String)  # Stores original sensitive data
+    obfuscated_data = Column(String)  # Stores masked/obfuscated data
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Establish relationships
+    trace = relationship("TraceModel", back_populates="pii_obfuscation_traces")
+    project = relationship("ProjectInfoModel", back_populates="pii_obfuscation_traces")
+
+    def __repr__(self):
+        return (f"<PIIObfuscationTrace("
+                f"trace_id={self.trace_id}, "
+                f"project_id={self.project_id}, "
+                f"original_data={self.original_data}, "
+                f"obfuscated_data={self.obfuscated_data}, "
+                f"created_at={self.created_at})>")
+    
+    def to_dict(self):
+        """
+        Convert trace to dictionary for easier serialization
+        """
+        return {
+            'id': self.id,
+            'trace_id': self.trace_id,
+            'project_id': self.project_id,
+            'original_data': self.original_data,
+            'obfuscated_data': self.obfuscated_data,
+            'created_at': str(self.created_at)
+        }
 
 class UserInteractionModel(Base):
     __tablename__ = "user_interactions"
@@ -41,6 +82,8 @@ class TraceModel(Base):
         "UserInteractionModel", order_by=UserInteractionModel.id, back_populates="trace"
     )
 
+    pii_obfuscation_traces = relationship("PIIObfuscationTrace", back_populates="trace")
+
 
 class ProjectInfoModel(Base):
     __tablename__ = "project_info"
@@ -59,6 +102,8 @@ class ProjectInfoModel(Base):
         order_by=UserInteractionModel.id,
         back_populates="project",
     )
+
+    pii_obfuscation_traces = relationship("PIIObfuscationTrace", back_populates="project")
 
 
 class SystemInfoModel(Base):

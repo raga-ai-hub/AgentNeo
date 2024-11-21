@@ -84,8 +84,7 @@ class LLMTracerMixin:
             model_name = self._extract_model_name(sanitized_kwargs)
             prompt = self._extract_input(sanitized_args, sanitized_kwargs) # Extract the prompts going to the LLM
 
-            sanitized_prompt = self.piiobfuscator.detect_and_mask_pii_secrets(prompt)
-
+            sanitized_prompt = self.piiobfuscator.obfuscate_and_store(session=self.Session(), data=prompt, projectid=self.project_id, traceid=self.trace_id)            
             try:
                 model = (
                     os.path.join("groq", model_name) if result.x_groq else model_name

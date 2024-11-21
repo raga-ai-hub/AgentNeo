@@ -7,13 +7,122 @@ from dataclasses import dataclass, asdict, is_dataclass
 from typing import List, Dict, Any, Union, Optional
 import spacy
 import json
+from ..tracing.base import BaseTracer
+from ..data.data_models import PIIObfuscationTrace
+from sqlalchemy.orm import sessionmaker
 
 spacy.load('en_core_web_lg')
 
 class PIIObfuscation:
     def __init__(self):
+        """
+        Initialize PIIObfuscation 
+        """
+        super().__init__()
+        
+        # Presidio Recognizer Registry
         self.registry = RecognizerRegistry()
         self.registry.load_predefined_recognizers()
+
+    def store_obfuscated_data(self, 
+                               session: sessionmaker,
+                               original_data: Any, 
+                               obfuscated_data: Any, 
+                               projectid: str, 
+                               traceid: str) -> PIIObfuscationTrace:
+        """
+        Store original and obfuscated data in the database
+        
+        Args:
+            original_data (Any): Original sensitive data
+            obfuscated_data (Any): Obfuscated/masked data
+            projectid (str, optional): Project identifier
+            traceid (str, optional): Trace identifier
+        
+        Returns:
+            PIIObfuscationTrace: Database record of stored obfuscation
+        """
+        if not session:
+            raise ValueError("No database session provided for storing obfuscated data")
+
+        try:
+            
+            # Convert data to JSON strings for storage
+            original_data_str = json.dumps(original_data)
+            obfuscated_data_str = json.dumps(obfuscated_data)
+            
+            # Create trace record
+            trace_record = PIIObfuscationTrace(
+                project_id=projectid,
+                trace_id=traceid,
+                original_data=original_data_str,
+                obfuscated_data=obfuscated_data_str
+            )
+            
+            session.add(trace_record)
+            session.commit()
+            session.refresh(trace_record)
+            return obfuscated_data
+        
+        except Exception as e:
+            session.rollback()
+            raise Exception(f"Database storage error: {e}")
+
+    def extract_obfuscated_data(self, 
+                                 session: sessionmaker,
+                                 projectid: str, 
+                                 traceid: Optional[str]=None) -> list:
+        """
+        Extract obfuscated data from database and convert to dictionary
+        
+        Args:
+            projectid (str, optional): Project identifier
+            traceid (str, optional): Trace identifier
+        
+        Returns:
+            list: List of matching obfuscation traces with parsed data
+        """
+        try:
+            # Build query with projectid and optional traceid
+            query = session.query(PIIObfuscationTrace).filter_by(project_id=projectid)
+            
+            if traceid:
+                query = query.filter_by(trace_id=traceid)
+            
+            results = query.all()[0].to_dict()
+
+            return results
+        
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Error parsing JSON data: {e}")
+        except Exception as e:
+            raise Exception(f"Database retrieval error: {e}")
+        
+    def obfuscate_and_store(self, 
+                            data: Any,
+                            session: sessionmaker,
+                            projectid: str,
+                            traceid: str) -> PIIObfuscationTrace:
+        """
+        Obfuscate data and store in database with original data
+        
+        Args:
+            data (Any): Data to obfuscate
+        
+        Returns:
+            Stored database record with original and obfuscated data
+        """
+        # Obfuscate the data
+        obfuscated_data = self.detect_and_mask_pii_secrets(data)
+        
+        # Store both original and obfuscated data in database
+        return self.store_obfuscated_data(
+            session=session,
+            original_data=data, 
+            obfuscated_data=obfuscated_data,
+            projectid=projectid,
+            traceid=traceid
+        )
 
     def _get_entities(self, use_default=True, entities = None):
         """
