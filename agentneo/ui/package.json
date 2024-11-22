@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port $AGENTNEO_DASHBOARD_PORT",
-    "prebuild": "cp node_modules/sql.js/dist/sql-wasm.wasm public/",
+"prebuild": "copy node_modules\\sql.js\\dist\\sql-wasm.wasm public\\",
     "build": "tsc -b && vite build",
     "build:dev": "tsc -b && vite build",
     "lint": "eslint .",
