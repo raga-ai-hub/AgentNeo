@@ -188,6 +188,26 @@ The AgentNeo dashboard offers a comprehensive view of your AI application's perf
 neo_session.launch_dashboard(port=3000)
 ```
 
+## Security: Add Content Filtering Capabilities
+Enhancing security through robust content filtering mechanisms is crucial for ensuring sensitive or inappropriate content is handled effectively. Below are the steps and features for implementing content filtering in your application:
+
+1. Incorporate mechanisms to scan and filter sensitive data (e.g., Personally Identifiable Information - PII).
+
+2. Use tools like Presidio, FlashText, or custom regex-based filters for identifying sensitive entities.
+
+3. Ensure content filtering is applied consistently across all text inputs and outputs.
+
+### Basic Filtering
+For basic filtering, set pii=True when calling the filter_text function. This will apply pre-defined filters for detecting common sensitive entities like emails, phone numbers, and person.
+![predefined_filter](img/image1.png)
+
+### Custom Filtering
+Allow users to define custom filtering rules using Python dictionaries.
+![custom_filtering1](img/image3.png)
+![custom_filtering2](img/image2.png)
+
+For more info visit examples/sample_filtering.py
+
 ## 🛣️ Roadmap
 
 We are committed to continuously improving AgentNeo. Here's a glimpse of what's on the horizon:
