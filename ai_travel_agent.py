@@ -1,12 +1,10 @@
 import os
 import requests
 from dotenv import load_dotenv
-from litellm import completion
 from openai import OpenAI
-
+from agentneo.utils.security.prompt_filtering import filter_text
 
 load_dotenv()
-
 
 import sys
 
@@ -39,11 +37,33 @@ tracer.start()
 
 #     return response.choices[0].message.content.strip()
 
+#For more detail look at agentneo/utils/security/sample_filtering.py
+
+filter_dict = {
+    "presidio": [
+    "LOCATION",
+    "PERSON"
+    ],
+    "flashtext": [
+        "bank"
+    ],
+    "spacy": {
+        "threshold": 0.85,
+        "entities": [
+            "account"
+        ]
+    },
+    "regex_patterns": {
+        "email_address": r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
+        "openai_api_key": r"sk-[a-zA-Z0-9]{32,}",
+    }
+}
 
 @tracer.trace_llm(name="llm_call")
 def llm_call(prompt, max_tokens=512, model="gpt-4o-mini"):
+    prompt = filter_text(prompt, pii=True)       #Basic filtering
+    prompt = filter_text(prompt, filters=filter_dict) #Custom filtering
     client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-
     response = client.chat.completions.create(
         model=model,
         messages=[{"role": "user", "content": prompt}],
