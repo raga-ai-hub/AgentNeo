@@ -1,6 +1,6 @@
-py-cpuinfo
-openai
-litellm
-sqlalchemy
-GPUtil
-psutil
+python-dotenv
+pandas
+langchain 
+langchain_community 
+huggingface_hub 
+tiktoken
