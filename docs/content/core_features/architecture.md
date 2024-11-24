@@ -13,6 +13,7 @@ AgentNeo follows a modular architecture designed for flexibility and extensibili
 - Event collection
 - Metric computation
 - Data buffering
+- Memory Profiling
 
 ### 2. Storage Layer
 - SQLite database
@@ -43,6 +44,7 @@ AgentNeo follows a modular architecture designed for flexibility and extensibili
    - Capture function calls
    - Record timestamps
    - Collect metrics
+   - Capture memory usages
 
 3. **Data Processing**
    - Compute metrics

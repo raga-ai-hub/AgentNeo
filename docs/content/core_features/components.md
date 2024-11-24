@@ -7,6 +7,7 @@ The core component for instrumenting and monitoring code.
 - Function decoration
 - Event tracking
 - Metric collection
+- Memory Profiling
 - Data buffering
 
 ### Usage
@@ -30,9 +31,9 @@ Interactive web interface for visualization and analysis.
 
 ### Features
 - Real-time monitoring
-- Interactive graphs
+- Interactive graphs 
 - Performance metrics
-- Detailed Trace views
+- Detailed Trace views with detailed memory usages
 
 ### Access
 ```python

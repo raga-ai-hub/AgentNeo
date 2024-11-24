@@ -31,6 +31,9 @@ class TraceModel(Base):
     end_time = Column(DateTime, nullable=True)
     duration = Column(Float, nullable=True)
 
+    version = Column(String)  # Add version field
+    configuration = Column(String)  # Add configuration field
+
     project = relationship("ProjectInfoModel", back_populates="traces")
     system_info = relationship("SystemInfoModel", uselist=False, back_populates="trace")
     errors = relationship("ErrorModel", back_populates="trace")
@@ -117,6 +120,11 @@ class LLMCallModel(Base):
     token_usage = Column(JSON, nullable=False)
     cost = Column(JSON, nullable=False)
     memory_used = Column(Integer, nullable=False)
+
+    peak_memory_usage = Column(Integer)
+    heap_summary = Column(JSON)  # Stores JSON string
+    gc_summary = Column(JSON)    # Stores JSON string
+
     trace_id = Column(Integer, ForeignKey("traces.id"), nullable=False)
 
     trace = relationship("TraceModel", back_populates="llm_calls")

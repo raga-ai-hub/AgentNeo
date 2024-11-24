@@ -9,6 +9,7 @@ Monitor and analyze LLM interactions with detailed metrics:
 - Cost tracking
 - Model parameters
 - Prompt analysis
+- Memory Profiling
 
 ```python
 @tracer.trace_llm("market_analysis")
@@ -54,7 +55,7 @@ def execute_trade_strategy(market_conditions):
 - Live execution tracking
 - Interactive visualizations
 - Performance metrics
-- Resource utilization
+- Resource utilization with full memory profiling 
 
 ### Data Storage
 - SQLite backend

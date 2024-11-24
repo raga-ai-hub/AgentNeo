@@ -1,5 +1,9 @@
 import asyncio
 import psutil
+
+import tracemalloc
+import gc
+
 import json
 import wrapt
 import functools
@@ -67,6 +71,16 @@ class LLMTracerMixin:
         start_time = datetime.now()
         start_memory = psutil.Process().memory_info().rss
 
+        # Start tracemalloc for heap analysis
+        tracemalloc.start()
+
+        # Initialize garbage collection monitoring
+        gc_events = []
+        def gc_callback(phase, info):
+            gc_events.append({'phase': phase, 'info': info})
+        gc.callbacks.append(gc_callback)
+
+
         agent_id = self.current_agent_id.get()
         llm_call_name = self.current_llm_call_name.get() or original_func.__name__
 
@@ -76,6 +90,16 @@ class LLMTracerMixin:
             end_time = datetime.now()
             end_memory = psutil.Process().memory_info().rss
             memory_used = max(0, end_memory - start_memory)
+
+
+            # Capture peak memory usage and heap snapshot
+            current, peak_memory_usage = tracemalloc.get_traced_memory()
+            heap_snapshot = tracemalloc.take_snapshot()
+
+            # Stop tracemalloc and remove gc callback
+            tracemalloc.stop()
+            gc.callbacks.remove(gc_callback)
+
 
             sanitized_args = self._sanitize_api_keys(args)
             sanitized_kwargs = self._sanitize_api_keys(kwargs)
@@ -96,6 +120,9 @@ class LLMTracerMixin:
                 start_time,
                 end_time,
                 memory_used,
+                peak_memory_usage,
+                heap_snapshot,
+                gc_events,
                 agent_id,
             )
 
@@ -112,7 +139,9 @@ class LLMTracerMixin:
             raise
 
     def process_llm_result(
-        self, result, name, model, prompt, start_time, end_time, memory_used, agent_id
+        self, result, name, model, prompt, start_time, end_time, memory_used, peak_memory_usage,
+                heap_snapshot,
+                gc_events, agent_id
     ):
         llm_data = extract_llm_output(result)
         agent_id = self.current_agent_id.get()
@@ -140,6 +169,24 @@ class LLMTracerMixin:
             * model_cost.get("reasoning_cost_per_token", 0),
         }
 
+
+        # Process heap snapshot to get top memory usage statistics
+        top_stats = heap_snapshot.statistics('lineno')
+        heap_summary = [
+            {
+                'traceback': str(stat.traceback),
+                'size': stat.size,
+                'count': stat.count,
+            }
+            for stat in top_stats[:10]  # Top 10 entries
+        ]
+
+        # Summarize garbage collection events
+        gc_summary = {
+            'num_collections': len(gc_events),
+            'events': gc_events,
+        }
+
         llm_call = LLMCallModel(
             project_id=self.project_id,
             trace_id=self.trace_id,
@@ -157,6 +204,9 @@ class LLMTracerMixin:
             token_usage=json.dumps(token_usage),
             cost=json.dumps(cost),
             memory_used=memory_used,
+            peak_memory_usage=peak_memory_usage,
+            heap_summary=json.dumps(heap_summary),
+            gc_summary=json.dumps(gc_summary),
         )
 
         with self.Session() as session:
@@ -179,6 +229,9 @@ class LLMTracerMixin:
                 "cost": cost,
                 "memory_used": memory_used,
                 "agent_id": agent_id,
+                "peak_memory_usage": peak_memory_usage,
+                "heap_summary": heap_summary,
+                "gc_summary": gc_summary,
             }
 
         if agent_id:
