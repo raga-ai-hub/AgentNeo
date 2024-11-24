@@ -1,4 +1,4 @@
-# Team:Andrai- Rufus Derrick R, Sathya Priya R, Roshan Darran R
+# Team: Andrai- Rufus Derrick R, Sathyapriyaa R, Roshan Darran R
 #Topic: 1.1 LLM as a Judge !! 
 
 # AgentNeo
