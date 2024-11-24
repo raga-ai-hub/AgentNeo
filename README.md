@@ -23,6 +23,7 @@ Whether you're a seasoned AI developer or just starting out, AgentNeo offers rob
 - **Project Management**: Manage multiple projects seamlessly within the framework.
 - **Execution Graph Visualization**: Gain insights into your application's flow with detailed execution graphs.
 - **Evaluation Tools**: Assess and improve your AI agent's performance with built-in evaluation tools.
+- **Security Monitoring**: Detect potential prompt injection and jailbreak attempts through pattern analysis and prompt evaluation.
 
 ## 🛠 Requirements
 

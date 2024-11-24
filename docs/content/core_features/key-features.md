@@ -73,3 +73,82 @@ def execute_trade_strategy(market_conditions):
 - Tool usage effectiveness
 - Response quality metrics
 - Cost optimization insights
+
+## Security Features
+
+### Advanced Jailbreak Detection
+Comprehensive multi-layered system to detect and prevent LLM security bypass attempts:
+
+1. Pattern-Based Analysis
+
+- Regular expression pattern matching
+- Keyword detection system
+- Contextual pattern analysis
+- Suspicious behavior identification
+
+```python
+from agentneo.utils.security_utils import IntegratedJailbreakDetector
+
+def analyze_patterns(text):
+    detector = IntegratedJailbreakDetector()
+    matches = detector.pattern_match(text)
+    return {
+        "matches": matches,
+        "has_suspicious_patterns": len(matches) > 0
+    }
+
+analyze_patterns("<INSERT Your Text here>")
+```  
+
+2. LLM-Based Analysis
+
+- Deep content evaluation
+- Context manipulation detection
+- Social engineering identification
+- Multi-step attack detection
+
+```python
+from agentneo.utils.security_utils import IntegratedJailbreakDetector
+
+def analyze_with_llm(text, pattern_matches=None):
+    detector = IntegratedJailbreakDetector()
+    analyse_results = detector.llm_analyze(
+        model="llama-3.1-70b-versatile",
+        text=text,
+        pattern_matches=pattern_matches,
+        response_format="json_object"
+    )
+
+    return analyse_results
+
+analyze_with_llm(text)
+```
+
+3. Integrated Analysis Pipeline
+
+- Combined pattern and LLM analysis
+- Risk scoring system
+- Confidence metrics
+- Detailed verdict generation
+
+```python
+from agentneo.utils.security_utils import IntegratedJailbreakDetector
+
+def detect_jailbreak(content):
+    detector = IntegratedJailbreakDetector()
+    verdict = detector.analyze(content)
+    
+    if verdict:
+        raise SecurityException("Jailbreak attempt detected")
+    return verdict
+
+detect_jailbreak(content)
+```
+
+### Security Metrics & Logging
+
+- Detailed analysis logging
+- Pattern match tracking
+- LLM analysis results
+- Risk level assessment
+- Confidence scoring
