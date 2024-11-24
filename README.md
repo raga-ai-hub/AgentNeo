@@ -14,15 +14,16 @@ AgentNeo is an advanced, open-source **Agentic AI Application Observability, Mon
 ### 1. Installation of packages
 
 Installation of necessary packages, the list of packages are listed in the requirements.txt file.
-
+```python
 pip install -r requirements.txt
-
+```
 ### 2. Import the Necessary Components
 
 After installation of the packages, import the necessary components required to run the model.
 Using import .
 
-### 3. Create a Session and Project
+### 3.Data prepocessing
+
 
 
 ### 3. Initialize the Tracer
