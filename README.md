@@ -110,11 +110,10 @@ print(evaluations)
 ```
 
 ### Unique Feature
-Our LLM Judge as included a feature of Hallucination rate, to evaluate the LLM and Human response. As we can understand, that major
-results in current AI Model solutions deviate because of bias or Hallucination of Model. So to have score will improve our performance metrics.
+The unique feature introduced is the incorporation of Feedback Score, Hallucination Score, Constructive Feedback, and Areas of Improvement Metrics into an LLM-as-Judge framework, enabling comprehensive evaluation of LLM-generated responses. This feature ensures a multi-faceted assessment, offering quantitative metrics alongside actionable qualitative insights, thereby fostering continuous refinement and reliability of the language model's outputs.
 
 
 
-Thank you for giving this opportunity to be a part of this Hackathon!
+
 
 
