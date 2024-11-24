@@ -5,40 +5,25 @@
 
 AgentNeo is an advanced, open-source **Agentic AI Application Observability, Monitoring, and Evaluation Framework**. Designed to elevate your AI development experience, AgentNeo provides deep insights into your AI agents, Large Language Model (LLM) calls, and tool interactions. By leveraging AgentNeo, you can build more efficient, cost-effective, and high-quality AI-driven solutions.
 
-![AgentNeo](docs/assets/architecture.svg)
-
 ## ⚡ AgentNeo Hackathon
 
-## 🛠 Requirements
+## 🛠 Steps involved:
 
 - **Python**: Version 3.8 or higher
 
-## 📦 Installation
+### 1. Installation of packages
 
-Install AgentNeo effortlessly using pip:
+Installation of necessary packages, the list of packages are listed in the requirements.txt file.
 
-```bash
-pip install agentneo
-```
+pip install -r requirements.txt
 
-![AgentNeo Overview](docs/assets/overview.png)
+### 2. Import the Necessary Components
 
-## 🌟 Quick Start Guide
+After installation of the packages, import the necessary components required to run the model.
+Using import .
 
-Get up and running with AgentNeo in just a few steps!
+### 3. Create a Session and Project
 
-### 1. Import the Necessary Components
-
-```python
-from agentneo import AgentNeo, Tracer, Evaluation, launch_dashboard
-```
-
-### 2. Create a Session and Project
-
-```python
-neo_session = AgentNeo(session_name="my_session")
-neo_session.create_project(project_name="my_project")
-```
 
 ### 3. Initialize the Tracer
 
