@@ -9,6 +9,7 @@ import os
 from .user_interaction_tracer import UserInteractionTracer
 from ..utils.trace_utils import calculate_cost, load_model_costs, convert_usage_to_dict
 from ..utils.llm_utils import extract_llm_output
+from ..utils.security_utils import IntegratedJailbreakDetector
 from ..data import LLMCallModel
 
 
@@ -17,6 +18,7 @@ class LLMTracerMixin:
         super().__init__(*args, **kwargs)
         self.patches = []
         self.model_costs = load_model_costs()
+        self.detector = IntegratedJailbreakDetector()
 
     def instrument_llm_calls(self):
         # Use wrapt to register post-import hooks
@@ -69,9 +71,24 @@ class LLMTracerMixin:
 
         agent_id = self.current_agent_id.get()
         llm_call_name = self.current_llm_call_name.get() or original_func.__name__
+        allow_jailbreak = getattr(self, 'current_allow_jailbreak', {}).get(llm_call_name, False)
 
         try:
-            result = original_func(*args, **kwargs)
+            # Extract input for jailbreak check
+            prompt = self._extract_input(args, kwargs)
+            # print("PROMPT: ",prompt)
+            is_jailbreak = self.detector.analyze(prompt)
+
+            if is_jailbreak and not allow_jailbreak:
+                raise ValueError("Potential jailbreak attempt detected and blocked due to allow_jailbreak=False")
+            elif not is_jailbreak:
+                # Proceed with normal execution if no jailbreak detected
+                result = original_func(*args, **kwargs)
+            else:
+                # If jailbreak detected but allowed, proceed with warning
+                print("Warning: Potential jailbreak detected but allowed due to allow_jailbreak=True")
+                result = original_func(*args, **kwargs)
+
 
             end_time = datetime.now()
             end_memory = psutil.Process().memory_info().rss
@@ -215,7 +232,7 @@ class LLMTracerMixin:
                 setattr(obj, method_name, original_method)
         self.patches.clear()
 
-    def trace_llm(self, name: str):
+    def trace_llm(self, name: str, allow_jailbreak: bool = False):
         def decorator(func_or_class):
             if isinstance(func_or_class, type):
                 for attr_name, attr_value in func_or_class.__dict__.items():
@@ -223,10 +240,16 @@ class LLMTracerMixin:
                         setattr(
                             func_or_class,
                             attr_name,
-                            self.trace_llm(f"{name}.{attr_name}")(attr_value),
+                            self.trace_llm(f"{name}.{attr_name}", allow_jailbreak)(attr_value),
                         )
                 return func_or_class
             else:
+                # Initialize the allow_jailbreak dictionary if it doesn't exist
+                if not hasattr(self, 'current_allow_jailbreak'):
+                    self.current_allow_jailbreak = {}
+                
+                # Store the allow_jailbreak value for this specific function
+                self.current_allow_jailbreak[name] = allow_jailbreak
 
                 @functools.wraps(func_or_class)
                 async def async_wrapper(*args, **kwargs):
@@ -244,10 +267,6 @@ class LLMTracerMixin:
                     finally:
                         self.current_llm_call_name.reset(token)
 
-                return (
-                    async_wrapper
-                    if asyncio.iscoroutinefunction(func_or_class)
-                    else sync_wrapper
-                )
+                return async_wrapper if asyncio.iscoroutinefunction(func_or_class) else sync_wrapper
 
         return decorator

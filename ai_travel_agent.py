@@ -40,7 +40,7 @@ tracer.start()
 #     return response.choices[0].message.content.strip()
 
 
-@tracer.trace_llm(name="llm_call")
+@tracer.trace_llm(name="llm_call", allow_jailbreak=True)
 def llm_call(prompt, max_tokens=512, model="gpt-4o-mini"):
     client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
