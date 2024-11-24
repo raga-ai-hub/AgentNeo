@@ -418,43 +418,60 @@ export const CustomNode = ({ data }: { data: any }) => {
           </div>
         );
 
-      case 'llm':
-        return (
-          <div className="text-sm">
-            <div className="font-bold mb-2">Tool Call Details</div>
-            <div>Model: {formatValue(data.metadata?.model)}</div>
-            <div>Start: {formatValue(formatTimestamp(data.startTime))}</div>
-            <div>End: {formatValue(formatTimestamp(data.endTime))}</div>
-            <div>Duration: {formatValue(data.duration)}</div>
-            <div>Memory: {formatValue(data.metadata?.memory_used, '0 MB')}</div>
 
-            <div className="mt-2">
-              <div className="font-semibold">Cost:</div>
-              <div className="bg-gray-50 p-2 rounded text-xs">
-                {formatJson(data.metadata?.cost)}
+        case 'llm':
+          return (
+              <div className="text-xs ">
+                  <div className="font-bold mb-2">Tool Call Details</div>
+                  <div>Model: {formatValue(data.metadata?.model)}</div>
+                  <div>Start: {formatValue(formatTimestamp(data.startTime))}</div>
+                  <div>End: {formatValue(formatTimestamp(data.endTime))}</div>
+                  <div>Duration: {formatValue(data.duration)}</div>
+                  <div>Memory Used: {formatValue(data.metadata?.memory_used, '0 MB')}</div>
+                  <div>Peak Memory Usage: {formatValue(data.metadata?.peak_memory_usage, '0 MB')}</div>
+      
+                  <div className="mt-2">
+                      <div className="font-semibold">Heap Summary:</div>
+                      <div className="bg-gray-50 p-2 rounded text-xs overflow-auto max-h-20">
+                          {formatJson(data.metadata?.heap_summary)}
+                      </div>
+                  </div>
+      
+                  <div className="mt-2">
+                      <div className="font-semibold">Garbage Collection Summary:</div>
+                      <div className="bg-gray-50 p-2 rounded text-xs overflow-auto max-h-24">
+                          {formatJson(data.metadata?.gc_summary)}
+                      </div>
+                  </div>
+      
+                  <div className="mt-2">
+                      <div className="font-semibold">Cost:</div>
+                      <div className="bg-gray-50 p-2 rounded text-xs">
+                          {formatJson(data.metadata?.cost)}
+                      </div>
+                  </div>
+      
+                  <div className="mt-2">
+                      <div className="font-semibold">Token Usage:</div>
+                      <div className="bg-gray-50 p-2 rounded text-xs">
+                          {formatJson(data.metadata?.token_usage)}
+                      </div>
+                  </div>
+      
+                  <div className="mt-2">
+                      <div className="font-semibold">Input Prompt:</div>
+                      <div className="whitespace-pre-wrap overflow-auto max-h-40 bg-gray-50 p-2 rounded text-xs">
+                          {formatValue(data.metadata?.input_prompt, 'No input')}
+                      </div>
+                      
+                      <div className="font-semibold mt-2">Output:</div>
+                      <div className="whitespace-pre-wrap overflow-auto max-h-40 bg-gray-50 p-2 rounded text-xs">
+                          {formatValue(data.metadata?.output, 'No output')}
+                      </div>
+                  </div>
               </div>
-            </div>
-
-            <div className="mt-2">
-              <div className="font-semibold">Token Usage:</div>
-              <div className="bg-gray-50 p-2 rounded text-xs">
-                {formatJson(data.metadata?.token_usage)}
-              </div>
-            </div>
-
-            <div className="mt-2">
-              <div className="font-semibold">Input Prompt:</div>
-              <div className="whitespace-pre-wrap overflow-auto max-h-40 bg-gray-50 p-2 rounded text-xs">
-                {formatValue(data.metadata?.input_prompt, 'No input')}
-              </div>
-              
-              <div className="font-semibold mt-2">Output:</div>
-              <div className="whitespace-pre-wrap overflow-auto max-h-40 bg-gray-50 p-2 rounded text-xs">
-                {formatValue(data.metadata?.output, 'No output')}
-              </div>
-            </div>
-          </div>
-        );
+          );
+      
       
         case 'agent':
           return (

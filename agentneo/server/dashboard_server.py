@@ -196,6 +196,9 @@ def get_analysis_trace(trace_id):
                             "token_usage": call.token_usage,
                             "cost": call.cost,
                             "memory_used": call.memory_used,
+                            "peak_memory_usage": call.peak_memory_usage,
+                            "heap_summary": call.heap_summary,
+                            "gc_summary": call.gc_summary,
                         }
                         for call in trace.llm_calls
                     ],
@@ -345,6 +348,9 @@ def get_trace(trace_id):
                     "token_usage": call.token_usage,
                     "cost": call.cost,
                     "memory_used": call.memory_used,
+                    "peak_memory_usage": call.peak_memory_usage,
+                    "heap_summary": call.heap_summary,
+                    "gc_summary": call.gc_summary,
                     "errors": [format_error(error) for error in call.errors],
                     # "user_interactions": [
                     #     format_user_interaction(ui) for ui in call.user_interactions
