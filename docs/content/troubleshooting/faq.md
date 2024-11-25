@@ -3,7 +3,7 @@
 ## General Questions
 
 ### Q: What Python versions are supported?
-A: AgentNeo supports Python 3.8 and above.
+A: AgentNeo supports Python 3.9 and above.
 
 ### Q: Can I use AgentNeo with any LLM provider?
 A: Yes, AgentNeo supports various providers including OpenAI, Anthropic, and others through LiteLLM.

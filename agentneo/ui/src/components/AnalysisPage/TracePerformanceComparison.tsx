@@ -10,11 +10,11 @@ import {
   CartesianGrid,
   Legend
 } from 'recharts';
-import axios from 'axios';
 import { Loader2 } from 'lucide-react';
 import { useProject } from '@/contexts/ProjectContext';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { fetchTraces, fetchAnalysisTrace } from '@/utils/api';
 
 interface TraceData {
   id: string;
@@ -101,7 +101,7 @@ const TracePerformanceComparison: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [showPercentage, setShowPercentage] = useState(false);
+  const [showPercentage, setShowPercentage] = useState(true);
 
   const fetchTraceData = async () => {
     if (!selectedProject) return;
@@ -110,12 +110,10 @@ const TracePerformanceComparison: React.FC = () => {
       setIsLoading(true);
       setError(null);
 
-      const response = await axios.get(`/api/projects/${selectedProject}/traces`);
-      const tracesData = response.data;
+      const tracesData = await fetchTraces(selectedProject);
 
       const processedTraces = await Promise.all(tracesData.map(async (trace: any) => {
-        const traceResponse = await axios.get(`/api/analysis_traces/${trace.id}`);
-        const traceData = traceResponse.data;
+        const traceData = await fetchAnalysisTrace(trace.id);
 
         let totalTokens = 0;
         let totalCost = 0;
@@ -180,12 +178,10 @@ const TracePerformanceComparison: React.FC = () => {
         unit
       };
       
-      // Fix: Explicitly type the values as number[]
       const values: number[] = selectedTraceData.map(trace => Number(trace[key as keyof TraceData]));
       const total = values.reduce((sum, val) => sum + val, 0);
 
       selectedTraceData.forEach(trace => {
-        // Fix: Explicitly convert value to number
         const value = Number(trace[key as keyof TraceData]);
         metricData[trace.name] = showPercentage ? (value / total * 100) : value;
       });
@@ -351,7 +347,6 @@ const TracePerformanceComparison: React.FC = () => {
   }, [showDropdown]);
 
   return (
-    // Remove the px-4 md:px-6 lg:px-8 classes that were limiting the width
     <div className="w-full">
       <Card className="w-full">
         <CardHeader>

@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Loader2 } from 'lucide-react';
-import axios from 'axios';
 import { useProject } from '@/contexts/ProjectContext';
+import { fetchTraces, fetchAnalysisTrace } from '@/utils/api';
 
 interface ErrorData {
   error_type: string;
@@ -31,8 +31,7 @@ const ErrorAnalysis: React.FC = () => {
       let errorCounts: Record<string, number> = {};
 
       if (selectedTraceId) {
-        const traceResponse = await axios.get(`/api/analysis_traces/${selectedTraceId}`);
-        const traceData = traceResponse.data;
+        const traceData = await fetchAnalysisTrace(selectedTraceId);
 
         traceData.errors.forEach((error: any) => {
           if (!errorCounts[error.error_type]) {
@@ -41,12 +40,10 @@ const ErrorAnalysis: React.FC = () => {
           errorCounts[error.error_type]++;
         });
       } else {
-        const tracesResponse = await axios.get(`/api/projects/${selectedProject}/traces`);
-        const traces = tracesResponse.data;
+        const traces = await fetchTraces(selectedProject);
 
         for (const trace of traces) {
-          const traceResponse = await axios.get(`/api/analysis_traces/${trace.id}`);
-          const traceData = traceResponse.data;
+          const traceData = await fetchAnalysisTrace(trace.id);
 
           traceData.errors.forEach((error: any) => {
             if (!errorCounts[error.error_type]) {
