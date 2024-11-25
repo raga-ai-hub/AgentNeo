@@ -13,7 +13,7 @@ AgentNeo is an advanced, open-source Python SDK for Agentic AI Application Obser
 ## Features at a Glance
 
 - **Tracing**: Monitor LLM calls, agent actions, and tool usage
-- **Interactive Dashboard**: Visualize execution flows and metrics
+- **Interactive Dashboard**: Visualize execution flows and metrics with 2 Themes
 - **Evaluation Framework**: Assess agent performance with built-in metrics
 - **Storage Solutions**: Flexible data storage with SQLite and JSON
 - **Project Management**: Organize and manage multiple projects

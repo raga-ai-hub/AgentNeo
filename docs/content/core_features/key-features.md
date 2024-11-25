@@ -3,7 +3,9 @@
 ## Tracing Capabilities
 
 ### LLM Call Tracing
+
 Monitor and analyze LLM interactions with detailed metrics:
+
 - Input/output tokens
 - Response times
 - Cost tracking
@@ -21,7 +23,9 @@ async def analyze_market(data):
 ```
 
 ### Tool Tracing
+
 Track tool usage and performance:
+
 - Execution time
 - Input/output validation
 - Error rates
@@ -35,7 +39,9 @@ def process_market_data(raw_data):
 ```
 
 ### Agent Tracing
+
 Monitor agent behavior and decision-making:
+
 - Task decomposition
 - Tool selection
 - Goal achievement
@@ -51,24 +57,35 @@ def execute_trade_strategy(market_conditions):
 ## Monitoring Features
 
 ### Real-time Dashboard
+
 - Live execution tracking
 - Interactive visualizations
 - Performance metrics
 - Resource utilization
 
 ### Data Storage
+
 - SQLite backend
 - JSON log files
 - Custom storage adapters
 - Data export capabilities
 
 ### Analytics
+
 - Token usage trends
 - Cost analysis
 - Performance bottlenecks
 - Error patterns
 
+### Theme Change
+
+- Light theme for a bright interface
+- Dark theme for eye comfort
+- System theme for auto-sync with device settings
+- Easy toggle in the top-right corner and remembers user preference
+
 ## Evaluation Tools
+
 - Goal decomposition efficiency
 - Tool usage effectiveness
 - Response quality metrics
