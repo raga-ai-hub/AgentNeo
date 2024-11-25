@@ -48,3 +48,127 @@ export default tseslint.config({
   },
 })
 ```
+
+# AgentNeo Dashboard
+
+## Add Dark Mode Support
+- Implement theme switching with custom colour palettes
+- Remember user preferences and detect system theme
+
+## Overview
+AgentNeo Dashboard is an advanced, dynamic web application designed for seamless project management and analysis. This dashboard incorporates modern UI/UX practices, offering a clean, responsive design with light and dark modes. Built with React, TailwindCSS, and other cutting-edge libraries, it provides a robust solution for organizing and analyzing project data.
+
+## Features
+
+### Core Features
+
+1. **Dark/Light Mode**
+   - Integrated with TailwindCSS and React Context
+   - Toggle the theme globally with a single click
+
+2. **Interactive Pages**
+   - Overview: Provides a snapshot of project activities
+   - Analysis: Detailed analytics and performance metrics
+   - Trace History: Historical record of project changes and activities
+   - Evaluation: Evaluate project status with custom parameters
+
+3. **Sidebar Navigation**
+   - Expandable and collapsible sidebar to improve accessibility
+
+4. **Responsive Design**
+   - Fully optimized for desktop, tablet, and mobile views
+
+## Getting Started
+
+### Prerequisites
+Before starting, ensure the following are installed on your system:
+- [Node.js](https://nodejs.org/) (v16+ recommended)
+- [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/)
+
+### Installation
+
+1. Clone the Repository:
+   ```bash
+   git clone https://github.com/your-username/agentneo-dashboard.git
+   cd agentneo-dashboard
+   ```
+
+2. Install Dependencies:
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
+
+3. Run the Development Server:
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   ```
+
+4. Open in Browser:
+   Navigate to [http://localhost:3000](http://localhost:3000) to access the application.
+
+## Project Structure
+
+```
+src/
+├── components/
+│   ├── ProjectInformation.tsx       # Component for rendering project data
+│   ├── toggle-button.tsx            # Theme toggle button (light/dark mode)
+│   ├── theme-provider.tsx           # Theme context provider
+├── contexts/
+│   ├── ProjectContext.tsx           # Context for managing project state
+│   ├── SidebarContext.tsx           # Context for managing sidebar
+├── pages/
+│   ├── Overview.tsx                 # Overview page
+│   ├── Analysis.tsx                 # Analysis page
+│   ├── TraceHistory.tsx            # Trace history page
+│   ├── Evaluation.tsx              # Evaluation page
+├── App.tsx                         # Main app component with routing
+├── index.tsx                       # Application entry point
+├── tailwind.config.ts             # TailwindCSS configuration
+└── styles/
+    ├── globals.css                # Global CSS styles
+```
+
+## Features in Detail
+
+### 1. Theme Toggle (Dark/Light Mode)
+- **How It Works:**
+  - Uses a `ThemeProvider` to manage global theme state via React Context
+  - TailwindCSS's `darkMode: ['class']` strategy ensures easy styling
+
+- **Implementation:**
+  - `<ThemeToggleButton />` allows users to toggle between themes
+  - Example Code for Conditional Styling:
+    ```jsx
+    <div className="bg-white dark:bg-gray-800 text-black dark:text-white">
+      Your themed content here.
+    </div>
+    ```
+
+## How to Use
+
+### Navigate Through the App
+- Default Route: `/` (Overview Page)
+- Other Routes:
+  - `/analysis` - View analytics data
+  - `/trace-history` - Access historical records
+  - `/evaluation` - Evaluate project metrics
+
+### Switch Themes
+- Click the toggle button in the header to switch between light and dark modes
+
+## Dependencies
+
+### Core Libraries
+- [React](https://reactjs.org/) (UI Library)
+- [React Router](https://reactrouter.com/) (Routing)
+- [TailwindCSS](https://tailwindcss.com/) (CSS Framework)
+
+### Utilities
+- [React Icons](https://react-icons.github.io/react-icons/) (For icons)
+
+
