@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Treemap, ResponsiveContainer, Tooltip } from 'recharts';
-import axios from 'axios';
-import { Loader2 } from 'lucide-react';
-import { useProject } from '@/contexts/ProjectContext';
+import { Treemap, ResponsiveContainer, Tooltip } from "recharts";
+import axios from "axios";
+import { Loader2 } from "lucide-react";
+import { useProject } from "@/contexts/ProjectContext";
 
 interface TimeData {
   name: string;
@@ -23,18 +23,17 @@ interface ColorConfigs {
 }
 
 const COLORS: ColorConfigs = {
-  'LLM Calls': {
-    gradient: ['#9333EA', '#A855F7'], // Vibrant purple
-    stroke: '#7E22CE',
-    fill: '#9333EA'
+  "LLM Calls": {
+    gradient: ["#9333EA", "#A855F7"], // Vibrant purple
+    stroke: "#7E22CE",
+    fill: "#9333EA",
   },
-  'Tool Calls': {
-    gradient: ['#EA580C', '#FB923C'], // Vibrant orange
-    stroke: '#C2410C',
-    fill: '#EA580C'
-  }
+  "Tool Calls": {
+    gradient: ["#EA580C", "#FB923C"], // Vibrant orange
+    stroke: "#C2410C",
+    fill: "#EA580C",
+  },
 };
-
 
 const TimeAnalysis: React.FC = () => {
   const { selectedProject, selectedTraceId } = useProject();
@@ -61,64 +60,79 @@ const TimeAnalysis: React.FC = () => {
       let totalToolTime = 0;
 
       if (selectedTraceId) {
-        const traceResponse = await axios.get(`/api/analysis_traces/${selectedTraceId}`);
+        const traceResponse = await axios.get(
+          `/api/analysis_traces/${selectedTraceId}`
+        );
         const traceData = traceResponse.data;
 
         totalLLMTime = traceData.llm_calls.reduce((sum: number, call: any) => {
-          const duration = typeof call.duration === 'number' ? call.duration : 0;
+          const duration =
+            typeof call.duration === "number" ? call.duration : 0;
           return sum + duration;
         }, 0);
 
-        totalToolTime = traceData.tool_calls?.reduce((sum: number, call: any) => {
-          const duration = typeof call.duration === 'number' ? call.duration : 0;
-          return sum + duration;
-        }, 0) || 0;
+        totalToolTime =
+          traceData.tool_calls?.reduce((sum: number, call: any) => {
+            const duration =
+              typeof call.duration === "number" ? call.duration : 0;
+            return sum + duration;
+          }, 0) || 0;
       } else {
-        const tracesResponse = await axios.get(`/api/projects/${selectedProject}/traces`);
+        const tracesResponse = await axios.get(
+          `/api/projects/${selectedProject}/traces`
+        );
         const traces = tracesResponse.data;
 
         for (const trace of traces) {
-          const traceResponse = await axios.get(`/api/analysis_traces/${trace.id}`);
+          const traceResponse = await axios.get(
+            `/api/analysis_traces/${trace.id}`
+          );
           const traceData = traceResponse.data;
 
-          totalLLMTime += traceData.llm_calls.reduce((sum: number, call: any) => {
-            const duration = typeof call.duration === 'number' ? call.duration : 0;
-            return sum + duration;
-          }, 0);
+          totalLLMTime += traceData.llm_calls.reduce(
+            (sum: number, call: any) => {
+              const duration =
+                typeof call.duration === "number" ? call.duration : 0;
+              return sum + duration;
+            },
+            0
+          );
 
-          totalToolTime += traceData.tool_calls?.reduce((sum: number, call: any) => {
-            const duration = typeof call.duration === 'number' ? call.duration : 0;
-            return sum + duration;
-          }, 0) || 0;
+          totalToolTime +=
+            traceData.tool_calls?.reduce((sum: number, call: any) => {
+              const duration =
+                typeof call.duration === "number" ? call.duration : 0;
+              return sum + duration;
+            }, 0) || 0;
         }
       }
 
       const totalTime = totalLLMTime + totalToolTime;
 
       const data: TimeData[] = [];
-      
+
       if (totalLLMTime > 0) {
         data.push({
-          name: 'LLM Calls',
+          name: "LLM Calls",
           size: totalLLMTime,
           duration: `Duration: ${formatDuration(totalLLMTime)}`,
-          percentage: `${((totalLLMTime / totalTime) * 100).toFixed(1)}%`
+          percentage: `${((totalLLMTime / totalTime) * 100).toFixed(1)}%`,
         });
       }
 
       if (totalToolTime > 0) {
         data.push({
-          name: 'Tool Calls',
+          name: "Tool Calls",
           size: totalToolTime,
           duration: `Duration: ${formatDuration(totalToolTime)}`,
-          percentage: `${((totalToolTime / totalTime) * 100).toFixed(1)}%`
+          percentage: `${((totalToolTime / totalTime) * 100).toFixed(1)}%`,
         });
       }
 
       setTimeData(data);
     } catch (err) {
-      console.error('Error fetching time data:', err);
-      setError('Failed to fetch time data. Please try again later.');
+      console.error("Error fetching time data:", err);
+      setError("Failed to fetch time data. Please try again later.");
     } finally {
       setIsLoading(false);
     }
@@ -155,18 +169,24 @@ const TimeAnalysis: React.FC = () => {
     }
 
     if (!selectedProject) {
-      return <div className="text-center p-4">Please select a project to view analytics</div>;
+      return (
+        <div className="text-center p-4">
+          Please select a project to view analytics
+        </div>
+      );
     }
 
     if (timeData.length === 0) {
-      return <div className="text-center p-4">No time analysis data available</div>;
+      return (
+        <div className="text-center p-4">No time analysis data available</div>
+      );
     }
 
     return (
       <div className="h-[400px]">
         <ResponsiveContainer width="100%" height="100%">
           <Treemap
-            data={[{ name: 'Time Analysis', children: timeData }]}
+            data={[{ name: "Time Analysis", children: timeData }]}
             dataKey="size"
             stroke="#fff"
             content={<CustomizedContent colors={COLORS} />}
@@ -183,9 +203,7 @@ const TimeAnalysis: React.FC = () => {
       <CardHeader>
         <CardTitle>Time Analysis</CardTitle>
       </CardHeader>
-      <CardContent>
-        {renderContent()}
-      </CardContent>
+      <CardContent>{renderContent()}</CardContent>
     </Card>
   );
 };
@@ -202,15 +220,15 @@ interface CustomizedContentProps {
   name?: string;
 }
 
-const CustomizedContent: React.FC<CustomizedContentProps> = ({ 
-  root, 
-  x = 0, 
-  y = 0, 
-  width = 0, 
-  height = 0, 
-  index = 0, 
-  colors = {}, 
-  name = '' 
+const CustomizedContent: React.FC<CustomizedContentProps> = ({
+  root,
+  x = 0,
+  y = 0,
+  width = 0,
+  height = 0,
+  index = 0,
+  colors = {},
+  name = "",
 }) => {
   const data = root?.children?.[index];
   if (!data) return null;
@@ -234,8 +252,8 @@ const CustomizedContent: React.FC<CustomizedContentProps> = ({
       <path
         d={path}
         style={{
-          fill: colors[name]?.fill || '#gray',
-          stroke: colors[name]?.stroke || '#fff',
+          fill: colors[name]?.fill || "#gray",
+          stroke: colors[name]?.stroke || "#fff",
           strokeWidth: 2,
           strokeOpacity: 1,
         }}
@@ -281,7 +299,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
-      <div className="bg-white p-4 border rounded-lg shadow">
+      <div className="bg-white p-4 border rounded-lg shadow  dark:bg-gray-700 dark:border-gray-400">
         <p className="font-bold text-lg mb-1">{data.name}</p>
         <p>{data.duration}</p>
         <p>Percentage: {data.percentage}</p>

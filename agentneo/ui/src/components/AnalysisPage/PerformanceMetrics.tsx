@@ -1,16 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowUpIcon, ArrowDownIcon } from 'lucide-react';
-import { useProject } from '../../contexts/ProjectContext';
-import axios from 'axios';
+import { ArrowUpIcon, ArrowDownIcon } from "lucide-react";
+import { useProject } from "../../contexts/ProjectContext";
+import axios from "axios";
 
-const MetricCard: React.FC<{ title: string; value: string; previousValue: number; currentValue: number; titleColor: string }> = ({ title, value, previousValue, currentValue, titleColor }) => {
+const MetricCard: React.FC<{
+  title: string;
+  value: string;
+  previousValue: number;
+  currentValue: number;
+  titleColor: string;
+}> = ({ title, value, previousValue, currentValue, titleColor }) => {
   const calculateChange = () => {
-    if (previousValue === 0) return { value: '0%', isPositive: true };
+    if (previousValue === 0) return { value: "0%", isPositive: true };
     const change = ((currentValue - previousValue) / previousValue) * 100;
     return {
       value: `${Math.abs(change).toFixed(1)}%`,
-      isPositive: change >= 0
+      isPositive: change >= 0,
     };
   };
 
@@ -22,8 +28,16 @@ const MetricCard: React.FC<{ title: string; value: string; previousValue: number
         <h3 className={`text-sm font-medium ${titleColor}`}>{title}</h3>
         <div className="mt-2 flex items-baseline justify-between">
           <p className="text-2xl font-semibold">{value}</p>
-          <p className={`flex items-center text-sm ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-            {isPositive ? <ArrowUpIcon className="w-4 h-4 mr-1" /> : <ArrowDownIcon className="w-4 h-4 mr-1" />}
+          <p
+            className={`flex items-center text-sm ${
+              isPositive ? "text-green-600" : "text-red-600"
+            }`}
+          >
+            {isPositive ? (
+              <ArrowUpIcon className="w-4 h-4 mr-1" />
+            ) : (
+              <ArrowDownIcon className="w-4 h-4 mr-1" />
+            )}
             {changeValue}
           </p>
         </div>
@@ -67,7 +81,7 @@ const PerformanceMetrics: React.FC = () => {
       avgLLMResponseTime: 0,
       avgToolCallResponseTime: 0,
       avgCostPerLLMCall: 0,
-    }
+    },
   });
 
   useEffect(() => {
@@ -83,31 +97,49 @@ const PerformanceMetrics: React.FC = () => {
 
       try {
         if (selectedTraceId) {
-          const response = await axios.get(`/api/analysis_traces/${selectedTraceId}`);
+          const response = await axios.get(
+            `/api/analysis_traces/${selectedTraceId}`
+          );
           const traceData = response.data;
 
           totalLLMCalls = traceData.llm_calls.length;
           totalToolCalls = traceData.tool_calls.length;
           totalErrors = traceData.errors.length;
-          totalLLMDuration = traceData.llm_calls.reduce((sum, call) => sum + call.duration, 0);
-          totalToolDuration = traceData.tool_calls.reduce((sum, call) => sum + call.duration, 0);
+          totalLLMDuration = traceData.llm_calls.reduce(
+            (sum, call) => sum + call.duration,
+            0
+          );
+          totalToolDuration = traceData.tool_calls.reduce(
+            (sum, call) => sum + call.duration,
+            0
+          );
           totalCost = traceData.llm_calls.reduce((sum, call) => {
             const costObj = JSON.parse(call.cost) as CostObject;
             return sum + Object.values(costObj).reduce((a, b) => a + b, 0);
           }, 0);
         } else {
-          const tracesResponse = await axios.get(`/api/projects/${selectedProject}/traces`);
+          const tracesResponse = await axios.get(
+            `/api/projects/${selectedProject}/traces`
+          );
           const traces = tracesResponse.data;
 
           for (const trace of traces) {
-            const response = await axios.get(`/api/analysis_traces/${trace.id}`);
+            const response = await axios.get(
+              `/api/analysis_traces/${trace.id}`
+            );
             const traceData = response.data;
 
             totalLLMCalls += traceData.llm_calls.length;
             totalToolCalls += traceData.tool_calls.length;
             totalErrors += traceData.errors.length;
-            totalLLMDuration += traceData.llm_calls.reduce((sum, call) => sum + call.duration, 0);
-            totalToolDuration += traceData.tool_calls.reduce((sum, call) => sum + call.duration, 0);
+            totalLLMDuration += traceData.llm_calls.reduce(
+              (sum, call) => sum + call.duration,
+              0
+            );
+            totalToolDuration += traceData.tool_calls.reduce(
+              (sum, call) => sum + call.duration,
+              0
+            );
             totalCost += traceData.llm_calls.reduce((sum, call) => {
               const costObj = JSON.parse(call.cost) as CostObject;
               return sum + Object.values(costObj).reduce((a, b) => a + b, 0);
@@ -116,22 +148,26 @@ const PerformanceMetrics: React.FC = () => {
         }
 
         const totalCalls = totalLLMCalls + totalToolCalls;
-        const successRate = totalCalls > 0 ? ((totalCalls - totalErrors) / totalCalls) * 100 : 0;
-        const avgLLMResponseTime = totalLLMCalls > 0 ? totalLLMDuration / totalLLMCalls : 0;
-        const avgToolCallResponseTime = totalToolCalls > 0 ? totalToolDuration / totalToolCalls : 0;
-        const avgCostPerLLMCall = totalLLMCalls > 0 ? totalCost / totalLLMCalls : 0;
+        const successRate =
+          totalCalls > 0 ? ((totalCalls - totalErrors) / totalCalls) * 100 : 0;
+        const avgLLMResponseTime =
+          totalLLMCalls > 0 ? totalLLMDuration / totalLLMCalls : 0;
+        const avgToolCallResponseTime =
+          totalToolCalls > 0 ? totalToolDuration / totalToolCalls : 0;
+        const avgCostPerLLMCall =
+          totalLLMCalls > 0 ? totalCost / totalLLMCalls : 0;
 
-        setMetrics(prev => ({
+        setMetrics((prev) => ({
           previous: prev.current,
           current: {
             successRate,
             avgLLMResponseTime,
             avgToolCallResponseTime,
             avgCostPerLLMCall,
-          }
+          },
         }));
       } catch (error) {
-        console.error('Error fetching trace data:', error);
+        console.error("Error fetching trace data:", error);
       }
     };
 
@@ -139,33 +175,35 @@ const PerformanceMetrics: React.FC = () => {
   }, [selectedProject, selectedTraceId]);
 
   return (
-    <div className="bg-gray-200 p-4 rounded-lg">
-      <h2 className="text-xl font-semibold mb-4">Performance Metrics</h2>
+    <div className="bg-gray-200 p-4 rounded-lg dark:bg-gray-800">
+      <h2 className="text-xl font-semibold mb-4 dark:text-gray-300">
+        Performance Metrics
+      </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard 
-          title="Success Rate" 
-          value={`${metrics.current.successRate.toFixed(2)}%`} 
+        <MetricCard
+          title="Success Rate"
+          value={`${metrics.current.successRate.toFixed(2)}%`}
           previousValue={metrics.previous.successRate}
           currentValue={metrics.current.successRate}
           titleColor="text-purple-600"
         />
-        <MetricCard 
-          title="Avg LLM Response Time" 
-          value={`${metrics.current.avgLLMResponseTime.toFixed(2)}s`} 
+        <MetricCard
+          title="Avg LLM Response Time"
+          value={`${metrics.current.avgLLMResponseTime.toFixed(2)}s`}
           previousValue={metrics.previous.avgLLMResponseTime}
           currentValue={metrics.current.avgLLMResponseTime}
           titleColor="text-purple-600"
         />
-        <MetricCard 
-          title="Avg Tool Response Time" 
-          value={`${metrics.current.avgToolCallResponseTime.toFixed(2)}s`} 
+        <MetricCard
+          title="Avg Tool Response Time"
+          value={`${metrics.current.avgToolCallResponseTime.toFixed(2)}s`}
           previousValue={metrics.previous.avgToolCallResponseTime}
           currentValue={metrics.current.avgToolCallResponseTime}
           titleColor="text-purple-600"
         />
-        <MetricCard 
-          title="Avg Cost per LLM Call" 
-          value={`$${metrics.current.avgCostPerLLMCall.toFixed(4)}`} 
+        <MetricCard
+          title="Avg Cost per LLM Call"
+          value={`$${metrics.current.avgCostPerLLMCall.toFixed(4)}`}
           previousValue={metrics.previous.avgCostPerLLMCall}
           currentValue={metrics.current.avgCostPerLLMCall}
           titleColor="text-purple-600"

@@ -1,11 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Loader2 } from 'lucide-react';
-import axios from 'axios';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import { Loader2 } from "lucide-react";
+import axios from "axios";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { useProject } from '@/contexts/ProjectContext';
+import { useProject } from "@/contexts/ProjectContext";
 
 interface ColorConfig {
   gradient: string[];
@@ -19,38 +28,38 @@ interface ColorConfigs {
 
 const TOKEN_COLORS: ColorConfigs = {
   Input: {
-    gradient: ['#FF6B6B', '#FF8787'], // Vibrant coral red
-    stroke: '#FF4949',
-    text: '#FF4949'
+    gradient: ["#FF6B6B", "#FF8787"], // Vibrant coral red
+    stroke: "#FF4949",
+    text: "#FF4949",
   },
   Output: {
-    gradient: ['#4ECDC4', '#45B7AF'], // Bright turquoise
-    stroke: '#2FB4A9',
-    text: '#2FB4A9'
+    gradient: ["#4ECDC4", "#45B7AF"], // Bright turquoise
+    stroke: "#2FB4A9",
+    text: "#2FB4A9",
   },
   Reasoning: {
-    gradient: ['#FFD93D', '#FFE566'], // Bright yellow
-    stroke: '#FFD000',
-    text: '#CC9900'
-  }
+    gradient: ["#FFD93D", "#FFE566"], // Bright yellow
+    stroke: "#FFD000",
+    text: "#CC9900",
+  },
 };
 
 const COST_COLORS: ColorConfigs = {
   InputCost: {
-    gradient: ['#845EC2', '#9B72D3'], // Rich purple
-    stroke: '#7048B6',
-    text: '#7048B6'
+    gradient: ["#845EC2", "#9B72D3"], // Rich purple
+    stroke: "#7048B6",
+    text: "#7048B6",
   },
   OutputCost: {
-    gradient: ['#FF8066', '#FF9B85'], // Bright coral
-    stroke: '#FF6B52',
-    text: '#FF6B52'
+    gradient: ["#FF8066", "#FF9B85"], // Bright coral
+    stroke: "#FF6B52",
+    text: "#FF6B52",
   },
   ReasoningCost: {
-    gradient: ['#00C2A8', '#1ADBC2'], // Vibrant teal
-    stroke: '#00A894',
-    text: '#00A894'
-  }
+    gradient: ["#00C2A8", "#1ADBC2"], // Vibrant teal
+    stroke: "#00A894",
+    text: "#00A894",
+  },
 };
 
 interface TokenUsage {
@@ -87,36 +96,36 @@ const LLMUsageAnalysis: React.FC = () => {
   const [summary, setSummary] = useState<Summary>({
     totalTokens: 0,
     totalCost: 0,
-    totalCalls: 0
+    totalCalls: 0,
   });
 
   const parseJsonString = (jsonString: string): any => {
     try {
       return JSON.parse(jsonString);
     } catch (error) {
-      console.error('Error parsing JSON string:', error);
+      console.error("Error parsing JSON string:", error);
       return {};
     }
   };
 
   const formatNumber = (value: number): string => {
-    if (value === 0) return '0';
+    if (value === 0) return "0";
     if (value < 0.00001) return value.toExponential(2);
     return value.toFixed(5);
   };
 
   const calculatePercentages = (data: any[]) => {
-    return data.map(item => {
+    return data.map((item) => {
       const total = Object.keys(item).reduce((sum, key) => {
-        if (key !== 'model' && key !== 'Total' && key !== 'TotalCost') {
+        if (key !== "model" && key !== "Total" && key !== "TotalCost") {
           return sum + (item[key] || 0);
         }
         return sum;
       }, 0);
 
       const percentages = { ...item };
-      Object.keys(item).forEach(key => {
-        if (key !== 'model' && key !== 'Total' && key !== 'TotalCost') {
+      Object.keys(item).forEach((key) => {
+        if (key !== "model" && key !== "Total" && key !== "TotalCost") {
           percentages[key] = total > 0 ? ((item[key] || 0) / total) * 100 : 0;
         }
       });
@@ -125,8 +134,8 @@ const LLMUsageAnalysis: React.FC = () => {
   };
 
   const processLLMCall = (
-    call: LLMCall, 
-    tokenUsage: Record<string, TokenUsage>, 
+    call: LLMCall,
+    tokenUsage: Record<string, TokenUsage>,
     costUsage: Record<string, CostUsage>
   ) => {
     const modelName = call.model;
@@ -134,21 +143,21 @@ const LLMUsageAnalysis: React.FC = () => {
       tokenUsage[modelName] = { input: 0, completion: 0, reasoning: 0 };
       costUsage[modelName] = { input: 0, output: 0, reasoning: 0 };
     }
-    
+
     const tokens = parseJsonString(call.token_usage) as TokenUsage;
     const costs = parseJsonString(call.cost) as CostUsage;
-    
+
     tokenUsage[modelName].input += tokens.input || 0;
     tokenUsage[modelName].completion += tokens.completion || 0;
     tokenUsage[modelName].reasoning += tokens.reasoning || 0;
-    
+
     costUsage[modelName].input += costs.input || 0;
     costUsage[modelName].output += costs.output || 0;
     costUsage[modelName].reasoning += costs.reasoning || 0;
 
     return {
       tokens: tokens.input + tokens.completion + tokens.reasoning,
-      cost: costs.input + costs.output + costs.reasoning
+      cost: costs.input + costs.output + costs.reasoning,
     };
   };
 
@@ -158,7 +167,7 @@ const LLMUsageAnalysis: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       let llmTokenUsage: Record<string, TokenUsage> = {};
       let llmCostUsage: Record<string, CostUsage> = {};
       let totalTokens = 0;
@@ -166,25 +175,39 @@ const LLMUsageAnalysis: React.FC = () => {
       let totalCalls = 0;
 
       if (selectedTraceId) {
-        const traceResponse = await axios.get(`/api/analysis_traces/${selectedTraceId}`);
+        const traceResponse = await axios.get(
+          `/api/analysis_traces/${selectedTraceId}`
+        );
         const traceData = traceResponse.data;
-        
+
         traceData.llm_calls.forEach((call: LLMCall) => {
-          const { tokens, cost } = processLLMCall(call, llmTokenUsage, llmCostUsage);
+          const { tokens, cost } = processLLMCall(
+            call,
+            llmTokenUsage,
+            llmCostUsage
+          );
           totalTokens += tokens;
           totalCost += cost;
           totalCalls++;
         });
       } else {
-        const tracesResponse = await axios.get(`/api/projects/${selectedProject}/traces`);
+        const tracesResponse = await axios.get(
+          `/api/projects/${selectedProject}/traces`
+        );
         const traces = tracesResponse.data;
-        
+
         for (const trace of traces) {
-          const traceResponse = await axios.get(`/api/analysis_traces/${trace.id}`);
+          const traceResponse = await axios.get(
+            `/api/analysis_traces/${trace.id}`
+          );
           const traceData = traceResponse.data;
-          
+
           traceData.llm_calls.forEach((call: LLMCall) => {
-            const { tokens, cost } = processLLMCall(call, llmTokenUsage, llmCostUsage);
+            const { tokens, cost } = processLLMCall(
+              call,
+              llmTokenUsage,
+              llmCostUsage
+            );
             totalTokens += tokens;
             totalCost += cost;
             totalCalls++;
@@ -192,28 +215,32 @@ const LLMUsageAnalysis: React.FC = () => {
         }
       }
 
-      const formattedTokenData = Object.entries(llmTokenUsage).map(([model, usage]) => ({
-        model,
-        Input: usage.input,
-        Output: usage.completion,
-        Reasoning: usage.reasoning,
-        Total: usage.input + usage.completion + usage.reasoning
-      }));
+      const formattedTokenData = Object.entries(llmTokenUsage).map(
+        ([model, usage]) => ({
+          model,
+          Input: usage.input,
+          Output: usage.completion,
+          Reasoning: usage.reasoning,
+          Total: usage.input + usage.completion + usage.reasoning,
+        })
+      );
 
-      const formattedCostData = Object.entries(llmCostUsage).map(([model, usage]) => ({
-        model,
-        InputCost: usage.input,
-        OutputCost: usage.output,
-        ReasoningCost: usage.reasoning,
-        TotalCost: usage.input + usage.output + usage.reasoning
-      }));
+      const formattedCostData = Object.entries(llmCostUsage).map(
+        ([model, usage]) => ({
+          model,
+          InputCost: usage.input,
+          OutputCost: usage.output,
+          ReasoningCost: usage.reasoning,
+          TotalCost: usage.input + usage.output + usage.reasoning,
+        })
+      );
 
       setTokenData(formattedTokenData);
       setCostData(formattedCostData);
       setSummary({ totalTokens, totalCost, totalCalls });
     } catch (err) {
-      console.error('Error fetching LLM usage data:', err);
-      setError('Failed to fetch LLM usage data. Please try again later.');
+      console.error("Error fetching LLM usage data:", err);
+      setError("Failed to fetch LLM usage data. Please try again later.");
     } finally {
       setIsLoading(false);
     }
@@ -227,31 +254,38 @@ const LLMUsageAnalysis: React.FC = () => {
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
-      const total = payload.reduce((sum: number, pld: any) => sum + (pld.value || 0), 0);
-      const isCost = payload[0].name.includes('Cost');
+      const total = payload.reduce(
+        (sum: number, pld: any) => sum + (pld.value || 0),
+        0
+      );
+      const isCost = payload[0].name.includes("Cost");
       const colors = isCost ? COST_COLORS : TOKEN_COLORS;
-      
+
       return (
-        <div className="bg-white p-4 border rounded shadow">
+        <div className="bg-white p-4 border rounded shadow dark:bg-gray-800 dark:border-gray-400">
           <p className="font-bold">{label}</p>
           {payload.map((pld: any) => {
             const colorKey = pld.dataKey;
             return (
               <p key={pld.name} style={{ color: colors[colorKey]?.text }}>
-                {`${pld.name}: ${showPercentage 
-                  ? `${(pld.value || 0).toFixed(2)}%` 
-                  : isCost 
-                    ? `$${formatNumber(pld.value)}` 
-                    : Math.round(pld.value).toLocaleString()}`}
+                {`${pld.name}: ${
+                  showPercentage
+                    ? `${(pld.value || 0).toFixed(2)}%`
+                    : isCost
+                    ? `$${formatNumber(pld.value)}`
+                    : Math.round(pld.value).toLocaleString()
+                }`}
               </p>
             );
           })}
           <p className="font-bold mt-2">
-            {`Total: ${showPercentage 
-              ? '100%' 
-              : isCost 
-                ? `$${formatNumber(total)}` 
-                : Math.round(total).toLocaleString()}`}
+            {`Total: ${
+              showPercentage
+                ? "100%"
+                : isCost
+                ? `$${formatNumber(total)}`
+                : Math.round(total).toLocaleString()
+            }`}
           </p>
         </div>
       );
@@ -259,7 +293,12 @@ const LLMUsageAnalysis: React.FC = () => {
     return null;
   };
 
-  const renderChart = (data: any[], title: string, dataKeys: string[], colors: ColorConfigs) => (
+  const renderChart = (
+    data: any[],
+    title: string,
+    dataKeys: string[],
+    colors: ColorConfigs
+  ) => (
     <div>
       <h3 className="text-lg font-semibold mb-2">{title}</h3>
       <ResponsiveContainer width="100%" height={400}>
@@ -276,16 +315,16 @@ const LLMUsageAnalysis: React.FC = () => {
             </defs>
           ))}
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis 
+          <XAxis
             dataKey="model"
             angle={-20}
             textAnchor="end"
             height={100}
             interval={0}
-            label={{ 
-              value: "Model Name", 
+            label={{
+              value: "Model Name",
               position: "bottom",
-              offset: 80
+              offset: 80,
             }}
           />
           <YAxis
@@ -294,24 +333,28 @@ const LLMUsageAnalysis: React.FC = () => {
               if (title.includes("Cost")) return `$${formatNumber(value)}`;
               return Math.round(value).toLocaleString();
             }}
-            domain={showPercentage ? [0, 100] : [0, 'auto']}
-            label={{ 
-              value: title.includes("Cost") 
-                ? (showPercentage ? "% of Cost" : "Cost (USD)") 
-                : (showPercentage ? "% of Tokens" : "Number of Tokens"),
+            domain={showPercentage ? [0, 100] : [0, "auto"]}
+            label={{
+              value: title.includes("Cost")
+                ? showPercentage
+                  ? "% of Cost"
+                  : "Cost (USD)"
+                : showPercentage
+                ? "% of Tokens"
+                : "Number of Tokens",
               angle: -90,
               position: "insideLeft",
               offset: -60,
-              style: { textAnchor: 'middle' }
+              style: { textAnchor: "middle" },
             }}
           />
           <Tooltip content={<CustomTooltip />} />
           <Legend />
           {dataKeys.map((key) => (
-            <Bar 
-              key={key} 
-              dataKey={key} 
-              stackId="a" 
+            <Bar
+              key={key}
+              dataKey={key}
+              stackId="a"
               fill={`url(#${key}Gradient)`}
               stroke={colors[key].stroke}
               strokeWidth={1}
@@ -348,7 +391,11 @@ const LLMUsageAnalysis: React.FC = () => {
     }
 
     if (!selectedProject) {
-      return <div className="text-center p-4">Please select a project to view analytics</div>;
+      return (
+        <div className="text-center p-4">
+          Please select a project to view analytics
+        </div>
+      );
     }
 
     if (tokenData.length === 0 || costData.length === 0) {
@@ -357,7 +404,7 @@ const LLMUsageAnalysis: React.FC = () => {
 
     return (
       <div className="space-y-8">
-        <div className="bg-gray-100 p-4 rounded-lg">
+        <div className="bg-gray-100 p-4 rounded-lg dark:bg-gray-800">
           <h3 className="text-lg font-semibold mb-2">Summary</h3>
           <p>Total Tokens Used: {summary.totalTokens.toLocaleString()}</p>
           <p>Total Cost: ${formatNumber(summary.totalCost)}</p>
@@ -373,8 +420,18 @@ const LLMUsageAnalysis: React.FC = () => {
           <Label htmlFor="llm-percentage-mode">Show as percentage</Label>
         </div>
 
-        {renderChart(tokenData, "Token Usage", ["Input", "Output", "Reasoning"], TOKEN_COLORS)}
-        {renderChart(costData, "Cost Analysis", ["InputCost", "OutputCost", "ReasoningCost"], COST_COLORS)}
+        {renderChart(
+          tokenData,
+          "Token Usage",
+          ["Input", "Output", "Reasoning"],
+          TOKEN_COLORS
+        )}
+        {renderChart(
+          costData,
+          "Cost Analysis",
+          ["InputCost", "OutputCost", "ReasoningCost"],
+          COST_COLORS
+        )}
       </div>
     );
   };
@@ -384,9 +441,7 @@ const LLMUsageAnalysis: React.FC = () => {
       <CardHeader>
         <CardTitle>LLM Usage Analysis</CardTitle>
       </CardHeader>
-      <CardContent>
-        {renderContent()}
-      </CardContent>
+      <CardContent>{renderContent()}</CardContent>
     </Card>
   );
 };

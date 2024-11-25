@@ -1,9 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Loader2 } from 'lucide-react';
-import axios from 'axios';
-import { useProject } from '@/contexts/ProjectContext';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { Loader2 } from "lucide-react";
+import axios from "axios";
+import { useProject } from "@/contexts/ProjectContext";
 
 interface ErrorData {
   error_type: string;
@@ -11,8 +19,8 @@ interface ErrorData {
 }
 
 const ERROR_COLORS = {
-  gradient: ['#ef4444', '#f87171'],
-  stroke: '#dc2626'
+  gradient: ["#ef4444", "#f87171"],
+  stroke: "#dc2626",
 };
 
 const ErrorAnalysis: React.FC = () => {
@@ -27,11 +35,13 @@ const ErrorAnalysis: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       let errorCounts: Record<string, number> = {};
 
       if (selectedTraceId) {
-        const traceResponse = await axios.get(`/api/analysis_traces/${selectedTraceId}`);
+        const traceResponse = await axios.get(
+          `/api/analysis_traces/${selectedTraceId}`
+        );
         const traceData = traceResponse.data;
 
         traceData.errors.forEach((error: any) => {
@@ -41,11 +51,15 @@ const ErrorAnalysis: React.FC = () => {
           errorCounts[error.error_type]++;
         });
       } else {
-        const tracesResponse = await axios.get(`/api/projects/${selectedProject}/traces`);
+        const tracesResponse = await axios.get(
+          `/api/projects/${selectedProject}/traces`
+        );
         const traces = tracesResponse.data;
 
         for (const trace of traces) {
-          const traceResponse = await axios.get(`/api/analysis_traces/${trace.id}`);
+          const traceResponse = await axios.get(
+            `/api/analysis_traces/${trace.id}`
+          );
           const traceData = traceResponse.data;
 
           traceData.errors.forEach((error: any) => {
@@ -66,8 +80,8 @@ const ErrorAnalysis: React.FC = () => {
 
       setErrorData(processedErrorData);
     } catch (err) {
-      console.error('Error fetching error data:', err);
-      setError('Failed to fetch error data. Please try again later.');
+      console.error("Error fetching error data:", err);
+      setError("Failed to fetch error data. Please try again later.");
     } finally {
       setIsLoading(false);
     }
@@ -82,7 +96,7 @@ const ErrorAnalysis: React.FC = () => {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-4 border rounded shadow">
+        <div className="bg-white p-4 border rounded shadow  dark:bg-gray-700 dark:border-gray-400">
           <p className="font-bold">{label}</p>
           <p style={{ color: ERROR_COLORS.stroke }}>
             {`Count: ${payload[0].value}`}
@@ -118,7 +132,11 @@ const ErrorAnalysis: React.FC = () => {
     }
 
     if (!selectedProject) {
-      return <div className="text-center p-4">Please select a project to view analytics</div>;
+      return (
+        <div className="text-center p-4">
+          Please select a project to view analytics
+        </div>
+      );
     }
 
     if (errorData.length === 0) {
@@ -144,24 +162,24 @@ const ErrorAnalysis: React.FC = () => {
             textAnchor="end"
             height={100}
             interval={0}
-            label={{ 
-              value: "Error Type", 
+            label={{
+              value: "Error Type",
               position: "bottom",
-              offset: 80
+              offset: 80,
             }}
           />
           <YAxis
-            label={{ 
+            label={{
               value: "Number of Occurrences",
               angle: -90,
               position: "insideLeft",
               offset: -60,
-              style: { textAnchor: 'middle' }
+              style: { textAnchor: "middle" },
             }}
           />
           <Tooltip content={<CustomTooltip />} />
-          <Bar 
-            dataKey="count" 
+          <Bar
+            dataKey="count"
             fill="url(#errorGradient)"
             stroke={ERROR_COLORS.stroke}
             strokeWidth={1}
@@ -177,9 +195,7 @@ const ErrorAnalysis: React.FC = () => {
       <CardHeader>
         <CardTitle>Error Analysis</CardTitle>
       </CardHeader>
-      <CardContent>
-        {renderContent()}
-      </CardContent>
+      <CardContent>{renderContent()}</CardContent>
     </Card>
   );
 };

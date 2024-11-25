@@ -24,6 +24,7 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -73,11 +74,11 @@ export default {
         "accordion-up": "accordion-up 0.2s ease-out",
       },
       backgroundImage: {
-        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+        "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
       },
       spacing: {
-        'sidebar-expanded': '16rem',
-        'sidebar-collapsed': '6rem', // Increased from 5rem to 6rem
+        "sidebar-expanded": "16rem",
+        "sidebar-collapsed": "6rem", // Increased from 5rem to 6rem
       },
     },
   },

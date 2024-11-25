@@ -1,16 +1,23 @@
-import React from 'react';
-import PerformanceMetrics from '../components/AnalysisPage/PerformanceMetrics';
-import LLMUsageAnalysis from '../components/AnalysisPage/LLMUsageAnalysis';
-import ToolPerformanceAnalysis from '../components/AnalysisPage/ToolPerformanceAnalysis';
-import ErrorAnalysis from '../components/AnalysisPage/ErrorAnalysis';
-import TimeAnalysis from '../components/AnalysisPage/TimeAnalysis';
-import TracePerformanceComparison from '../components/AnalysisPage/TracePerformanceComparison';
-import TopPerformanceCriteria from '../components/AnalysisPage/TopPerformanceCriteria';
-import Sidebar from '../components/Sidebar';
-import { useSidebar } from '../contexts/SidebarContext';
-import { useProject } from '../contexts/ProjectContext';
-import { PieChart } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import React from "react";
+import PerformanceMetrics from "../components/AnalysisPage/PerformanceMetrics";
+import LLMUsageAnalysis from "../components/AnalysisPage/LLMUsageAnalysis";
+import ToolPerformanceAnalysis from "../components/AnalysisPage/ToolPerformanceAnalysis";
+import ErrorAnalysis from "../components/AnalysisPage/ErrorAnalysis";
+import TimeAnalysis from "../components/AnalysisPage/TimeAnalysis";
+import TracePerformanceComparison from "../components/AnalysisPage/TracePerformanceComparison";
+import TopPerformanceCriteria from "../components/AnalysisPage/TopPerformanceCriteria";
+import Sidebar from "../components/Sidebar";
+import { useSidebar } from "../contexts/SidebarContext";
+import { useProject } from "../contexts/ProjectContext";
+import { PieChart } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ModeToggle } from "@/components/ModeToggle";
 
 const Analysis: React.FC = () => {
   const { isCollapsed } = useSidebar();
@@ -20,7 +27,7 @@ const Analysis: React.FC = () => {
     selectedTraceId,
     setSelectedTraceId,
     projects,
-    traces
+    traces,
   } = useProject();
 
   return (
@@ -34,11 +41,13 @@ const Analysis: React.FC = () => {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center">
               <PieChart className="mr-2 h-8 w-8 text-indigo-600 dark:text-indigo-400" />
-              <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Analytics</h1>
+              <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
+                Analytics
+              </h1>
             </div>
             <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
               <Select
-                value={selectedProject?.toString() || ''}
+                value={selectedProject?.toString() || ""}
                 onValueChange={(value) => setSelectedProject(Number(value))}
               >
                 <SelectTrigger className="w-full sm:w-[200px]">
@@ -53,7 +62,7 @@ const Analysis: React.FC = () => {
                 </SelectContent>
               </Select>
               <Select
-                value={selectedTraceId || ''}
+                value={selectedTraceId || ""}
                 onValueChange={setSelectedTraceId}
                 disabled={!selectedProject}
               >
@@ -68,6 +77,7 @@ const Analysis: React.FC = () => {
                   ))}
                 </SelectContent>
               </Select>
+              <ModeToggle />
             </div>
           </div>
         </div>

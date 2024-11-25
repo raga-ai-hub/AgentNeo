@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useState, useEffect } from 'react';
+import React, { useMemo, useCallback, useState, useEffect } from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -6,34 +6,40 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   Panel,
-} from 'reactflow';
+} from "reactflow";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
-import 'reactflow/dist/style.css';
-import '../styles/ExecutionGraph.css';
-import { CustomNode, nodeTypes, nodeStylesByType } from './ExecutionGraphNodes';
-import { Legend } from './ExecutionGraphLegend';
-import { getLayoutedElements } from './ExecutionGraphLayout';
-import { useProject } from '../contexts/ProjectContext';
-import { fetchExecutionGraphData, GraphNode, GraphEdge } from '../utils/databaseUtils';
-import { debounce } from 'lodash';
+import { Search, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import "reactflow/dist/style.css";
+import "../styles/ExecutionGraph.css";
+import { CustomNode, nodeTypes, nodeStylesByType } from "./ExecutionGraphNodes";
+import { Legend } from "./ExecutionGraphLegend";
+import { getLayoutedElements } from "./ExecutionGraphLayout";
+import { useProject } from "../contexts/ProjectContext";
+import {
+  fetchExecutionGraphData,
+  GraphNode,
+  GraphEdge,
+} from "../utils/databaseUtils";
+import { debounce } from "lodash";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const ExecutionGraph = () => {
   const { selectedProject, selectedTraceId } = useProject();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
-
+  const { theme } = useTheme();
   useEffect(() => {
     const loadGraphData = async () => {
       if (selectedProject && selectedTraceId) {
-        const { nodes: fetchedNodes, edges: fetchedEdges } = await fetchExecutionGraphData(selectedProject, selectedTraceId);
+        const { nodes: fetchedNodes, edges: fetchedEdges } =
+          await fetchExecutionGraphData(selectedProject, selectedTraceId);
         const initialNodes = fetchedNodes.map((node) => ({
           id: node.id,
-          type: 'custom',
+          type: "custom",
           data: {
             ...node.data,
             type: node.type,
@@ -50,13 +56,13 @@ const ExecutionGraph = () => {
   }, [selectedProject, selectedTraceId, setNodes, setEdges]);
 
   const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(
-    () => getLayoutedElements(nodes, edges, 'TB'),
+    () => getLayoutedElements(nodes, edges, "TB"),
     [nodes, edges]
   );
 
   const filteredNodes = useMemo(() => {
     if (!searchTerm) return layoutedNodes;
-    return layoutedNodes.filter(node =>
+    return layoutedNodes.filter((node) =>
       node.data.label.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [layoutedNodes, searchTerm]);
@@ -68,7 +74,7 @@ const ExecutionGraph = () => {
 
   const handleSearch = () => {
     if (searchTerm && reactFlowInstance) {
-      const matchingNode = filteredNodes.find(node =>
+      const matchingNode = filteredNodes.find((node) =>
         node.data.label.toLowerCase().includes(searchTerm.toLowerCase())
       );
       if (matchingNode) {
@@ -95,11 +101,28 @@ const ExecutionGraph = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="max-w-sm"
           />
-          <Button variant="outline" size="icon" onClick={handleSearch}>
-            <Search className="h-4 w-4" />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleSearch}
+            className="dark:bg-black dark:border-gray-700 dark:hover:bg-gray-900"
+          >
+            <Search
+              className="h-4 w-4"
+              color={
+                theme === "dark" ||
+                (theme === "system" &&
+                  window.matchMedia("(prefers-color-scheme: dark)").matches)
+                  ? "#9FA6B5"
+                  : "#4B5563"
+              }
+            />
           </Button>
         </div>
-        <div style={{ height: '70vh' }} className="border rounded-lg overflow-hidden shadow-lg">
+        <div
+          style={{ height: "70vh" }}
+          className="border rounded-lg overflow-hidden shadow-lg"
+        >
           <ReactFlow
             nodes={filteredNodes}
             edges={layoutedEdges}
@@ -113,24 +136,82 @@ const ExecutionGraph = () => {
             maxZoom={1.5}
           >
             <Background color="#e0e7ff" gap={16} />
-            <Controls showInteractive={false} />
+            {/* <Controls showInteractive={false} /> */}
             <MiniMap
               nodeColor={(node) => {
-                const type = (node.data?.type || 'default') as keyof typeof nodeStylesByType;
-                return nodeStylesByType[type]?.backgroundColor || nodeStylesByType.agent.backgroundColor;
+                const type = (node.data?.type ||
+                  "default") as keyof typeof nodeStylesByType;
+                return (
+                  nodeStylesByType[type]?.backgroundColor ||
+                  nodeStylesByType.agent.backgroundColor
+                );
               }}
-              maskColor="#f0f0f080"
+              maskColor={
+                theme === "dark" ||
+                (theme === "system" &&
+                  window.matchMedia("(prefers-color-scheme: dark)").matches)
+                  ? "#1f2937"
+                  : "#f0f0f080"
+              }
             />
-            <Panel position="top-right" className="bg-white p-2 rounded shadow-md">
+            <Panel
+              position="top-left"
+              className="bg-white p-2 rounded shadow-md dark:bg-gray-800"
+            >
               <div className="flex space-x-2">
-                <Button variant="outline" size="icon" onClick={handleZoomIn}>
-                  <ZoomIn className="h-4 w-4" />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleZoomIn}
+                  className="dark:bg-black dark:border-gray-700 dark:hover:bg-gray-900"
+                >
+                  <ZoomIn
+                    className="h-4 w-4"
+                    color={
+                      theme === "dark" ||
+                      (theme === "system" &&
+                        window.matchMedia("(prefers-color-scheme: dark)")
+                          .matches)
+                        ? "#9FA6B5"
+                        : "#4B5563"
+                    }
+                  />
                 </Button>
-                <Button variant="outline" size="icon" onClick={handleZoomOut}>
-                  <ZoomOut className="h-4 w-4" />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleZoomOut}
+                  className="dark:bg-black dark:border-gray-700 dark:hover:bg-gray-900"
+                >
+                  <ZoomOut
+                    className="h-4 w-4"
+                    color={
+                      theme === "dark" ||
+                      (theme === "system" &&
+                        window.matchMedia("(prefers-color-scheme: dark)")
+                          .matches)
+                        ? "#9FA6B5"
+                        : "#4B5563"
+                    }
+                  />
                 </Button>
-                <Button variant="outline" size="icon" onClick={handleFitView}>
-                  <Maximize2 className="h-4 w-4" />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleFitView}
+                  className="dark:bg-black dark:border-gray-700 dark:hover:bg-gray-900"
+                >
+                  <Maximize2
+                    className="h-4 w-4"
+                    color={
+                      theme === "dark" ||
+                      (theme === "system" &&
+                        window.matchMedia("(prefers-color-scheme: dark)")
+                          .matches)
+                        ? "#9FA6B5"
+                        : "#4B5563"
+                    }
+                  />
                 </Button>
               </div>
             </Panel>

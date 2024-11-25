@@ -1,15 +1,28 @@
-import React, { useEffect, useCallback, useState } from 'react';
-import ProjectInformation from '../components/ProjectInformation';
-import SystemInformation from '../components/SystemInformation';
-import ExecutionGraph from '../components/ExecutionGraph';
-import AgentCalls from '../components/AgentCalls';
-import InstalledPackages from '../components/InstalledPackages';
-import Sidebar from '../components/Sidebar';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LayoutDashboard } from 'lucide-react';
-import { useProject } from '../contexts/ProjectContext';
+import React, { useEffect, useCallback, useState } from "react";
+import ProjectInformation from "../components/ProjectInformation";
+import SystemInformation from "../components/SystemInformation";
+import ExecutionGraph from "../components/ExecutionGraph";
+import AgentCalls from "../components/AgentCalls";
+import InstalledPackages from "../components/InstalledPackages";
+import Sidebar from "../components/Sidebar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { LayoutDashboard } from "lucide-react";
+import { useProject } from "../contexts/ProjectContext";
 
-import { fetchTraceData, fetchSystemInfo, fetchInstalledPackages, fetchAgentCalls, fetchProjectInfo } from '../utils/databaseUtils';
+import {
+  fetchTraceData,
+  fetchSystemInfo,
+  fetchInstalledPackages,
+  fetchAgentCalls,
+  fetchProjectInfo,
+} from "../utils/databaseUtils";
+import { ModeToggle } from "@/components/ModeToggle";
 
 const Index = () => {
   const {
@@ -20,7 +33,7 @@ const Index = () => {
     setSelectedTrace,
     projects,
     traces,
-    setError
+    setError,
   } = useProject();
 
   const [projectData, setProjectData] = useState(null);
@@ -28,40 +41,46 @@ const Index = () => {
   const [installedPackages, setInstalledPackages] = useState(null);
   const [agentCalls, setAgentCalls] = useState(null);
 
-  const loadProjectData = useCallback(async (projectId: number) => {
-    if (!projectId) return;
+  const loadProjectData = useCallback(
+    async (projectId: number) => {
+      if (!projectId) return;
 
-    console.log(`Loading data for project ${projectId}`);
+      console.log(`Loading data for project ${projectId}`);
 
-    try {
-      const [projectInfo, sysInfo, packages, calls] = await Promise.all([
-        fetchProjectInfo(projectId),
-        fetchSystemInfo(projectId),
-        fetchInstalledPackages(projectId),
-        fetchAgentCalls(projectId)
-      ]);
+      try {
+        const [projectInfo, sysInfo, packages, calls] = await Promise.all([
+          fetchProjectInfo(projectId),
+          fetchSystemInfo(projectId),
+          fetchInstalledPackages(projectId),
+          fetchAgentCalls(projectId),
+        ]);
 
-      setProjectData(projectInfo);
-      setSystemInfo(sysInfo);
-      setInstalledPackages(packages);
-      setAgentCalls(calls);
-    } catch (error) {
-      console.error('Error loading project data:', error);
-      setError('Failed to load project data');
-    }
-  }, [setError]);
+        setProjectData(projectInfo);
+        setSystemInfo(sysInfo);
+        setInstalledPackages(packages);
+        setAgentCalls(calls);
+      } catch (error) {
+        console.error("Error loading project data:", error);
+        setError("Failed to load project data");
+      }
+    },
+    [setError]
+  );
 
-  const loadTraceData = useCallback(async (projectId: number, traceId: string) => {
-    if (!projectId || !traceId) return;
+  const loadTraceData = useCallback(
+    async (projectId: number, traceId: string) => {
+      if (!projectId || !traceId) return;
 
-    try {
-      const data = await fetchTraceData(projectId, traceId);
-      setSelectedTrace(data);
-    } catch (error) {
-      console.error('Error loading trace data:', error);
-      setError('Failed to load trace data');
-    }
-  }, [setSelectedTrace, setError]);
+      try {
+        const data = await fetchTraceData(projectId, traceId);
+        setSelectedTrace(data);
+      } catch (error) {
+        console.error("Error loading trace data:", error);
+        setError("Failed to load trace data");
+      }
+    },
+    [setSelectedTrace, setError]
+  );
 
   useEffect(() => {
     if (selectedProject) {
@@ -87,13 +106,17 @@ const Index = () => {
             <div className="flex items-center">
               <LayoutDashboard className="mr-2 h-8 w-8 text-indigo-600 dark:text-indigo-400" />
               <div>
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Project Dashboard</h1>
-                <p className="text-gray-600 dark:text-gray-300">Overview of project metrics and performance</p>
+                <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
+                  Project Dashboard
+                </h1>
+                <p className="text-gray-600 dark:text-gray-300">
+                  Overview of project metrics and performance
+                </p>
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
               <Select
-                value={selectedProject?.toString() || ''}
+                value={selectedProject?.toString() || ""}
                 onValueChange={(value) => setSelectedProject(Number(value))}
               >
                 <SelectTrigger className="w-full sm:w-[200px]">
@@ -108,7 +131,7 @@ const Index = () => {
                 </SelectContent>
               </Select>
               <Select
-                value={selectedTraceId || ''}
+                value={selectedTraceId || ""}
                 onValueChange={(value) => setSelectedTraceId(value)}
               >
                 <SelectTrigger className="w-full sm:w-[200px]">
@@ -122,6 +145,7 @@ const Index = () => {
                   ))}
                 </SelectContent>
               </Select>
+              <ModeToggle />
             </div>
           </div>
         </div>

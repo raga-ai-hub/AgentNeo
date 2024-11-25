@@ -14,8 +14,58 @@ type ThemeProviderState = {
 };
 
 const initialState: ThemeProviderState = {
-  theme: "system",
+  theme: "light",
   setTheme: () => null,
+};
+
+const ThemeStyles = () => {
+  return (
+    <style>
+      {`
+        /* Light theme defaults */
+        :root {
+          --input-background: #ffffff;
+          --input-text: #000000;
+          --input-border: #e2e8f0;
+          --input-placeholder: #94a3b8;
+        }
+        /* Dark theme overrides */
+        :root[class~="dark"] {
+          --input-background: #111827;
+          --input-text: #e2e8f0;
+          --input-border: #334155;
+          --input-placeholder: #64748b;
+        }
+        /* Apply variables to form elements */
+        input:not([type="submit"]):not([type="button"]):not([type="radio"]):not([type="checkbox"]),
+        textarea,
+        select {
+          background-color: var(--input-background) !important;
+          color: var(--input-text) !important;
+          border-color: var(--input-border) !important;
+        }
+        /* Style placeholder text */
+        input::placeholder,
+        textarea::placeholder {
+          color: var(--input-placeholder) !important;
+        }
+        /* Style autofill */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
+        textarea:-webkit-autofill,
+        textarea:-webkit-autofill:hover,
+        textarea:-webkit-autofill:focus,
+        select:-webkit-autofill,
+        select:-webkit-autofill:hover,
+        select:-webkit-autofill:focus {
+          -webkit-text-fill-color: var(--input-text) !important;
+          -webkit-box-shadow: 0 0 0px 1000px var(--input-background) inset !important;
+          transition: background-color 5000s ease-in-out 0s;
+        }
+      `}
+    </style>
+  );
 };
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
@@ -58,6 +108,7 @@ export function ThemeProvider({
 
   return (
     <ThemeProviderContext.Provider {...props} value={value}>
+      <ThemeStyles />
       {children}
     </ThemeProviderContext.Provider>
   );

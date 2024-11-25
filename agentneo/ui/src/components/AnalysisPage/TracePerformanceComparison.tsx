@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
+import {
   ResponsiveContainer,
   BarChart,
   Bar,
@@ -8,13 +8,14 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  Legend
-} from 'recharts';
-import axios from 'axios';
-import { Loader2 } from 'lucide-react';
-import { useProject } from '@/contexts/ProjectContext';
+  Legend,
+} from "recharts";
+import axios from "axios";
+import { Loader2 } from "lucide-react";
+import { useProject } from "@/contexts/ProjectContext";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface TraceData {
   id: string;
@@ -28,70 +29,70 @@ interface TraceData {
 }
 
 const COLORS = [
-  { 
-    gradient: ['#3b82f6', '#60a5fa'],
-    stroke: '#2563eb',
-    fill: 'url(#gradient1)'
-  },
-  { 
-    gradient: ['#10b981', '#34d399'],
-    stroke: '#059669',
-    fill: 'url(#gradient2)'
+  {
+    gradient: ["#3b82f6", "#60a5fa"],
+    stroke: "#2563eb",
+    fill: "url(#gradient1)",
   },
   {
-    gradient: ['#f59e0b', '#fbbf24'],
-    stroke: '#d97706',
-    fill: 'url(#gradient3)'
+    gradient: ["#10b981", "#34d399"],
+    stroke: "#059669",
+    fill: "url(#gradient2)",
   },
   {
-    gradient: ['#8b5cf6', '#a78bfa'],
-    stroke: '#7c3aed',
-    fill: 'url(#gradient4)'
+    gradient: ["#f59e0b", "#fbbf24"],
+    stroke: "#d97706",
+    fill: "url(#gradient3)",
   },
   {
-    gradient: ['#ec4899', '#f472b6'],
-    stroke: '#db2777',
-    fill: 'url(#gradient5)'
-  }
+    gradient: ["#8b5cf6", "#a78bfa"],
+    stroke: "#7c3aed",
+    fill: "url(#gradient4)",
+  },
+  {
+    gradient: ["#ec4899", "#f472b6"],
+    stroke: "#db2777",
+    fill: "url(#gradient5)",
+  },
 ];
 
 const METRICS = [
-  { 
-    key: 'avgResponseTime',
-    label: 'Average Response Time per Call',
-    unit: 's',
-    format: (value: number) => `${value.toFixed(2)}s`
+  {
+    key: "avgResponseTime",
+    label: "Average Response Time per Call",
+    unit: "s",
+    format: (value: number) => `${value.toFixed(2)}s`,
   },
-  { 
-    key: 'totalTokens',
-    label: 'Total Tokens Used',
-    unit: '',
-    format: (value: number) => value.toFixed(0)
+  {
+    key: "totalTokens",
+    label: "Total Tokens Used",
+    unit: "",
+    format: (value: number) => value.toFixed(0),
   },
-  { 
-    key: 'totalCost',
-    label: 'Total Cost',
-    unit: '$',
-    format: (value: number) => `$${value.toFixed(4)}`
+  {
+    key: "totalCost",
+    label: "Total Cost",
+    unit: "$",
+    format: (value: number) => `$${value.toFixed(4)}`,
   },
-  { 
-    key: 'avgMemoryUsage',
-    label: 'Average Memory Usage per Call',
-    unit: 'MB',
-    format: (value: number) => `${(value / (1024 * 1024)).toFixed(2)} MB`
+  {
+    key: "avgMemoryUsage",
+    label: "Average Memory Usage per Call",
+    unit: "MB",
+    format: (value: number) => `${(value / (1024 * 1024)).toFixed(2)} MB`,
   },
-  { 
-    key: 'toolCallCount',
-    label: 'Number of Tool Calls',
-    unit: '',
-    format: (value: number) => value.toFixed(0)
+  {
+    key: "toolCallCount",
+    label: "Number of Tool Calls",
+    unit: "",
+    format: (value: number) => value.toFixed(0),
   },
-  { 
-    key: 'llmCallCount',
-    label: 'Number of LLM Calls',
-    unit: '',
-    format: (value: number) => value.toFixed(0)
-  }
+  {
+    key: "llmCallCount",
+    label: "Number of LLM Calls",
+    unit: "",
+    format: (value: number) => value.toFixed(0),
+  },
 ];
 
 const TracePerformanceComparison: React.FC = () => {
@@ -110,48 +111,55 @@ const TracePerformanceComparison: React.FC = () => {
       setIsLoading(true);
       setError(null);
 
-      const response = await axios.get(`/api/projects/${selectedProject}/traces`);
+      const response = await axios.get(
+        `/api/projects/${selectedProject}/traces`
+      );
       const tracesData = response.data;
 
-      const processedTraces = await Promise.all(tracesData.map(async (trace: any) => {
-        const traceResponse = await axios.get(`/api/analysis_traces/${trace.id}`);
-        const traceData = traceResponse.data;
+      const processedTraces = await Promise.all(
+        tracesData.map(async (trace: any) => {
+          const traceResponse = await axios.get(
+            `/api/analysis_traces/${trace.id}`
+          );
+          const traceData = traceResponse.data;
 
-        let totalTokens = 0;
-        let totalCost = 0;
-        let totalDuration = 0;
-        let totalMemory = 0;
+          let totalTokens = 0;
+          let totalCost = 0;
+          let totalDuration = 0;
+          let totalMemory = 0;
 
-        traceData.llm_calls.forEach((call: any) => {
-          const tokenUsage = JSON.parse(call.token_usage);
-          totalTokens += tokenUsage.input + tokenUsage.completion + tokenUsage.reasoning;
+          traceData.llm_calls.forEach((call: any) => {
+            const tokenUsage = JSON.parse(call.token_usage);
+            totalTokens +=
+              tokenUsage.input + tokenUsage.completion + tokenUsage.reasoning;
 
-          const cost = JSON.parse(call.cost);
-          totalCost += cost.input + cost.output + cost.reasoning;
+            const cost = JSON.parse(call.cost);
+            totalCost += cost.input + cost.output + cost.reasoning;
 
-          totalDuration += call.duration;
-          totalMemory += call.memory_used || 0;
-        });
+            totalDuration += call.duration;
+            totalMemory += call.memory_used || 0;
+          });
 
-        return {
-          id: trace.id,
-          name: trace.name || `Trace ${trace.id}`,
-          avgResponseTime: totalDuration / traceData.llm_calls.length,
-          totalTokens,
-          totalCost,
-          avgMemoryUsage: totalMemory / traceData.llm_calls.length,
-          toolCallCount: traceData.tool_calls?.length || 0,
-          llmCallCount: traceData.llm_calls.length
-        };
-      }));
+          return {
+            id: trace.id,
+            name: trace.name || `Trace ${trace.id}`,
+            avgResponseTime: totalDuration / traceData.llm_calls.length,
+            totalTokens,
+            totalCost,
+            avgMemoryUsage: totalMemory / traceData.llm_calls.length,
+            toolCallCount: traceData.tool_calls?.length || 0,
+            llmCallCount: traceData.llm_calls.length,
+          };
+        })
+      );
 
       setTraces(processedTraces);
       if (processedTraces.length > 0 && selectedTraces.length === 0) {
         setSelectedTraces([processedTraces[0].id]);
       }
     } catch (err) {
-      console.error('Error fetching trace data:', err);
-      setError('Failed to fetch trace data. Please try again later.');
+      console.error("Error fetching trace data:", err);
+      setError("Failed to fetch trace data. Please try again later.");
     } finally {
       setIsLoading(false);
     }
@@ -164,32 +172,36 @@ const TracePerformanceComparison: React.FC = () => {
   }, [selectedProject]);
 
   const handleTraceSelect = (traceId: string) => {
-    setSelectedTraces(prev => {
+    setSelectedTraces((prev) => {
       if (prev.includes(traceId)) {
-        return prev.filter(id => id !== traceId);
+        return prev.filter((id) => id !== traceId);
       }
       return [...prev, traceId];
     });
   };
 
   const getComparisonData = () => {
-    const selectedTraceData = traces.filter(trace => selectedTraces.includes(trace.id));
+    const selectedTraceData = traces.filter((trace) =>
+      selectedTraces.includes(trace.id)
+    );
     return METRICS.map(({ key, label, unit }) => {
       const metricData: any = {
         metric: label,
-        unit
+        unit,
       };
-      
+
       // Fix: Explicitly type the values as number[]
-      const values: number[] = selectedTraceData.map(trace => Number(trace[key as keyof TraceData]));
+      const values: number[] = selectedTraceData.map((trace) =>
+        Number(trace[key as keyof TraceData])
+      );
       const total = values.reduce((sum, val) => sum + val, 0);
 
-      selectedTraceData.forEach(trace => {
+      selectedTraceData.forEach((trace) => {
         // Fix: Explicitly convert value to number
         const value = Number(trace[key as keyof TraceData]);
-        metricData[trace.name] = showPercentage ? (value / total * 100) : value;
+        metricData[trace.name] = showPercentage ? (value / total) * 100 : value;
       });
-      
+
       return metricData;
     });
   };
@@ -206,37 +218,41 @@ const TracePerformanceComparison: React.FC = () => {
       </label>
       <div className="relative">
         <div
-          className="w-full px-4 py-2 text-left border rounded-md flex justify-between items-center bg-white hover:bg-gray-50 cursor-pointer"
+          className="w-full px-4 py-2 text-left border rounded-md flex justify-between items-center bg-white hover:bg-gray-50 cursor-pointer dark:bg-gray-800"
           onClick={() => setShowDropdown(!showDropdown)}
         >
           <span>
-            {selectedTraces.length === 0 
-              ? "Select traces..." 
-              : `${selectedTraces.length} trace${selectedTraces.length === 1 ? '' : 's'} selected`}
+            {selectedTraces.length === 0
+              ? "Select traces..."
+              : `${selectedTraces.length} trace${
+                  selectedTraces.length === 1 ? "" : "s"
+                } selected`}
           </span>
           <span className="ml-2">▼</span>
         </div>
         {showDropdown && (
-          <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[300px] overflow-auto">
+          <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-[300px] overflow-auto  dark:bg-gray-800">
             {traces.map((trace) => (
               <label
                 key={trace.id}
-                className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer dark:hover:bg-gray-900"
                 onClick={(e) => e.stopPropagation()}
               >
                 <input
                   type="checkbox"
                   checked={selectedTraces.includes(trace.id)}
                   onChange={() => handleTraceSelect(trace.id)}
-                  className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:text-blue-400 dark:focus:ring-blue-400"
                 />
-                <span className="select-none">{trace.name}</span>
+                <span className="select-none dark:text-gray-300">
+                  {trace.name}
+                </span>
               </label>
             ))}
           </div>
         )}
       </div>
-      <p className="text-sm text-gray-500 mt-1">
+      <p className="text-sm text-gray-400 mt-1">
         Select multiple traces to compare their performance metrics
       </p>
     </div>
@@ -267,8 +283,14 @@ const TracePerformanceComparison: React.FC = () => {
     }
 
     if (!selectedProject) {
-      return <div className="text-center p-4">Please select a project to view comparison</div>;
+      return (
+        <div className="text-center p-4">
+          Please select a project to view comparison
+        </div>
+      );
     }
+
+    const { theme } = useTheme();
 
     return (
       <div className="space-y-8 w-full">
@@ -284,8 +306,8 @@ const TracePerformanceComparison: React.FC = () => {
         </div>
 
         {selectedTraces.length > 0 && (
-          <div className="space-y-6 bg-white rounded-lg p-6 shadow-sm w-full">
-            <div className="h-[500px] w-full">
+          <div className="space-y-6 bg-white rounded-lg p-6 shadow-sm w-full dark:bg-gray-800">
+            <div className="h-[500px] w-full text-gray-300">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={getComparisonData()}
@@ -294,37 +316,104 @@ const TracePerformanceComparison: React.FC = () => {
                 >
                   {COLORS.map((color, index) => (
                     <defs key={`gradient-${index}`}>
-                      <linearGradient id={`gradient${index + 1}`} x1="0" y1="0" x2="0" y2="1">
+                      <linearGradient
+                        id={`gradient${index + 1}`}
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
                         <stop offset="0%" stopColor={color.gradient[0]} />
                         <stop offset="100%" stopColor={color.gradient[1]} />
                       </linearGradient>
                     </defs>
                   ))}
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    type="number"
-                    domain={showPercentage ? [0, 100] : [0, 'auto']}
-                    tickFormatter={(value) => showPercentage ? `${value}%` : value}
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke={
+                      theme === "dark" ||
+                      (theme === "system" &&
+                        window.matchMedia("(prefers-color-scheme: dark)")
+                          .matches)
+                        ? "#374151"
+                        : "#E5E7EB"
+                    }
                   />
-                  <YAxis 
-                    dataKey="metric" 
+                  <XAxis
+                    type="number"
+                    domain={showPercentage ? [0, 100] : [0, "auto"]}
+                    tickFormatter={(value) =>
+                      showPercentage ? `${value}%` : value
+                    }
+                    className="dark:text-gray-300"
+                    style={{
+                      fill:
+                        theme === "dark" ||
+                        (theme === "system" &&
+                          window.matchMedia("(prefers-color-scheme: dark)")
+                            .matches)
+                          ? "#D1D5DB"
+                          : "#374151",
+                    }}
+                  />
+                  <YAxis
+                    dataKey="metric"
                     type="category"
                     width={180}
-                    style={{ fontSize: '12px' }}
+                    className="dark:text-gray-300"
+                    style={{
+                      fill:
+                        theme === "dark" ||
+                        (theme === "system" &&
+                          window.matchMedia("(prefers-color-scheme: dark)")
+                            .matches)
+                          ? "#D1D5DB"
+                          : "#374151",
+                      fontSize: "12px",
+                    }}
                   />
                   <Tooltip
+                    contentStyle={
+                      theme === "dark" ||
+                      (theme === "system" &&
+                        window.matchMedia("(prefers-color-scheme: dark)")
+                          .matches)
+                        ? {
+                            backgroundColor: "#374151",
+                            color: "#D1D5DB",
+                            border: "#D1D5DB",
+                            borderRadius: "1px",
+                          }
+                        : {
+                            backgroundColor: "#F9FAFB",
+                            color: "#374151",
+                            border: "#E5E7EB",
+                            borderRadius: "1px",
+                          }
+                    }
+                    labelStyle={{
+                      color:
+                        theme === "dark" ||
+                        (theme === "system" &&
+                          window.matchMedia("(prefers-color-scheme: dark)")
+                            .matches)
+                          ? "#D1D5DB"
+                          : "#374151",
+                    }}
                     formatter={(value: number, name: string, props: any) => {
-                      const metric = METRICS.find(m => m.label === props.payload.metric);
+                      const metric = METRICS.find(
+                        (m) => m.label === props.payload.metric
+                      );
                       return metric ? formatValue(value, metric) : value;
                     }}
                   />
                   <Legend />
                   {selectedTraces.map((traceId, index) => {
-                    const trace = traces.find(t => t.id === traceId);
+                    const trace = traces.find((t) => t.id === traceId);
                     return (
                       <Bar
                         key={traceId}
-                        dataKey={trace?.name || ''}
+                        dataKey={trace?.name || ""}
                         fill={COLORS[index % COLORS.length].fill}
                         stroke={COLORS[index % COLORS.length].stroke}
                       />
@@ -341,13 +430,13 @@ const TracePerformanceComparison: React.FC = () => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (showDropdown && !(event.target as Element).closest('.relative')) {
+      if (showDropdown && !(event.target as Element).closest(".relative")) {
         setShowDropdown(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showDropdown]);
 
   return (
@@ -357,9 +446,7 @@ const TracePerformanceComparison: React.FC = () => {
         <CardHeader>
           <CardTitle>Trace Performance Comparison</CardTitle>
         </CardHeader>
-        <CardContent>
-          {renderContent()}
-        </CardContent>
+        <CardContent>{renderContent()}</CardContent>
       </Card>
     </div>
   );

@@ -1,11 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Loader2 } from 'lucide-react';
-import axios from 'axios';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { Loader2 } from "lucide-react";
+import axios from "axios";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { useProject } from '@/contexts/ProjectContext';
+import { useProject } from "@/contexts/ProjectContext";
 
 interface ToolMetrics {
   name: string;
@@ -30,30 +38,39 @@ interface Trace {
 const ToolPerformanceAnalysis: React.FC = () => {
   const { selectedProject, selectedTraceId } = useProject();
   const [toolData, setToolData] = useState<ToolMetrics[]>([]);
-  const [summary, setSummary] = useState<Summary>({ totalToolCalls: 0, totalNetworkCalls: 0 });
+  const [summary, setSummary] = useState<Summary>({
+    totalToolCalls: 0,
+    totalNetworkCalls: 0,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPercentage, setShowPercentage] = useState(false);
 
   const chartColors = {
     calls: {
-      gradient: ['#6366F1', '#818CF8'], // Vibrant indigo
-      stroke: '#4F46E5'
+      gradient: ["#6366F1", "#818CF8"], // Vibrant indigo
+      stroke: "#4F46E5",
     },
     time: {
-      gradient: ['#F472B6', '#F9A8D4'], // Bright pink
-      stroke: '#EC4899'
-    }
+      gradient: ["#F472B6", "#F9A8D4"], // Bright pink
+      stroke: "#EC4899",
+    },
   };
 
   const calculatePercentages = (data: ToolMetrics[]) => {
     const totalCalls = data.reduce((sum, item) => sum + item.count, 0);
-    const totalResponseTime = data.reduce((sum, item) => sum + item.avgResponseTime, 0);
+    const totalResponseTime = data.reduce(
+      (sum, item) => sum + item.avgResponseTime,
+      0
+    );
 
-    return data.map(item => ({
+    return data.map((item) => ({
       ...item,
       count: totalCalls > 0 ? (item.count / totalCalls) * 100 : 0,
-      avgResponseTime: totalResponseTime > 0 ? (item.avgResponseTime / totalResponseTime) * 100 : 0
+      avgResponseTime:
+        totalResponseTime > 0
+          ? (item.avgResponseTime / totalResponseTime) * 100
+          : 0,
     }));
   };
 
@@ -61,7 +78,7 @@ const ToolPerformanceAnalysis: React.FC = () => {
     if (showPercentage) {
       return `${value.toFixed(1)}%`;
     }
-    if (value === 0) return '0';
+    if (value === 0) return "0";
     if (value < 0.00001) return value.toExponential(2);
     return value.toFixed(3);
   };
@@ -70,13 +87,15 @@ const ToolPerformanceAnalysis: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       let toolMetrics: Record<string, ToolMetrics> = {};
       let totalToolCalls = 0;
       let totalNetworkCalls = 0;
 
       if (selectedTraceId) {
-        const traceResponse = await axios.get<Trace>(`/api/analysis_traces/${selectedTraceId}`);
+        const traceResponse = await axios.get<Trace>(
+          `/api/analysis_traces/${selectedTraceId}`
+        );
         const traceData = traceResponse.data;
 
         for (const toolCall of traceData.tool_calls) {
@@ -94,11 +113,15 @@ const ToolPerformanceAnalysis: React.FC = () => {
           totalNetworkCalls += toolCall.network_calls || 0;
         }
       } else if (selectedProject) {
-        const tracesResponse = await axios.get(`/api/projects/${selectedProject}/traces`);
+        const tracesResponse = await axios.get(
+          `/api/projects/${selectedProject}/traces`
+        );
         const traces = tracesResponse.data;
 
         for (const trace of traces) {
-          const traceResponse = await axios.get<Trace>(`/api/analysis_traces/${trace.id}`);
+          const traceResponse = await axios.get<Trace>(
+            `/api/analysis_traces/${trace.id}`
+          );
           const traceData = traceResponse.data;
 
           for (const toolCall of traceData.tool_calls) {
@@ -118,16 +141,20 @@ const ToolPerformanceAnalysis: React.FC = () => {
         }
       }
 
-      const processedToolData = Object.values(toolMetrics).map(metric => ({
+      const processedToolData = Object.values(toolMetrics).map((metric) => ({
         ...metric,
-        avgResponseTime: Number((metric.avgResponseTime / metric.count).toFixed(3)),
+        avgResponseTime: Number(
+          (metric.avgResponseTime / metric.count).toFixed(3)
+        ),
       }));
 
       setToolData(processedToolData);
       setSummary({ totalToolCalls, totalNetworkCalls });
     } catch (err) {
-      console.error('Error fetching tool performance data:', err);
-      setError('Failed to fetch tool performance data. Please try again later.');
+      console.error("Error fetching tool performance data:", err);
+      setError(
+        "Failed to fetch tool performance data. Please try again later."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -142,11 +169,19 @@ const ToolPerformanceAnalysis: React.FC = () => {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const value = payload[0].value;
-      const metricName = payload[0].dataKey === 'count' ? 'Number of Calls' : 'Response Time';
-      const unit = payload[0].dataKey === 'avgResponseTime' ? (showPercentage ? '%' : ' seconds') : (showPercentage ? '%' : '');
-      
+      const metricName =
+        payload[0].dataKey === "count" ? "Number of Calls" : "Response Time";
+      const unit =
+        payload[0].dataKey === "avgResponseTime"
+          ? showPercentage
+            ? "%"
+            : " seconds"
+          : showPercentage
+          ? "%"
+          : "";
+
       return (
-        <div className="bg-white p-4 border rounded shadow">
+        <div className="bg-white p-4 border rounded shadow dark:bg-gray-800 dark:border-gray-400">
           <p className="font-bold">{label}</p>
           <p>{`${metricName}: ${formatNumber(value)}${unit}`}</p>
         </div>
@@ -180,21 +215,33 @@ const ToolPerformanceAnalysis: React.FC = () => {
     }
 
     if (!selectedProject) {
-      return <div className="text-center p-4">Please select a project to view analytics</div>;
+      return (
+        <div className="text-center p-4">
+          Please select a project to view analytics
+        </div>
+      );
     }
 
     if (toolData.length === 0) {
-      return <div className="text-center p-4">No tool performance data available</div>;
+      return (
+        <div className="text-center p-4">
+          No tool performance data available
+        </div>
+      );
     }
 
-    const displayData = showPercentage ? calculatePercentages(toolData) : toolData;
+    const displayData = showPercentage
+      ? calculatePercentages(toolData)
+      : toolData;
 
     return (
       <div className="space-y-8">
-        <div className="bg-gray-100 p-4 rounded-lg">
+        <div className="bg-gray-100 p-4 rounded-lg  dark:bg-gray-800">
           <h3 className="text-lg font-semibold mb-2">Summary</h3>
           <p>Total Tool Calls: {summary.totalToolCalls.toLocaleString()}</p>
-          <p>Total Network Calls: {summary.totalNetworkCalls.toLocaleString()}</p>
+          <p>
+            Total Network Calls: {summary.totalNetworkCalls.toLocaleString()}
+          </p>
         </div>
 
         <div className="flex items-center space-x-2">
@@ -216,35 +263,40 @@ const ToolPerformanceAnalysis: React.FC = () => {
               <defs>
                 <linearGradient id="callsGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={chartColors.calls.gradient[0]} />
-                  <stop offset="100%" stopColor={chartColors.calls.gradient[1]} />
+                  <stop
+                    offset="100%"
+                    stopColor={chartColors.calls.gradient[1]}
+                  />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
+              <XAxis
                 dataKey="name"
                 angle={-25}
                 textAnchor="end"
                 interval={0}
                 height={120}
-                label={{ 
-                  value: "Tool Name", 
+                label={{
+                  value: "Tool Name",
                   position: "bottom",
-                  offset: 70
+                  offset: 70,
                 }}
               />
               <YAxis
                 tickFormatter={(value) => formatNumber(value)}
-                label={{ 
-                  value: showPercentage ? "% of Total Calls" : "Number of Calls", 
+                label={{
+                  value: showPercentage
+                    ? "% of Total Calls"
+                    : "Number of Calls",
                   angle: -90,
                   position: "insideLeft",
                   offset: -60,
-                  style: { textAnchor: 'middle' }
+                  style: { textAnchor: "middle" },
                 }}
               />
               <Tooltip content={<CustomTooltip />} />
-              <Bar 
-                dataKey="count" 
+              <Bar
+                dataKey="count"
                 fill="url(#callsGradient)"
                 stroke={chartColors.calls.stroke}
                 strokeWidth={1}
@@ -264,37 +316,42 @@ const ToolPerformanceAnalysis: React.FC = () => {
               <defs>
                 <linearGradient id="timeGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={chartColors.time.gradient[0]} />
-                  <stop offset="100%" stopColor={chartColors.time.gradient[1]} />
+                  <stop
+                    offset="100%"
+                    stopColor={chartColors.time.gradient[1]}
+                  />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
+              <XAxis
                 dataKey="name"
                 angle={-25}
                 textAnchor="end"
                 interval={0}
                 height={120}
-                label={{ 
-                  value: "Tool Name", 
+                label={{
+                  value: "Tool Name",
                   position: "bottom",
-                  offset: 70
+                  offset: 70,
                 }}
               />
               <YAxis
-                tickFormatter={(value) => `${formatNumber(value)}${showPercentage ? '%' : 's'}`}
-                label={{ 
-                  value: showPercentage 
-                    ? "% of Total Time" 
-                    : "Avg Response Time (s)", 
+                tickFormatter={(value) =>
+                  `${formatNumber(value)}${showPercentage ? "%" : "s"}`
+                }
+                label={{
+                  value: showPercentage
+                    ? "% of Total Time"
+                    : "Avg Response Time (s)",
                   angle: -90,
                   position: "insideLeft",
                   offset: -60,
-                  style: { textAnchor: 'middle' }
+                  style: { textAnchor: "middle" },
                 }}
               />
               <Tooltip content={<CustomTooltip />} />
-              <Bar 
-                dataKey="avgResponseTime" 
+              <Bar
+                dataKey="avgResponseTime"
                 fill="url(#timeGradient)"
                 stroke={chartColors.time.stroke}
                 strokeWidth={1}
@@ -312,9 +369,7 @@ const ToolPerformanceAnalysis: React.FC = () => {
       <CardHeader>
         <CardTitle>Tool Performance Analysis</CardTitle>
       </CardHeader>
-      <CardContent>
-        {renderContent()}
-      </CardContent>
+      <CardContent>{renderContent()}</CardContent>
     </Card>
   );
 };

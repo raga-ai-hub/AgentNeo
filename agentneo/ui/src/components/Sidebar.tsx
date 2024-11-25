@@ -21,7 +21,7 @@ const Sidebar: React.FC = () => {
     <aside
       className={`bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-400 text-white p-6 relative overflow-visible flex flex-col border-r border-white border-opacity-20 transition-all duration-300 ${
         isCollapsed ? "w-sidebar-collapsed" : "w-sidebar-expanded"
-      } fixed h-full`}
+      } fixed h-full dark:from-indigo-900 dark:via-purple-900 dark:to-pink-700`}
     >
       <div className="absolute inset-0 bg-black opacity-10"></div>
       <div className="absolute inset-0 backdrop-blur-sm bg-white bg-opacity-5"></div>
@@ -50,9 +50,6 @@ const Sidebar: React.FC = () => {
                 </p>
               </div>
             )}
-          </div>
-          <div>
-            <ModeToggle />
           </div>
         </div>
         <ScrollArea className="h-[calc(100vh-16rem)]">
@@ -109,7 +106,7 @@ const Sidebar: React.FC = () => {
         onClick={toggleSidebar}
         className={`absolute -right-6 top-1/2 transform -translate-y-1/2 w-12 h-12 rounded-full bg-gray-800 text-white flex items-center justify-center transition-all duration-200 z-20 focus:outline-none`}
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-400 rounded-full opacity-80"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-400 rounded-full opacity-80 dark:from-indigo-900 dark:via-purple-900 dark:to-pink-700"></div>
         {isCollapsed ? (
           <ChevronRight className="h-6 w-6 relative z-10" />
         ) : (

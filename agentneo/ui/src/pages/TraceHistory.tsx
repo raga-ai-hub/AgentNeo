@@ -1,25 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import { useSidebar } from '../contexts/SidebarContext';
-import { useProject } from '../contexts/ProjectContext';
-import Sidebar from '../components/Sidebar';
-import TraceDetailsPanel from '../components/TraceDetailsPanel';
+import React, { useState, useEffect } from "react";
+import { useSidebar } from "../contexts/SidebarContext";
+import { useProject } from "../contexts/ProjectContext";
+import Sidebar from "../components/Sidebar";
+import TraceDetailsPanel from "../components/TraceDetailsPanel";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, History, ChevronLeft, ChevronRight } from 'lucide-react';
-import type { TraceHistoryItem, DetailedTraceComponents } from '../types/trace';
-import { fetchTraces, fetchTraceDetails } from '../utils/api';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Search, History, ChevronLeft, ChevronRight } from "lucide-react";
+import type { TraceHistoryItem, DetailedTraceComponents } from "../types/trace";
+import { fetchTraces, fetchTraceDetails } from "../utils/api";
+import { ModeToggle } from "@/components/ModeToggle";
 
 const TraceHistory: React.FC = () => {
   const { isCollapsed } = useSidebar();
   const { selectedProject, setSelectedProject, projects } = useProject();
   const [traces, setTraces] = useState<TraceHistoryItem[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
-  const [selectedTraceData, setSelectedTraceData] = useState<DetailedTraceComponents | null>(null);
+  const [selectedTraceData, setSelectedTraceData] =
+    useState<DetailedTraceComponents | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const tracesPerPage = 10;
 
@@ -32,11 +40,11 @@ const TraceHistory: React.FC = () => {
           if (Array.isArray(fetchedTraces)) {
             setTraces(fetchedTraces);
           } else {
-            console.error('Fetched traces is not an array:', fetchedTraces);
+            console.error("Fetched traces is not an array:", fetchedTraces);
             setTraces([]);
           }
         } catch (error) {
-          console.error('Error loading traces:', error);
+          console.error("Error loading traces:", error);
           setTraces([]);
         } finally {
           setIsLoading(false);
@@ -61,7 +69,7 @@ const TraceHistory: React.FC = () => {
       const traceData = await fetchTraceDetails(traceId);
       setSelectedTraceData(traceData);
     } catch (error) {
-      console.error('Error fetching trace details:', error);
+      console.error("Error fetching trace details:", error);
       setSelectedTraceData(null);
     }
   };
@@ -72,7 +80,7 @@ const TraceHistory: React.FC = () => {
     setSelectedTraceData(null);
   };
 
-  const filteredTraces = traces.filter(trace =>
+  const filteredTraces = traces.filter((trace) =>
     String(trace.id).toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -85,29 +93,38 @@ const TraceHistory: React.FC = () => {
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-gray-900">
       <Sidebar />
-      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${isPanelOpen ? 'mr-96' : ''}`}>
+      <div
+        className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${
+          isPanelOpen ? "mr-96" : ""
+        }`}
+      >
         {/* Fixed Header Section */}
         <div className="flex-shrink-0 p-8 bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
           <div className="flex justify-between items-center mb-8">
             <div className="flex items-center">
               <History className="mr-2 h-8 w-8 text-indigo-600 dark:text-indigo-400" />
-              <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Trace History</h1>
+              <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
+                Trace History
+              </h1>
             </div>
-            <Select
-              value={selectedProject?.toString()}
-              onValueChange={(value) => setSelectedProject(Number(value))}
-            >
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Select project" />
-              </SelectTrigger>
-              <SelectContent>
-                {projects.map((project) => (
-                  <SelectItem key={project.id} value={project.id.toString()}>
-                    {project.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex gap-5">
+              <Select
+                value={selectedProject?.toString()}
+                onValueChange={(value) => setSelectedProject(Number(value))}
+              >
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Select project" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id.toString()}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <ModeToggle />
+            </div>
           </div>
 
           <Card className="mb-8">
@@ -120,7 +137,10 @@ const TraceHistory: React.FC = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="flex-grow"
                 />
-                <Button onClick={() => setCurrentPage(1)} className="flex items-center">
+                <Button
+                  onClick={() => setCurrentPage(1)}
+                  className="flex items-center"
+                >
                   <Search className="w-4 h-4 mr-2" /> Search
                 </Button>
               </div>
@@ -131,31 +151,52 @@ const TraceHistory: React.FC = () => {
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-hidden flex flex-col min-h-0 p-8">
           {/* Table Container */}
-          <div className="flex-1 overflow-hidden flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow">
+          <div className="flex-1 overflow-hidden flex flex-col bg-white dark:bg-[#020817] rounded-lg shadow">
             <div className="flex-1 overflow-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Start Time</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Duration</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">LLM Calls</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tool Calls</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Agent Calls</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Errors</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      ID
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Start Time
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Duration
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      LLM Calls
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Tool Calls
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Agent Calls
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Errors
+                    </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody className="bg-white dark:bg-[#020817] divide-y divide-gray-200 dark:divide-gray-700">
                   {isLoading ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-300">
+                      <td
+                        colSpan={7}
+                        className="px-6 py-4 text-center text-gray-500 dark:text-gray-300"
+                      >
                         Loading traces...
                       </td>
                     </tr>
                   ) : paginatedTraces.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-300">
-                        No traces found. {!selectedProject && "Please select a project."}
+                      <td
+                        colSpan={7}
+                        className="px-6 py-4 text-center text-gray-500 dark:text-gray-300"
+                      >
+                        No traces found.{" "}
+                        {!selectedProject && "Please select a project."}
                       </td>
                     </tr>
                   ) : (
@@ -163,8 +204,11 @@ const TraceHistory: React.FC = () => {
                       <tr
                         key={trace.id}
                         onClick={() => handleTraceSelect(trace.id)}
-                        className={`hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-150 ease-in-out ${selectedTraceId === trace.id ? 'bg-purple-50 dark:bg-purple-900' : ''
-                          }`}
+                        className={`hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer transition-colors duration-150 ease-in-out ${
+                          selectedTraceId === trace.id
+                            ? "bg-purple-50 dark:bg-gray-600"
+                            : ""
+                        }`}
                       >
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-600 dark:text-indigo-400">
                           {trace.id}
@@ -173,7 +217,9 @@ const TraceHistory: React.FC = () => {
                           {new Date(trace.start_time).toLocaleString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                          {trace.duration ? `${trace.duration.toFixed(2)}s` : "-"}
+                          {trace.duration
+                            ? `${trace.duration.toFixed(2)}s`
+                            : "-"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                           {trace.total_llm_calls ?? "-"}
@@ -198,23 +244,26 @@ const TraceHistory: React.FC = () => {
           {/* Fixed Footer Pagination */}
           <div className="flex-shrink-0 mt-6 flex justify-between items-center">
             <Button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
               variant="outline"
-              className="flex items-center"
+              className="flex items-center dark:text-gray-300 dark:bg-gray-800 dark:border-gray-600"
             >
-              <ChevronLeft className="w-4 h-4 mr-2" /> Previous
+              <ChevronLeft className="w-4 h-4 mr-2 dark:text-gray-300" />{" "}
+              Previous
             </Button>
             <span className="text-sm text-gray-600 dark:text-gray-300">
               Page {currentPage} of {totalPages}
             </span>
             <Button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
               disabled={currentPage === totalPages}
               variant="outline"
-              className="flex items-center"
+              className="flex items-center dark:text-gray-300 dark:bg-gray-800 dark:border-gray-600"
             >
-              Next <ChevronRight className="w-4 h-4 ml-2" />
+              Next <ChevronRight className="w-4 h-4 ml-2 dark:text-gray-300" />
             </Button>
           </div>
         </div>
