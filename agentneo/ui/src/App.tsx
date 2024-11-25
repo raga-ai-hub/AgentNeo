@@ -6,6 +6,7 @@ import Overview from './pages/Overview';
 import Analysis from './pages/Analysis';
 import TraceHistory from './pages/TraceHistory';
 import Evaluation from './pages/Evaluation';
+import ChatWidget from './components/ChatWidget';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
             <Route path="/evaluation" element={<Evaluation />} />
           </Routes>
         </Router>
+        <ChatWidget/>
       </SidebarProvider>
     </ProjectProvider>
   );
