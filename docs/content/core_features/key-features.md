@@ -73,3 +73,8 @@ def execute_trade_strategy(market_conditions):
 - Tool usage effectiveness
 - Response quality metrics
 - Cost optimization insights
+
+## Dashboard Chat Assistant
+An interactive chatbot integrated directly into the dashboard interface that helps users explore and understand their trace data
+
+![Dashboard Chat Assistant](../../assets/Chat_Assistant.png)
