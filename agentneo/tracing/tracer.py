@@ -28,6 +28,8 @@ class Tracer(LLMTracerMixin, ToolTracerMixin, AgentTracerMixin, BaseTracer):
     def start(self):
         # Start base tracer
         super().start()
+        self.is_active = True
+        
         if self.use_guard:
             self.setup_guard(self.llm_guard_config)
             
