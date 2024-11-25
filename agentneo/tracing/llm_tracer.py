@@ -27,9 +27,10 @@ class LLMTracerMixin:
         self.output_scanners = {}
         self.use_guard = False
     
-    def setup_guard(self,config = None):
+    def setup_guard(self,config = None, use_guard = False):
         """Initialize guard scanners with configuration"""
-        if config:
+        if use_guard:
+            self.use_guard = True
             self.input_scanners = create_input_scanners(config)
             self.output_scanners = create_output_scanners(config)
 

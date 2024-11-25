@@ -32,7 +32,7 @@ class Tracer(LLMTracerMixin, ToolTracerMixin, AgentTracerMixin, BaseTracer):
         self.is_active = True
 
         if self.use_guard:
-            self.setup_guard(self.llm_guard_config)
+            self.setup_guard(self.llm_guard_config,self.use_guard)
 
         # Instrument calls from mixins
         if self.auto_instrument_llm:
