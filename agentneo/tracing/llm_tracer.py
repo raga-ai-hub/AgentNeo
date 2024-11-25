@@ -72,19 +72,26 @@ class LLMTracerMixin:
         llm_call_name = self.current_llm_call_name.get() or original_func.__name__
 
         try:
-            result = original_func(*args, **kwargs)
-
-            end_time = datetime.now()
-            end_memory = psutil.Process().memory_info().rss
-            memory_used = max(0, end_memory - start_memory)
-
             sanitized_args = self._sanitize_api_keys(args)
             sanitized_kwargs = self._sanitize_api_keys(kwargs)
 
             model_name = self._extract_model_name(sanitized_kwargs)
             prompt = self._extract_input(sanitized_args, sanitized_kwargs) # Extract the prompts going to the LLM
+            
+            sanitized_prompt = self.piiobfuscator.obfuscate_and_store(session=self.Session(), data=prompt, projectid=self.project_id, traceid=self.trace_id)  
 
-            sanitized_prompt = self.piiobfuscator.obfuscate_and_store(session=self.Session(), data=prompt, projectid=self.project_id, traceid=self.trace_id)            
+            if "messages" in kwargs:
+                kwargs["messages"] = sanitized_prompt  
+            elif "prompt" in kwargs:
+                kwargs["prompt"] = sanitized_prompt
+            elif args:
+                args[0] = sanitized_prompt
+
+            result = original_func(*args, **kwargs)
+
+            end_time = datetime.now()
+            end_memory = psutil.Process().memory_info().rss
+            memory_used = max(0, end_memory - start_memory)
             try:
                 model = (
                     os.path.join("groq", model_name) if result.x_groq else model_name
