@@ -9,10 +9,12 @@ import DateTimePicker from '../components/DateTimePicker';
 import { ClipboardCheck } from 'lucide-react';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useProject } from '../contexts/ProjectContext';
-import { fetchEvaluationData } from '../utils/databaseUtils';
+// import { fetchEvaluationData } from '../utils/databaseUtils';
 import TraceDetailsPanel from '../components/TraceDetailsPanel';
-import { fetchTraceDetails } from '../utils/api';
+// import { fetchTraceDetails } from '../utils/api';
 import type { DetailedTraceComponents } from '../types/trace';
+
+import { fetchEvaluationData, fetchTraceDetails } from '../utils/api';
 
 const metricNames = [
   'goal_decomposition_efficiency',
@@ -38,24 +40,52 @@ const Evaluation: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       if (selectedProject) {
-        const data = await fetchEvaluationData(selectedProject, selectedTraceId === 'all' ? null : selectedTraceId);
-        setEvaluationData(data);
-        setFilteredData(data);
+        try {
+          const data = await fetchEvaluationData(selectedProject, selectedTraceId === 'all' ? null : selectedTraceId);
+          
+          // Group metrics by trace_id
+          const groupedData = data.reduce((acc, item) => {
+            if (!acc[item.trace_id]) {
+              acc[item.trace_id] = {
+                trace_id: item.trace_id,
+                goal_decomposition_efficiency: null,
+                goal_fulfillment_rate: null,
+                tool_call_correctness_rate: null,
+                tool_call_success_rate: null
+              };
+            }
+            
+            // Match metric_name to the corresponding property
+            const metricKey = item.metric_name.toLowerCase();
+            acc[item.trace_id][metricKey] = {
+              score: item.score,
+              reason: item.reason,
+              result_detail: item.result_detail
+            };
+            
+            return acc;
+          }, {});
 
-        // Extract unique trace IDs from the data
-        const uniqueTraces = Array.from(new Set(data.map(item => item.trace_id)));
+          const transformedData = Object.values(groupedData);
+          
+          setEvaluationData(transformedData);
+          setFilteredData(transformedData);
 
-        // Create the traces array with 'All Traces' as the first option
-        const tracesArray = [
-          { id: 'all', name: 'All Traces' },
-          ...uniqueTraces.map(id => ({ id: id.toString(), name: `Trace ${id}` }))
-        ];
+          // Extract unique trace IDs
+          const uniqueTraces = Array.from(new Set(data.map(item => item.trace_id)));
+          const tracesArray = [
+            { id: 'all', name: 'All Traces' },
+            ...uniqueTraces.map(id => ({ id: id.toString(), name: `Trace ${id}` }))
+          ];
 
-        setAllTraces(tracesArray);
+          setAllTraces(tracesArray);
+        } catch (error) {
+          console.error('Error fetching evaluation data:', error);
+        }
       }
     };
     fetchData();
-  }, [selectedProject]); // Remove selectedTraceId from dependencies
+  }, [selectedProject, selectedTraceId]);
 
   useEffect(() => {
     if (!startDate && !endDate) {

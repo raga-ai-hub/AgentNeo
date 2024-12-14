@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowUpIcon, ArrowDownIcon } from 'lucide-react';
 import { useProject } from '../../contexts/ProjectContext';
-import axios from 'axios';
+import { fetchTraces, fetchAnalysisTrace } from '@/utils/api';
 
 const MetricCard: React.FC<{ title: string; value: string; previousValue: number; currentValue: number; titleColor: string }> = ({ title, value, previousValue, currentValue, titleColor }) => {
   const calculateChange = () => {
@@ -83,8 +83,7 @@ const PerformanceMetrics: React.FC = () => {
 
       try {
         if (selectedTraceId) {
-          const response = await axios.get(`/api/analysis_traces/${selectedTraceId}`);
-          const traceData = response.data;
+          const traceData = await fetchAnalysisTrace(selectedTraceId);
 
           totalLLMCalls = traceData.llm_calls.length;
           totalToolCalls = traceData.tool_calls.length;
@@ -96,12 +95,10 @@ const PerformanceMetrics: React.FC = () => {
             return sum + Object.values(costObj).reduce((a, b) => a + b, 0);
           }, 0);
         } else {
-          const tracesResponse = await axios.get(`/api/projects/${selectedProject}/traces`);
-          const traces = tracesResponse.data;
+          const traces = await fetchTraces(selectedProject);
 
           for (const trace of traces) {
-            const response = await axios.get(`/api/analysis_traces/${trace.id}`);
-            const traceData = response.data;
+            const traceData = await fetchAnalysisTrace(trace.id);
 
             totalLLMCalls += traceData.llm_calls.length;
             totalToolCalls += traceData.tool_calls.length;

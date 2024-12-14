@@ -1,7 +1,7 @@
 # Installation Guide
 
 ## Prerequisites
-- Python 3.8 or above
+- Python 3.9 or above
 - pip, Conda, or Pipenv (latest version recommended)
 
 ## Quick Installation
@@ -34,7 +34,7 @@ pip install agentneo
 ### Using Conda
 ```bash
 # Create conda environment
-conda create --name agentneo-env python=3.8
+conda create --name agentneo-env python=3.10
 conda activate agentneo-env
 
 # Install AgentNeo

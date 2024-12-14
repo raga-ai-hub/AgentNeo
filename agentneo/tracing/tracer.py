@@ -20,17 +20,21 @@ class Tracer(LLMTracerMixin, ToolTracerMixin, AgentTracerMixin, BaseTracer):
         self.tools: Dict[str, Tool] = {}
         self.call_depth = contextvars.ContextVar("call_depth", default=0)
         self.network_tracer = NetworkTracer()
+        self.is_active = False  # Add tracking flag
 
     def start(self):
         # Start base tracer
         super().start()
+        self.is_active = True
         # Instrument calls from mixins
         if self.auto_instrument_llm:
             self.instrument_llm_calls()
 
     def stop(self):
         # Unpatch methods from mixins
-        self.unpatch_llm_calls()
+        if self.is_active:  # Only unpatch if currently active
+            self.unpatch_llm_calls()
+            self.is_active = False
 
         # Stop base tracer
         super().stop()
