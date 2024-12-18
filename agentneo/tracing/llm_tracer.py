@@ -4,7 +4,14 @@ import json
 import wrapt
 import functools
 from datetime import datetime
+import re
 import os
+import spacy
+
+from detoxify import Detoxify
+
+from detect_secrets import SecretsCollection
+from detect_secrets.settings import default_settings
 
 from .user_interaction_tracer import UserInteractionTracer
 from ..utils.trace_utils import calculate_cost, load_model_costs, convert_usage_to_dict
@@ -17,6 +24,11 @@ class LLMTracerMixin:
         super().__init__(*args, **kwargs)
         self.patches = []
         self.model_costs = load_model_costs()
+        self.model_offensive = Detoxify('original')
+        self.nlp = spacy.load("en_core_web_sm")
+
+
+       
 
     def instrument_llm_calls(self):
         # Use wrapt to register post-import hooks
@@ -71,6 +83,8 @@ class LLMTracerMixin:
         llm_call_name = self.current_llm_call_name.get() or original_func.__name__
 
         try:
+            print("I am here")
+            print(args[0])
             result = original_func(*args, **kwargs)
 
             end_time = datetime.now()
@@ -204,9 +218,137 @@ class LLMTracerMixin:
         else:
             return args[0] if args else ""
 
-    def _sanitize_api_keys(self, data):
-        # Implement sanitization logic to remove API keys from data
+    def _sanitize(self,*text):
+        data = self._sanitize_api_keys(text[0])
+        data = self._sanitize_personal_info(data)
+        data = self._sanitize_language(data)
         return data
+    
+    def _sanitize_api_keys(self, data):
+        temp_file = "temp_test.txt"
+        with open(temp_file, "w") as f:
+            f.write(data)
+        
+        try:
+            secrets = SecretsCollection()
+            
+            with default_settings():
+                secrets.scan_file(temp_file)
+
+            secrets_data = secrets.json()
+            if secrets_data:
+                print("\nSecrets found in the text:")
+                print(json.dumps(secrets_data, indent=2))
+                
+                for filename, secrets_list in secrets_data.items():
+                    for secret in secrets_list:
+                        secret_value = secret.get('hashed_secret', None) or 'unknown'
+                        data = re.sub(rf'\b{re.escape(secret_value)}\b', '[REDACTED]', data)
+            else:
+                print()
+        except Exception as e:
+            print(f"\nAn unexpected error occurred: {e}")
+        finally:
+            # Clean up the temporary file
+            import os
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
+
+        return data
+
+    def _sanitize_personal_info(self,text):
+        patterns = {
+            "PHONE_NUMBER": r"\b\d{10}\b",  # 10-digit phone number
+            "OTP": r"\b\d{6}\b",  # 6-digit OTP
+            "CREDIT_CARD": r"\b(?:\d[ -]*?){13,16}\b",  # 13-16 digit credit card
+            "BANK_PIN": r"\b\d{4,6}\b",  # 4 or 6 digit PIN
+            "AADHAR": r"\b\d{4}-\d{4}-\d{4}\b",  # Aadhar in xxxx-xxxx-xxxx format
+            "PAN": r"\b[A-Z]{5}\d{4}[A-Z]\b",  # PAN card
+            "PASSPORT": r"\b[A-Z]{1}\d{7}\b",  # Passport
+            "API_KEY": r"\b[a-zA-Z0-9_-]{16,}\b",  # Alphanumeric API key (16+ chars)
+        }
+        results = {}
+
+        # Regex-based extraction and sanitization
+        for label, pattern in patterns.items():
+            matches = re.findall(pattern, text)
+            if matches:
+                # For CREDIT_CARD, validate matches
+                if label == "CREDIT_CARD":
+                    valid_cards = [card for card in matches if self._is_valid_credit_card(card)]
+                    results[label] = valid_cards if valid_cards else "Invalid card(s) detected"
+                    matches = valid_cards
+                else:
+                    results[label] = matches
+                
+                # Remove matches from text
+                for match in matches:
+                    text = re.sub(re.escape(match), "[REDACTED]", text)
+
+        # spaCy-based NER extraction for Name and Address
+        doc = self.nlp(text)
+        name_entities = [ent.text for ent in doc.ents if ent.label_ == "PERSON"]
+        address_entities = [ent.text for ent in doc.ents if ent.label_ == "GPE"]
+
+        # Add to results and sanitize text
+        if name_entities:
+            results["NAME"] = name_entities
+            for name in name_entities:
+                text = text.replace(name, "[REDACTED]")
+        
+        if address_entities:
+            results["ADDRESS"] = address_entities
+            for address in address_entities:
+                text = text.replace(address, "[REDACTED]")
+
+        # Print found personal information
+        # if results:
+        #     print("\nPersonal Information Found:")
+        #     for key, value in results.items():
+        #         print(f"{key}: {value}")
+        # else:
+        #     print("\nNo personal information detected.")
+
+        # Return sanitized text
+        return text
+
+    def _sanitize_language(self,text):
+
+        words = text.split()
+        masked_words = []
+
+        for word in words:
+            word_lower = word.lower()
+
+            toxicity = self.model_offensive.predict(word_lower)
+            
+            toxic_categories = ['toxicity', 'severe_toxicity', 'obscene', 'threat', 'insult', 'identity_attack']
+            
+            if any([toxicity[category] > 0.95 for category in toxic_categories]):  # You can adjust this threshold as needed
+                masked_words.append("[REDACTED]")
+            else:
+                masked_words.append(word)
+
+        print()
+
+        return " ".join(masked_words)
+
+    
+
+    def _is_valid_credit_card(self,card_number):
+        """Check if credit card number is valid using Luhn's Algorithm."""
+        card_number = re.sub(r"[^\d]", "", card_number)  # Remove non-digits
+        total = 0
+        reverse_digits = card_number[::-1]
+        for i, digit in enumerate(map(int, reverse_digits)):
+            if i % 2 == 1:
+                digit *= 2
+                if digit > 9:
+                    digit -= 9
+            total += digit
+        return total % 10 == 0
+
+
 
     def unpatch_llm_calls(self):
         # Restore original methods
@@ -232,7 +374,12 @@ class LLMTracerMixin:
                 async def async_wrapper(*args, **kwargs):
                     token = self.current_llm_call_name.set(name)
                     try:
-                        return await func_or_class(*args, **kwargs)
+                        print("hey there")
+                        print(args[0])
+                        data1 = self._sanitize(*args)
+                        print("The sanitized prompt:\n")
+                        print(data1)
+                        return await func_or_class(data1, **kwargs)
                     finally:
                         self.current_llm_call_name.reset(token)
 
