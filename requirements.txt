@@ -26,7 +26,7 @@ googleapis-common-protos==1.66.0
 groq==0.13.1
 grpcio==1.68.1
 grpcio-status==1.68.1
-h11==0.14.0
+h11==0.16.0
 httpcore==1.0.7
 httplib2==0.22.0
 httpx==0.28.1
