@@ -171,7 +171,7 @@ class Evaluation:
         user_dataset_columns = [item["displayName"] for item in user_dataset_schema]
         variableName = None
         for key, val in schema_mapping.items():
-            if "".join(val.split("_")).lower()==schemaName:
+            if  val==schemaName: #"".join(val.split("_")).lower()==schemaName or val.lower()==schemaName:
                 if key in user_dataset_columns:
                     variableName=key
                 else:
@@ -198,7 +198,7 @@ class Evaluation:
 
                 for field in requiredFields:
                     schemaName = field["name"]
-                    variableName = self._get_variablename_from_user_schema_mapping(schemaName.lower(), metric_name, schema_mapping, metric_to_evaluate)
+                    variableName = self._get_variablename_from_user_schema_mapping(schemaName, metric_name, schema_mapping, metric_to_evaluate)
                     mapping.append({"schemaName": schemaName, "variableName": variableName})
         return mapping
 

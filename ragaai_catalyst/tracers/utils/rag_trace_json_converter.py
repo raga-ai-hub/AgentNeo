@@ -11,206 +11,32 @@ logging_level = (
     logger.setLevel(logging.DEBUG) if os.getenv("DEBUG") == "1" else logging.INFO
 )
 
-def rag_trace_json_converter(input_trace, custom_model_cost, trace_id, user_details, tracer_type,user_context):
+def rag_trace_json_converter(input_trace, custom_model_cost, trace_id, user_details, tracer_type, user_context):
     trace_aggregate = {}
-    def get_prompt(input_trace):
-        try:
-            if tracer_type == "langchain":
-                for span in input_trace:
-                    try:
-                        # First check if there's a user message in any of the input messages
-                        attributes = span.get("attributes", {})
-                        
-                        # Look for user role in any of the input messages
-                        if attributes:
-                            for key, value in attributes.items():
-                                try:
-                                    if key.startswith("llm.input_messages.") and key.endswith(".message.role") and value == "user":
-                                        # Extract the message number
-                                        message_num = key.split(".")[2]
-                                        # Construct the content key
-                                        content_key = f"llm.input_messages.{message_num}.message.content"
-                                        if content_key in attributes:
-                                            return attributes.get(content_key)
-                                except Exception as e:
-                                    logger.warning(f"Error processing attribute key-value pair: {str(e)}")
-                                    continue
-
-                            for key, value in attributes.items():
-                                try:
-                                    if key.startswith("llm.prompts") and isinstance(value, list):
-                                        human_message = None
-                                        for message in value:
-                                            if isinstance(message, str):
-                                                human_index = message.find("Human:")
-                                                if human_index != -1:
-                                                    human_message = message[human_index:].replace("Human:", "")
-                                                    break
-                                        return human_message if human_message else value
-                                except Exception as e:
-                                    logger.warning(f"Error processing attribute key-value pair for prompt: {str(e)}")
-                                    continue
-                    except Exception as e:
-                        logger.warning(f"Error processing span for prompt extraction: {str(e)}")
-                        continue
-                
-                for span in input_trace:
-                    try:
-                        # If no user message found, check for specific span types
-                        if span["name"] == "LLMChain":
-                            try:
-                                input_value = span["attributes"].get("input.value", "{}")
-                                return json.loads(input_value).get("question", "")
-                            except json.JSONDecodeError:
-                                logger.warning(f"Invalid JSON in LLMChain input.value: {input_value}")
-                                continue
-                        elif span["name"] == "RetrievalQA":
-                            return span["attributes"].get("input.value", "")
-                        elif span["name"] == "VectorStoreRetriever":
-                            return span["attributes"].get("input.value", "")
-                    except Exception as e:
-                        logger.warning(f"Error processing span for fallback prompt extraction: {str(e)}")
-                        continue
-                
-                # If we've gone through all spans and found nothing
-                logger.warning("No user message found in any span")
-                logger.warning("Returning empty string for prompt.")
-                return ""
-            
-            logger.error("Prompt not found in the trace")
-            return None
-        except Exception as e:
-            logger.error(f"Error while extracting prompt from trace: {str(e)}")
-            return None
-    
-    def get_response(input_trace):
-        try:
-            if tracer_type == "langchain":
-                for span in input_trace:
-                    try:
-                        attributes = span.get("attributes", {})
-                        if attributes:
-                            for key, value in attributes.items():
-                                try:
-                                    if key.startswith("llm.output_messages.") and key.endswith(".message.content"):
-                                        return value
-                                except Exception as e:
-                                    logger.warning(f"Error processing attribute key-value pair for response: {str(e)}")
-                                    continue
-                            
-                            for key, value in attributes.items():
-                                try:
-                                    if key.startswith("output.value"):
-                                        try:
-                                            output_json = json.loads(value)
-                                            if "generations" in output_json and isinstance(output_json.get("generations"), list) and len(output_json.get("generations")) > 0:
-                                                if isinstance(output_json.get("generations")[0], list) and len(output_json.get("generations")[0]) > 0:
-                                                    first_generation = output_json.get("generations")[0][0]
-                                                    if "text" in first_generation:
-                                                        return first_generation["text"]
-                                        except json.JSONDecodeError:
-                                            logger.warning(f"Invalid JSON in output.value: {value}")
-                                            continue
-                                except Exception as e:
-                                    logger.warning(f"Error processing attribute key-value pair for response: {str(e)}")
-                                    continue
-                    except Exception as e:
-                        logger.warning(f"Error processing span for response extraction: {str(e)}")
-                        continue
-                
-                for span in input_trace:
-                    try:
-                        if span["name"] == "LLMChain":
-                            try:
-                                output_value = span["attributes"].get("output.value", "")
-                                if output_value:
-                                    return json.loads(output_value)
-                                return ""
-                            except json.JSONDecodeError:
-                                logger.warning(f"Invalid JSON in LLMChain output.value: {output_value}")
-                                continue
-                        elif span["name"] == "RetrievalQA":
-                            return span["attributes"].get("output.value", "")
-                        elif span["name"] == "VectorStoreRetriever":
-                            return span["attributes"].get("output.value", "")
-                    except Exception as e:
-                        logger.warning(f"Error processing span for fallback response extraction: {str(e)}")
-                        continue
-                
-                logger.warning("No response found in any span")
-                return ""
-            
-            logger.error("Response not found in the trace")
-            return None
-        except Exception as e:
-            logger.error(f"Error while extracting response from trace: {str(e)}")
-            return None
-    
-    def get_context(input_trace):
-        try:
-            if user_context and user_context.strip():
-                return user_context
-            elif tracer_type == "langchain":
-                for span in input_trace:
-                    try:
-                        if span["name"] == "VectorStoreRetriever":
-                            return span["attributes"].get("retrieval.documents.1.document.content", "")
-                    except Exception as e:
-                        logger.warning(f"Error processing span for context extraction: {str(e)}")
-                        continue
-            
-            logger.warning("Context not found in the trace")
-            return ""
-        except Exception as e:
-            logger.error(f"Error while extracting context from trace: {str(e)}")
-            return ""
-    
-    def get_span_errors(input_trace):
-        try:
-            if tracer_type == "langchain":
-                span_errors = {}
-                for span in input_trace:
-                    try:
-                        if "status" in span.keys() and span.get("status", {}).get("status_code", "").lower() == "error":
-                            span_errors[f"{span['name']}"] = span["status"]
-                    except:
-                        logger.error(f"Error fetching status from span")
-                return span_errors
-        except:
-            logger.error(f"Error in get_span_errors")
-            return None
-
-
-
-
-
-    prompt = get_prompt(input_trace)
-    response = get_response(input_trace)
-    context = get_context(input_trace)
-    error = get_span_errors(input_trace)
+    input_trace = add_span_hash_id(input_trace)
+    prompt = get_prompt(input_trace, tracer_type)
+    response = get_response(input_trace, tracer_type)
+    context = get_context(input_trace, tracer_type, user_context)
+    error = get_span_errors(input_trace, tracer_type)
     
     if tracer_type == "langchain":
         trace_aggregate["tracer_type"] = "langchain"
-    else:
+    elif tracer_type == "llamaindex":
         trace_aggregate["tracer_type"] = "llamaindex"
 
-    trace_aggregate['trace_id'] = trace_id
-    trace_aggregate['session_id'] = None
+    trace_aggregate['id'] = trace_id
+    trace_aggregate['trace_name'] = user_details.get("dataset_name", "")
+    trace_aggregate['project_name'] = user_details.get("project_name", "")
+    trace_aggregate["start_time"] = input_trace[0].get("start_time", "")
+    trace_aggregate["end_time"] = input_trace[-1].get("end_time", "")
     trace_aggregate["metadata"] = user_details.get("trace_user_detail", {}).get("metadata")
     trace_aggregate["pipeline"] = user_details.get("trace_user_detail", {}).get("pipeline")
+    trace_aggregate["replays"] = {"source": None}
 
-    trace_aggregate["data"] = {}
-    trace_aggregate["data"]["prompt"] = prompt
-    trace_aggregate["data"]["response"] = response
-    trace_aggregate["data"]["context"] = context
-    trace_aggregate["error"] = error
-    
+    trace_aggregate["data"] = [{"spans": input_trace, "start_time": trace_aggregate["start_time"], "end_time": trace_aggregate["end_time"]}]
     if tracer_type == "langchain":
         additional_metadata = get_additional_metadata(input_trace, custom_model_cost, model_cost, prompt, response)
-    else:
-        additional_metadata = get_additional_metadata(input_trace, custom_model_cost, model_cost)
     
-    trace_aggregate["metadata"] = user_details.get("trace_user_detail", {}).get("metadata")
     trace_aggregate["metadata"].update(additional_metadata)
     trace_aggregate["metadata"]["error"] = f"{error}"
     additional_metadata["error"] = error if error else None
@@ -367,3 +193,211 @@ def num_tokens_from_messages(model, message):
     except Exception as e:
         logger.error(f"Unexpected error in token counting: {str(e)}")
         return 0
+
+
+def get_prompt(input_trace, tracer_type):
+    try:
+        if tracer_type == "langchain":
+            for span in input_trace:
+                try:
+                    attributes = span.get("attributes", {})
+                    
+                    if attributes:
+                        for key, value in attributes.items():
+                            try:
+                                if key.startswith("llm.input_messages.") and key.endswith(".message.role") and value == "user":
+                                    message_num = key.split(".")[2]
+                                    content_key = f"llm.input_messages.{message_num}.message.content"
+                                    if content_key in attributes:
+                                        return attributes.get(content_key)
+                            except Exception as e:
+                                logger.warning(f"Error processing attribute key-value pair: {str(e)}")
+                                continue
+
+                        for key, value in attributes.items():
+                            try:
+                                if key.startswith("llm.prompts") and isinstance(value, list):
+                                    human_message = None
+                                    for message in value:
+                                        if isinstance(message, str):
+                                            human_index = message.find("Human:")
+                                            if human_index != -1:
+                                                human_message = message[human_index:].replace("Human:", "")
+                                                break
+                                    return human_message if human_message else value
+                            except Exception as e:
+                                logger.warning(f"Error processing attribute key-value pair for prompt: {str(e)}")
+                                continue
+                except Exception as e:
+                    logger.warning(f"Error processing span for prompt extraction: {str(e)}")
+                    continue
+            
+            for span in input_trace:
+                try:
+                    if span["name"] == "LLMChain":
+                        try:
+                            input_value = span["attributes"].get("input.value", "{}")
+                            return json.loads(input_value).get("question", "")
+                        except json.JSONDecodeError:
+                            logger.warning(f"Invalid JSON in LLMChain input.value: {input_value}")
+                            continue
+                    elif span["name"] == "RetrievalQA":
+                        return span["attributes"].get("input.value", "")
+                    elif span["name"] == "VectorStoreRetriever":
+                        return span["attributes"].get("input.value", "")
+                except Exception as e:
+                    logger.warning(f"Error processing span for fallback prompt extraction: {str(e)}")
+                    continue
+            
+            logger.warning("No user message found in any span")
+            logger.warning("Returning empty string for prompt.")
+            return ""
+        elif tracer_type == "llamaindex":
+            for span in input_trace:
+                if span["name"] == "BaseQueryEngine.query":
+                    return span["attributes"]["input.value"]
+                elif "query_bundle" in span["attributes"].get("input.value", ""):
+                    try:
+                        query_data = json.loads(span["attributes"]["input.value"])
+                        if "query_bundle" in query_data:
+                            return query_data["query_bundle"]["query_str"]
+                    except json.JSONDecodeError:
+                        logger.error("Failed to parse query_bundle JSON")
+        logger.error("Prompt not found in the trace")
+        return None
+    except Exception as e:
+        logger.error(f"Error while extracting prompt from trace: {str(e)}")
+        return None
+
+def get_response(input_trace, tracer_type):
+    try:
+        if tracer_type == "langchain":
+            for span in input_trace:
+                try:
+                    attributes = span.get("attributes", {})
+                    if attributes:
+                        for key, value in attributes.items():
+                            try:
+                                if key.startswith("llm.output_messages.") and key.endswith(".message.content"):
+                                    return value
+                            except Exception as e:
+                                logger.warning(f"Error processing attribute key-value pair for response: {str(e)}")
+                                continue
+                        
+                        for key, value in attributes.items():
+                            try:
+                                if key.startswith("output.value"):
+                                    try:
+                                        output_json = json.loads(value)
+                                        if "generations" in output_json and isinstance(output_json.get("generations"), list) and len(output_json.get("generations")) > 0:
+                                            if isinstance(output_json.get("generations")[0], list) and len(output_json.get("generations")[0]) > 0:
+                                                first_generation = output_json.get("generations")[0][0]
+                                                if "text" in first_generation:
+                                                    return first_generation["text"]
+                                    except json.JSONDecodeError:
+                                        logger.warning(f"Invalid JSON in output.value: {value}")
+                                        continue
+                            except Exception as e:
+                                logger.warning(f"Error processing attribute key-value pair for response: {str(e)}")
+                                continue
+                except Exception as e:
+                    logger.warning(f"Error processing span for response extraction: {str(e)}")
+                    continue
+            
+            for span in input_trace:
+                try:
+                    if span["name"] == "LLMChain":
+                        try:
+                            output_value = span["attributes"].get("output.value", "")
+                            if output_value:
+                                return json.loads(output_value)
+                            return ""
+                        except json.JSONDecodeError:
+                            logger.warning(f"Invalid JSON in LLMChain output.value: {output_value}")
+                            continue
+                    elif span["name"] == "RetrievalQA":
+                        return span["attributes"].get("output.value", "")
+                    elif span["name"] == "VectorStoreRetriever":
+                        return span["attributes"].get("output.value", "")
+                except Exception as e:
+                    logger.warning(f"Error processing span for fallback response extraction: {str(e)}")
+                    continue
+            
+            logger.warning("No response found in any span")
+            return ""
+        elif tracer_type == "llamaindex":
+            for span in input_trace:
+                if span["name"] == "BaseQueryEngine.query":
+                    return span["attributes"]["output.value"]
+        logger.error("Response not found in the trace")
+        return None
+    except Exception as e:
+        logger.error(f"Error while extracting response from trace: {str(e)}")
+        return None
+
+def get_context(input_trace, tracer_type, user_context):
+    try:
+        if user_context and user_context.strip():
+            return user_context
+        elif tracer_type == "langchain":
+            for span in input_trace:
+                try:
+                    if span["name"] == "VectorStoreRetriever":
+                        return span["attributes"].get("retrieval.documents.1.document.content", "")
+                except Exception as e:
+                    logger.warning(f"Error processing span for context extraction: {str(e)}")
+                    continue
+        elif tracer_type == "llamaindex":
+            for span in input_trace:
+                try:
+                    if span["name"] == "BaseRetriever.retrieve":
+                        return span["attributes"]["retrieval.documents.1.document.content"]
+                except Exception as e:
+                    logger.warning(f"Error processing span for context extraction: {str(e)}")
+                    continue
+        logger.warning("Context not found in the trace")
+        return ""
+    except Exception as e:
+        logger.error(f"Error while extracting context from trace: {str(e)}")
+        return ""
+
+def get_span_errors(input_trace, tracer_type):
+    try:
+        if tracer_type == "langchain":
+            span_errors = {}
+            for span in input_trace:
+                try:
+                    if "status" in span.keys() and span.get("status", {}).get("status_code", "").lower() == "error":
+                        span_errors[f"{span['name']}"] = span["status"]
+                except:
+                    logger.error(f"Error fetching status from span")
+            return span_errors
+    except:
+        logger.error(f"Error in get_span_errors")
+        return None
+    
+def add_span_hash_id(input_trace):
+    """
+    Add hash IDs to spans and track name occurrences.
+    
+    Args:
+        input_trace (dict): The input trace containing spans
+        
+    Returns:
+        dict: Modified trace with hash IDs and name occurrences added to spans
+    """
+    import uuid
+    from collections import defaultdict
+        
+    name_counts = defaultdict(int)
+    
+    for span in input_trace:
+        if "name" in span:
+            # Add hash ID
+            span["hash_id"] = str(uuid.uuid4())
+            
+            # Track and update name occurrences
+            span["name_occurrences"] = name_counts[span["name"]]
+            name_counts[span["name"]] += 1
+            
+    return input_trace

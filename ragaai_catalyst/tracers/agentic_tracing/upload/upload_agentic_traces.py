@@ -43,22 +43,40 @@ class UploadAgenticTraces:
         try:
             start_time = time.time()
             endpoint = f"{self.base_url}/v1/llm/presigned-url"
-            response = requests.request("GET", 
+            # Changed to POST from GET
+            response = requests.request("POST", 
                                         endpoint, 
                                         headers=headers, 
                                         data=payload,
                                         timeout=self.timeout)
             elapsed_ms = (time.time() - start_time) * 1000
             logger.debug(
-                f"API Call: [GET] {endpoint} | Status: {response.status_code} | Time: {elapsed_ms:.2f}ms")
+                f"API Call: [POST] {endpoint} | Status: {response.status_code} | Time: {elapsed_ms:.2f}ms")
             
             if response.status_code == 200:
                 presignedURLs = response.json()["data"]["presignedUrls"][0]
                 presignedurl = self.update_presigned_url(presignedURLs,self.base_url)
                 return presignedurl
+            else:
+                # If POST fails, try GET
+                response = requests.request("GET", 
+                                        endpoint, 
+                                        headers=headers, 
+                                        data=payload,
+                                        timeout=self.timeout)
+                elapsed_ms = (time.time() - start_time) * 1000
+                logger.debug(
+                    f"API Call: [GET] {endpoint} | Status: {response.status_code} | Time: {elapsed_ms:.2f}ms")
+                if response.status_code == 200:
+                    presignedURLs = response.json()["data"]["presignedUrls"][0]
+                    presignedurl = self.update_presigned_url(presignedURLs,self.base_url)
+                    return presignedurl
+
+                logger.error(f"Error while getting presigned url: {response.json()['message']}")
+                return None
             
         except requests.exceptions.RequestException as e:
-            print(f"Error while getting presigned url: {e}")
+            logger.error(f"Error while getting presigned url: {e}")
             return None
         
     def update_presigned_url(self, presigned_url, base_url):
@@ -145,54 +163,22 @@ class UploadAgenticTraces:
             return None
         try:
             spans = data["data"][0]["spans"]
-            datasetSpans = []
+            dataset_spans = []
             for span in spans:
-                if span["type"] != "agent":
-                    existing_span = next((s for s in datasetSpans if s["spanHash"] == span["hash_id"]), None)
-                    if existing_span is None:
-                        datasetSpans.append({
-                            "spanId": span["id"],
-                            "spanName": span["name"],
-                            "spanHash": span["hash_id"],
-                            "spanType": span["type"],
-                        })
-                else:
-                    datasetSpans.extend(self._get_agent_dataset_spans(span, datasetSpans))
-            datasetSpans = [dict(t) for t in set(tuple(sorted(d.items())) for d in datasetSpans)]
-            
-            return datasetSpans
+                try:
+                    dataset_spans.append({
+                        "spanId": span.get("context", {}).get("span_id", ""),
+                        "spanName": span.get("name", ""),
+                        "spanHash": span.get("hash_id", ""),
+                        "spanType": span.get("attributes", {}).get("openinference.span.kind", ""),
+                    })
+                except Exception as e:
+                    logger.warning(f"Error processing span: {e}")
+                    continue
+            return dataset_spans
         except Exception as e:
             print(f"Error while reading dataset spans: {e}")
             return None
-
-    def _get_agent_dataset_spans(self, span, datasetSpans):
-        datasetSpans.append({
-                                "spanId": span["id"],
-                                "spanName": span["name"],
-                                "spanHash": span["hash_id"],
-                                "spanType": span["type"],
-                            })
-        children = span["data"]["children"]
-        for child in children:
-            if child["type"] != "agent":
-                existing_span = next((s for s in datasetSpans if s["spanHash"] == child["hash_id"]), None)
-                if existing_span is None:
-                    datasetSpans.append({
-                        "spanId": child["id"],
-                        "spanName": child["name"],
-                        "spanHash": child["hash_id"],
-                        "spanType": child["type"],
-                    })
-            else:
-                datasetSpans.append({
-                            "spanId": child["id"],
-                            "spanName": child["name"],
-                            "spanHash": child["hash_id"],
-                            "spanType": child["type"],
-                        })
-                self._get_agent_dataset_spans(child, datasetSpans)
-        return datasetSpans
-        
 
     def upload_agentic_traces(self):
         try:

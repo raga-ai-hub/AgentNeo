@@ -1,23 +1,23 @@
-import os
 import json
+import logging
+import os
 import tempfile
-from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
-import logging
 from dataclasses import asdict
-from ragaai_catalyst.tracers.utils.trace_json_converter import convert_json_format
+
+from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
+
 from ragaai_catalyst.tracers.agentic_tracing.tracers.base import TracerJSONEncoder
+from ragaai_catalyst.tracers.agentic_tracing.upload.trace_uploader import (
+    submit_upload_task,
+)
 from ragaai_catalyst.tracers.agentic_tracing.utils.system_monitor import SystemMonitor
-from ragaai_catalyst.tracers.agentic_tracing.upload.trace_uploader import submit_upload_task
-from ragaai_catalyst.tracers.agentic_tracing.utils.zip_list_of_unique_files import zip_list_of_unique_files
-from ragaai_catalyst.tracers.agentic_tracing.utils.trace_utils import format_interactions
-from ragaai_catalyst.tracers.utils.rag_trace_json_converter import rag_trace_json_converter
-from ragaai_catalyst.tracers.utils.convert_langchain_callbacks_output import convert_langchain_callbacks_output
-from ragaai_catalyst.tracers.upload_traces import UploadTraces
-import datetime
-import logging
-import asyncio
-import concurrent.futures
-from functools import partial
+from ragaai_catalyst.tracers.agentic_tracing.utils.trace_utils import (
+    format_interactions,
+)
+from ragaai_catalyst.tracers.agentic_tracing.utils.zip_list_of_unique_files import (
+    zip_list_of_unique_files,
+)
+from ragaai_catalyst.tracers.utils.trace_json_converter import convert_json_format
 
 logger = logging.getLogger("RagaAICatalyst")
 logging_level = (
@@ -26,7 +26,7 @@ logging_level = (
 
 
 class RAGATraceExporter(SpanExporter):
-    def __init__(self, tracer_type, files_to_zip, project_name, project_id, dataset_name, user_details, base_url, custom_model_cost, timeout=120, post_processor = None, max_upload_workers = 30,user_context = None, external_id=None):
+    def __init__(self, tracer_type, files_to_zip, project_name, project_id, dataset_name, user_details, base_url, custom_model_cost, timeout=120, post_processor = None, max_upload_workers = 30,user_context = None, user_gt = None, external_id=None):
         self.trace_spans = dict()
         self.tmp_dir = tempfile.gettempdir()
         self.tracer_type = tracer_type
@@ -42,6 +42,7 @@ class RAGATraceExporter(SpanExporter):
         self.post_processor = post_processor
         self.max_upload_workers = max_upload_workers
         self.user_context = user_context
+        self.user_gt = user_gt
         self.external_id = external_id
 
     def export(self, spans):
@@ -82,10 +83,7 @@ class RAGATraceExporter(SpanExporter):
     def process_complete_trace(self, spans, trace_id):
         # Convert the trace to ragaai trace format
         try:
-            if self.tracer_type == "langchain":
-                ragaai_trace_details, additional_metadata = self.prepare_rag_trace(spans, trace_id)
-            else:
-                ragaai_trace_details = self.prepare_trace(spans, trace_id)
+            ragaai_trace_details = self.prepare_trace(spans, trace_id)
         except Exception as e:
             print(f"Error converting trace {trace_id}: {e}")
             return  # Exit early if conversion fails
@@ -97,33 +95,16 @@ class RAGATraceExporter(SpanExporter):
             
         # Upload the trace if upload_trace function is provided
         try:
-            if self.post_processor!=None and self.tracer_type != "langchain":
+            if self.post_processor!=None:
                 ragaai_trace_details['trace_file_path'] = self.post_processor(ragaai_trace_details['trace_file_path'])
-            if self.tracer_type == "langchain":
-                # Check if we're already in an event loop
-                try:
-                    loop = asyncio.get_event_loop()
-                    if loop.is_running():
-                        # We're in a running event loop (like in Colab/Jupyter)
-                        # Create a future and run the coroutine
-                        future = asyncio.ensure_future(self.upload_rag_trace(ragaai_trace_details, additional_metadata, trace_id, self.post_processor))
-                        # We don't wait for it to complete as this would block the event loop
-                        logger.info(f"Scheduled async upload for trace {trace_id} in existing event loop")
-                    else:
-                        # No running event loop, use asyncio.run()
-                        asyncio.run(self.upload_rag_trace(ragaai_trace_details, additional_metadata, trace_id, self.post_processor))
-                except RuntimeError:
-                    # No event loop exists, create one
-                    asyncio.run(self.upload_rag_trace(ragaai_trace_details, additional_metadata, trace_id, self.post_processor))
-            else:
-                self.upload_trace(ragaai_trace_details, trace_id)
-        except Exception as e: 
+            self.upload_trace(ragaai_trace_details, trace_id)
+        except Exception as e:
             print(f"Error uploading trace {trace_id}: {e}")
 
     def prepare_trace(self, spans, trace_id):
         try:
             try:
-                ragaai_trace = convert_json_format(spans, self.custom_model_cost)   
+                ragaai_trace = convert_json_format(spans, self.custom_model_cost, self.user_context, self.user_gt,self.external_id)   
             except Exception as e:
                 print(f"Error in convert_json_format function: {trace_id}: {e}")
                 return None
@@ -169,12 +150,32 @@ class RAGATraceExporter(SpanExporter):
             except Exception as e:
                 print(f"Error in adding project name: {trace_id}: {e}")
                 return None
+
+            try:
+                # Add tracer type to the trace
+                ragaai_trace["tracer_type"] = self.tracer_type
+            except Exception as e:
+                print(f"Error in adding tracer type: {trace_id}: {e}")
+                return None
+            
+            #Add user passed metadata to the trace
+            try:
+                if self.user_details.get("trace_user_detail").get("metadata") and isinstance(self.user_details.get("trace_user_detail").get("metadata"), dict):
+                    for key, value in self.user_details.get("trace_user_detail").get("metadata").items():
+                        if key in ["log_source", "recorded_on"]:
+                            continue
+                        ragaai_trace["metadata"][key] = value
+            except Exception as e:
+                print(f"Error in adding metadata: {trace_id}: {e}")
+                return None
             
             try:
                 # Save the trace_json 
                 trace_file_path = os.path.join(self.tmp_dir, f"{trace_id}.json")
                 with open(trace_file_path, "w") as file:
                     json.dump(ragaai_trace, file, cls=TracerJSONEncoder, indent=2)
+                with open(os.path.join(os.getcwd(), 'rag_agent_traces.json'), 'w') as f:
+                    json.dump(ragaai_trace, f, cls=TracerJSONEncoder, indent=2)
             except Exception as e:
                 print(f"Error in saving trace json: {trace_id}: {e}")
                 return None
@@ -205,73 +206,3 @@ class RAGATraceExporter(SpanExporter):
             )
 
         logger.info(f"Submitted upload task with ID: {self.upload_task_id}")
-    
-    async def upload_rag_trace(self, ragaai_trace, additional_metadata, trace_id, post_processor=None):
-        try:
-            ragaai_trace[0]['external_id'] = self.external_id
-            trace_file_path = os.path.join(self.tmp_dir, f"{trace_id}.json")
-            with open(trace_file_path, 'w') as f:
-                json.dump(ragaai_trace, f, indent=2)
-            logger.info(f"Trace file saved at {trace_file_path}")
-            if self.post_processor!=None:
-                trace_file_path = self.post_processor(trace_file_path)
-                logger.info(f"After post processing Trace file saved at {trace_file_path}")
-
-            # Create a ThreadPoolExecutor with max_workers=30
-            with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_upload_workers) as executor:
-                # Create a partial function with all the necessary arguments
-                upload_func = partial(
-                    UploadTraces(
-                        json_file_path=trace_file_path,
-                        project_name=self.project_name,
-                        project_id=self.project_id,
-                        dataset_name=self.dataset_name,
-                        user_detail=self.user_details,
-                        base_url=self.base_url
-                    ).upload_traces,
-                    additional_metadata_keys=additional_metadata
-                ) 
-                
-                # Implement retry logic - attempt upload up to 3 times
-                max_retries = 3
-                retry_count = 0
-                last_exception = None
-                
-                while retry_count < max_retries:
-                    try:
-                        # Submit the task to the executor and get a future
-                        loop = asyncio.get_event_loop()
-                        await loop.run_in_executor(executor, upload_func)
-                        
-                        logger.info(f"Successfully uploaded rag trace {trace_id} on attempt {retry_count + 1}")
-                        return  # Exit the method if upload is successful
-                    except Exception as e:
-                        retry_count += 1
-                        last_exception = e
-                        logger.warning(f"Attempt {retry_count} to upload rag trace {trace_id} failed: {str(e)}")
-                        
-                        if retry_count < max_retries:
-                            # Add a small delay before retrying (exponential backoff)
-                            await asyncio.sleep(2 ** retry_count)  # 2, 4, 8 seconds
-                
-                # If we've exhausted all retries, log the error
-                logger.error(f"Failed to upload rag trace {trace_id} after {max_retries} attempts. Last error: {str(last_exception)}")
-        except Exception as e:
-            logger.error(f"Error preparing rag trace {trace_id} for upload: {str(e)}")
-    
-    def prepare_rag_trace(self, spans, trace_id):
-        try:            
-            ragaai_trace, additional_metadata = rag_trace_json_converter(spans, self.custom_model_cost, trace_id, self.user_details, self.tracer_type,self.user_context)
-            ragaai_trace["metadata"]["recorded_on"] = datetime.datetime.now().astimezone().isoformat()
-            ragaai_trace["metadata"]["log_source"] = "langchain_tracer"
-
-            if True:
-                converted_ragaai_trace = convert_langchain_callbacks_output(ragaai_trace, self.project_name, ragaai_trace["metadata"], ragaai_trace["pipeline"])
-            else:
-                converted_ragaai_trace = ragaai_trace
-            
-            return converted_ragaai_trace, additional_metadata
-            
-        except Exception as e:
-            logger.error(f"Error converting trace {trace_id}: {str(e)}")
-            return None

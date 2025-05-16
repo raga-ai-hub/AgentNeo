@@ -94,5 +94,4 @@ def main():
         print(f"  Excerpt: {node.text[:200]}...")
 
 if __name__ == "__main__":
-    with tracer:
-        main()
+    main()

@@ -123,6 +123,4 @@ async def run_tests():
     
 
 if __name__ == "__main__":
-    with tracer:
-        # Run tests
-        asyncio.run(run_tests())
+    asyncio.run(run_tests())
