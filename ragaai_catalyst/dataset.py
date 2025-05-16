@@ -257,7 +257,10 @@ class Dataset:
         def generate_schema(mapping):
             result = {}
             for column, schema_element in mapping.items():
-                result[column] = {"columnType": schema_element}
+                if isinstance(schema_element, dict):
+                    result[column] = schema_element
+                else:
+                    result[column] = {"columnType": schema_element}
             return result
 
         try:

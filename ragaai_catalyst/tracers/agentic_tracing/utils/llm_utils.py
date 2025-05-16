@@ -1,16 +1,14 @@
-from ..data.data_structure import LLMCall
-from .trace_utils import (
-    calculate_cost,
-    convert_usage_to_dict,
-)
-from importlib import resources
+import asyncio
+
 #from litellm import model_cost
 import json
-import os
-import asyncio
-import psutil
-import tiktoken
 import logging
+import os
+from importlib import resources
+
+import tiktoken
+
+from ..data.data_structure import LLMCall
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +59,7 @@ def extract_model_name(args, kwargs, result):
     try:
         if not model:
             model = result.raw.model
-    except Exception as e:
+    except Exception:
         pass
     
     
@@ -604,3 +602,18 @@ def extract_llm_data(args, kwargs, result):
         tool_call=parsed_tool_call,
     )
     return llm_data
+
+
+def count_tokens(input_str: str) -> int:
+    # Use tiktoken to count tokens
+    try:
+        import tiktoken
+        
+        # Use GPT-4o model's encoding (cl100k_base)
+        encoding = tiktoken.get_encoding("cl100k_base")
+        
+        # Count tokens
+        tokens = encoding.encode(input_str)
+        return len(tokens)
+    except Exception:
+        raise Exception("Failed to count tokens")

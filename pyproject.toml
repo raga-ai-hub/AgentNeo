@@ -8,7 +8,7 @@ description = "RAGA AI CATALYST"
 readme = "README.md"
 requires-python = ">=3.10,<=3.13.2"
 # license = {file = "LICENSE"}
-version = "2.1.6.4"
+version = "2.2.1"
 authors = [
     {name = "Kiran Scaria", email = "kiran.scaria@raga.ai"},
     {name = "Kedar Gaikwad", email = "kedar.gaikwad@raga.ai"},
@@ -16,7 +16,9 @@ authors = [
     {name = "Siddhartha Kosti", email = "siddhartha.kosti@raga.ai"},
     {name = "Ritika Goel", email = "ritika.goel@raga.ai"},
     {name = "Vijay Chaurasia", email="vijay.chaurasia@raga.ai"},
-    {name = "Tushar Kumar", email="tushar.kumar@raga.ai"}
+    {name = "Tushar Kumar", email="tushar.kumar@raga.ai"},
+    {name = "Rishabh Pandey", email="rishabh.pandey@raga.ai"},
+    {name = "Jyotsana C G", email="jyotsana@raga.ai"}
 ]
 
 dependencies = [

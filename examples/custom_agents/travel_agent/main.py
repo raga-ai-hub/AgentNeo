@@ -112,6 +112,5 @@ def travel_agent():
     print(travel_summary)
 
 if __name__ == "__main__":
-    with tracer:
-        travel_agent()
+    travel_agent()
     

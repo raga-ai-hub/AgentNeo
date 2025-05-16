@@ -1269,17 +1269,7 @@ class BaseTracer:
             )
             print(f"Schema created: {response}")
             
-            # 2. Upload trace metrics
-            print("Uploading trace metrics...")
-            from ragaai_catalyst.tracers.agentic_tracing.upload.upload_trace_metric import upload_trace_metric
-            response = upload_trace_metric(
-                json_file_path=trace_file,
-                dataset_name=self.dataset_name,
-                project_name=self.project_name,
-            )
-            print(f"Metrics uploaded: {response}")
-            
-            # 3. Get code hash and zip path if available
+            # 2. Get code hash and zip path if available
             code_hash = None
             zip_path = None
             try:
@@ -1293,7 +1283,7 @@ class BaseTracer:
             except Exception as e:
                 print(f"Error getting code hash: {e}")
             
-            # 4. Upload agentic traces
+            # 3. Upload agentic traces
             print("Uploading agentic traces...")
             from ragaai_catalyst.tracers.agentic_tracing.upload.upload_agentic_traces import UploadAgenticTraces
             from ragaai_catalyst import RagaAICatalyst
@@ -1308,7 +1298,7 @@ class BaseTracer:
             upload_traces.upload_agentic_traces()
             print("Agentic traces uploaded successfully")
             
-            # 5. Upload code hash if available
+            # 4. Upload code hash if available
             if code_hash and zip_path and os.path.exists(zip_path):
                 print(f"Uploading code hash: {code_hash}")
                 from ragaai_catalyst.tracers.agentic_tracing.upload.upload_code import upload_code

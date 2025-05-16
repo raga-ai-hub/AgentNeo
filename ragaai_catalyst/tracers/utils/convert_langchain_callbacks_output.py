@@ -58,4 +58,5 @@ def convert_langchain_callbacks_output(result, project_name="", metadata="", pip
 
     initial_struc[0]["traces"] = traces_data
 
+    initial_struc[0]["error"] = result["error"]
     return initial_struc

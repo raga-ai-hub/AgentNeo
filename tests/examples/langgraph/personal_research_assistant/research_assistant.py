@@ -28,8 +28,8 @@ def initialize_catalyst():
     )
     
     tracer = Tracer(
-        project_name='prompt_metric_dataset',#os.getenv("RAGAAI_PROJECT_NAME"),
-        dataset_name='pytest_dataset',#os.getenv("RAGAAI_DATASET_NAME"),,
+        project_name= 'testing_v', #os.getenv("RAGAAI_PROJECT_NAME"),
+        dataset_name= 'testing_v_dataset', #os.getenv("RAGAAI_DATASET_NAME"),
         tracer_type="agentic/langgraph",
     )
     
@@ -97,20 +97,40 @@ def research_sub_questions(state: ResearchState) -> ResearchState:
     """Research each sub-question using Tavily."""
     answers = []
     for question in state["sub_questions"]:
-        search_results = tavily_tool.invoke(question)
-        prompt = PromptTemplate(
-            input_variables=["question", "search_results"],
-            template="Answer '{question}' concisely based on: {search_results}"
-        )
-        answer = llm.invoke(prompt.format(
-            question=question,
-            search_results=[r["content"] for r in search_results]
-        ))
-        answers.append({
-            "question": question,
-            "answer": answer.content,
-            "sources": [r["url"] for r in search_results]
-        })
+        try:
+            search_results = tavily_tool.invoke(question)
+            
+            # Check if search_results is a list as expected
+            if isinstance(search_results, list):
+                # Process search results normally
+                prompt = PromptTemplate(
+                    input_variables=["question", "search_results"],
+                    template="Answer '{question}' concisely based on: {search_results}"
+                )
+                answer = llm.invoke(prompt.format(
+                    question=question,
+                    search_results=[r["content"] for r in search_results]
+                ))
+            else:
+                # Handle case where search failed but didn't raise an exception
+                print(f"Search failed for question: {question}. Got: {search_results}")
+                answer = llm.invoke(f"Unable to search for '{question}'. Please provide a general answer based on your knowledge.")
+                
+            answers.append({
+                "question": question,
+                "answer": answer.content,
+                "sources": [r["url"] for r in search_results] if isinstance(search_results, list) else ["No sources due to search error"]
+            })
+        except Exception as e:
+            print(f"Error researching question '{question}': {str(e)}")
+            # Fallback to answering without search
+            answer = llm.invoke(f"Unable to search for '{question}'. Please provide a general answer based on your knowledge.")
+            answers.append({
+                "question": question,
+                "answer": answer.content,
+                "sources": ["No sources due to search error"]
+            })
+    
     return {"answers": answers, "status": "researched"}
 
 def synthesize_findings(state: ResearchState) -> ResearchState:

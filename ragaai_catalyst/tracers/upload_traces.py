@@ -2,7 +2,8 @@ import requests
 import json
 import os
 from datetime import datetime
-
+import logging
+logger = logging.getLogger(__name__)
 
 class UploadTraces:
     def __init__(self, 
@@ -36,14 +37,23 @@ class UploadTraces:
             "model_name": {"columnType": "metadata"},
             "total_cost": {"columnType": "metadata", "dataType": "numerical"},
             "total_latency": {"columnType": "metadata", "dataType": "numerical"},
+            "error": {"columnType": "metadata"},
+            "externalId": {"columnType": "externalId"}
         }
 
         if additional_metadata_keys:
             for key in additional_metadata_keys:
                 if key == "model_name":
                     SCHEMA_MAPPING_NEW['response']["modelName"] = additional_metadata_keys[key]
+                elif key == "error":
+                    pass
                 else:
                     SCHEMA_MAPPING_NEW[key] = {"columnType": key, "parentColumn": "response"}
+
+        if self.user_detail and self.user_detail["trace_user_detail"]["metadata"]:
+            for key in self.user_detail["trace_user_detail"]["metadata"]:
+                if key not in SCHEMA_MAPPING_NEW:
+                    SCHEMA_MAPPING_NEW[key] = {"columnType": "metadata"}
 
         if additional_pipeline_keys:
             for key in additional_pipeline_keys:
@@ -89,7 +99,8 @@ class UploadTraces:
             "X-Project-Name": self.project_name,
         }
 
-        response = requests.request("GET", 
+        # Changed to POST from GET
+        response = requests.request("POST", 
                                     f"{self.base_url}/v1/llm/presigned-url", 
                                     headers=headers, 
                                     data=payload,
@@ -97,6 +108,18 @@ class UploadTraces:
         if response.status_code == 200:
             presignedUrls = response.json()["data"]["presignedUrls"][0]
             return presignedUrls
+        else:
+            response = requests.request("GET", 
+                                    f"{self.base_url}/v1/llm/presigned-url", 
+                                    headers=headers, 
+                                    data=payload,
+                                    timeout=self.timeout)
+            if response.status_code == 200:
+                presignedUrls = response.json()["data"]["presignedUrls"][0]
+                return presignedUrls
+
+            logger.error(f"Failed to fetch presigned URL: {response.json()['message']}")
+            return None
 
     def _put_presigned_url(self, presignedUrl, filename):
         headers = {

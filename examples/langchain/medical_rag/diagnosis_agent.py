@@ -148,5 +148,4 @@ def main():
         print(f"Evidence:\n{diagnosis['evidence']}\n")
 
 if __name__ == "__main__":
-    with tracer:
-        main()
+    main()
