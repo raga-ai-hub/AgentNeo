@@ -79,7 +79,7 @@ requests==2.32.3
 requests-toolbelt==1.0.0
 rpds-py==0.22.3
 rsa==4.9
-setuptools==75.1.0
+setuptools==78.1.1
 six==1.17.0
 sniffio==1.3.1
 soupsieve==2.6
