@@ -75,7 +75,7 @@ pytz==2024.2
 PyYAML==6.0.2
 referencing==0.35.1
 regex==2024.11.6
-requests==2.32.3
+requests==2.32.4
 requests-toolbelt==1.0.0
 rpds-py==0.22.3
 rsa==4.9
