@@ -58,7 +58,7 @@ opentelemetry-semantic-conventions-ai==0.3.3
 orjson==3.10.12
 packaging==24.2
 pandas==2.2.3
-pip==24.2
+pip==26.0
 propcache==0.2.1
 proto-plus==1.25.0
 protobuf==5.29.2
