@@ -184,6 +184,10 @@ class SyntheticDataGeneration:
             if api_version is None and os.getenv("AZURE_API_VERSION") is None and internal_llm_proxy is None:
                 raise ValueError("API version must be provided for Azure.")
             litellm.api_version = api_version or os.getenv("AZURE_API_VERSION")
+
+        elif provider == "forge":
+            if api_key is None and os.getenv("FORGE_API_KEY") is None and internal_llm_proxy is None:
+                raise ValueError("API key must be provided for Forge.")
         else:
             raise ValueError(f"Provider is not recognized.")
 
@@ -317,7 +321,15 @@ class SyntheticDataGeneration:
         if "temperature" in model_config:
             completion_params["temperature"] = model_config["temperature"]
         if 'provider' in model_config:
-            completion_params['model'] = f'{model_config["provider"]}/{model_config["model"]}'
+            provider_name = model_config["provider"]
+            if provider_name == "forge":
+                completion_params['model'] = f'openai/{model_config["model"]}'
+                if "api_base" not in completion_params:
+                    completion_params["api_base"] = os.getenv("FORGE_API_BASE", "https://api.forge.tensorblock.co/v1")
+                if not completion_params.get("api_key"):
+                    completion_params["api_key"] = os.getenv("FORGE_API_KEY")
+            else:
+                completion_params['model'] = f'{provider_name}/{model_config["model"]}'
 
         # Make the API call using LiteLLM
         try:
@@ -381,7 +393,15 @@ class SyntheticDataGeneration:
         if "temperature" in model_config:
             completion_params["temperature"] = model_config["temperature"]
         if 'provider' in model_config:
-            completion_params['model'] = f'{model_config["provider"]}/{model_config["model"]}'
+            provider_name = model_config["provider"]
+            if provider_name == "forge":
+                completion_params['model'] = f'openai/{model_config["model"]}'
+                if "api_base" not in completion_params:
+                    completion_params["api_base"] = os.getenv("FORGE_API_BASE", "https://api.forge.tensorblock.co/v1")
+                if not completion_params.get("api_key"):
+                    completion_params["api_key"] = os.getenv("FORGE_API_KEY")
+            else:
+                completion_params['model'] = f'{provider_name}/{model_config["model"]}'
 
         try:
             response = completion(**completion_params)
@@ -539,7 +559,7 @@ class SyntheticDataGeneration:
         Returns:
             list: A list of supported AI providers.
         """
-        return ['gemini', 'openai','azure']
+        return ['gemini', 'openai', 'azure', 'forge']
     
     def _get_init_ex_gen_prompt(self):
         prompt = '''

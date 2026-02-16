@@ -316,6 +316,9 @@ text = sdg.process_document(input_data="file_path")
 # Generate results
 result = sdg.generate_qna(text, question_type ='complex',model_config={"provider":"openai","model":"gpt-4o-mini"},n=5)
 
+# You can also use Forge as a provider (set FORGE_API_KEY env variable)
+result = sdg.generate_qna(text, question_type ='complex',model_config={"provider":"forge","model":"OpenAI/gpt-4o-mini"},n=5)
+
 print(result.head())
 
 # Get supported Q&A types
@@ -434,7 +437,7 @@ executor([message],prompt_params,model_params,llm_caller)
 The Red-teaming module provides comprehensive scans to detect model vulnerabilities, biases and misusage.
 
 #### Key Features
-- Support for multiple LLM providers (OpenAI, XAI, ..)
+- Support for multiple LLM providers (OpenAI, XAI, Forge, ..)
 - Built-in and custom detectors
 - Automatic test case generation
 - Allow users to add their own test cases
@@ -452,6 +455,13 @@ rt = RedTeaming(
     model_name="grok-2-latest",
     provider="xai",
     api_key="your-api-key",
+)
+
+# Or use Forge as a provider
+rt = RedTeaming(
+    model_name="OpenAI/gpt-4o",
+    provider="forge",
+    api_key="your-forge-api-key",
 )
 ```
 

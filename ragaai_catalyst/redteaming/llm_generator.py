@@ -105,8 +105,15 @@ class LLMGenerator:
             return self.get_xai_response(system_prompt, user_prompt, max_tokens)
 
         try:
+            if self.provider.lower() == "forge":
+                model = f"openai/{self.model_name}"
+                api_base = self.api_base or os.getenv("FORGE_API_BASE", "https://api.forge.tensorblock.co/v1")
+            else:
+                model = f"{self.provider}/{self.model_name}"
+                api_base = None
+
             kwargs = {
-                "model": f"{self.provider}/{self.model_name}",
+                "model": model,
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
@@ -115,6 +122,8 @@ class LLMGenerator:
                 "max_tokens": max_tokens,
                 "api_key": self.api_key,
             }
+            if api_base:
+                kwargs["api_base"] = api_base
             
             response = litellm.completion(**kwargs)
             content = response["choices"][0]["message"]["content"]
