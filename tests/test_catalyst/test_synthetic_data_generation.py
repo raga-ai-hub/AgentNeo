@@ -1,11 +1,13 @@
 # import sys
 # sys.path.append('/Users/ritikagoel/workspace/synthetic-catalyst-internal-api2/ragaai-catalyst')
 
-import pytest
-from ragaai_catalyst import SyntheticDataGeneration
 import os
 
 import dotenv
+import pytest
+
+from ragaai_catalyst import SyntheticDataGeneration
+
 dotenv.load_dotenv()
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -50,5 +52,24 @@ def test_missing_model_config(synthetic_gen, sample_text):
             question_type='mcq',
             n=1,
             internal_llm_proxy="http://20.244.126.4:4000/chat/completions",
+            user_id="1"
+        )
+
+
+def test_forge_in_supported_providers(synthetic_gen):
+    """Test that Forge is listed as a supported provider"""
+    providers = synthetic_gen.get_supported_providers()
+    assert 'forge' in providers
+
+
+def test_forge_missing_api_key(synthetic_gen, sample_text, monkeypatch):
+    """Test that Forge provider raises error when API key is missing"""
+    monkeypatch.delenv("FORGE_API_KEY", raising=False)
+    with pytest.raises(ValueError, match="API key must be provided for Forge"):
+        synthetic_gen.generate_qna(
+            text=sample_text,
+            question_type='mcq',
+            model_config={"provider": "forge", "model": "OpenAI/gpt-4o-mini"},
+            n=1,
             user_id="1"
         )
