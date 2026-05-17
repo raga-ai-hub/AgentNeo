@@ -34,6 +34,8 @@ def llm_call(prompt, max_tokens=512, model="gpt-3.5-turbo"):
         max_tokens=max_tokens,
         temperature=0.7,
     )
+    if not response.choices or response.choices[0].message is None:
+        raise ValueError("LLM returned empty or filtered response")
     return response.choices[0].message.content.strip()
 
 @tracer.trace_tool(

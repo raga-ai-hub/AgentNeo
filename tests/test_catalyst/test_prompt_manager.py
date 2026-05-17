@@ -61,6 +61,8 @@ def test_compile_prompt(prompt_manager):
             model="gpt-4o-mini",
             messages=prompt
         )
+        if not response.choices or response.choices[0].message is None:
+            raise ValueError("LLM returned empty or filtered response")
         return response.choices[0].message.content
     get_openai_response(compiled_prompt)
 
@@ -77,6 +79,8 @@ def test_compile_prompt_no_modelname(prompt_manager):
                 model="",
                 messages=prompt
             )
+            if not response.choices or response.choices[0].message is None:
+                raise ValueError("LLM returned empty or filtered response")
             return response.choices[0].message.content
         get_openai_response(compiled_prompt)
 

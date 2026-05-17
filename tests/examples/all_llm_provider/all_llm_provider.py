@@ -122,6 +122,8 @@ def _get_openai_response(
             temperature=temperature,
             max_tokens=max_tokens
         )
+        if not response.choices or response.choices[0].message is None:
+            raise ValueError("LLM returned empty or filtered response")
         return response.choices[0].message.content
     except Exception as e:
         print(f"Error with OpenAI API: {str(e)}")
@@ -193,6 +195,8 @@ def _get_azure_openai_response(
             temperature=temperature,
             max_tokens=max_tokens
         )
+        if not response.choices or response.choices[0].message is None:
+            raise ValueError("LLM returned empty or filtered response")
         return response.choices[0].message.content
     except Exception as e:
         print(f"Error with Azure OpenAI API: {str(e)}")
@@ -511,6 +515,8 @@ def _get_groq_response(
             temperature=temperature,
             max_tokens=max_tokens
         )
+        if not response.choices or response.choices[0].message is None:
+            raise ValueError("LLM returned empty or filtered response")
         return response.choices[0].message.content
     except Exception as e:
         print(f"Error with Groq: {str(e)}")
