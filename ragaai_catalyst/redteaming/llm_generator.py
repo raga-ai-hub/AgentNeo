@@ -65,6 +65,8 @@ class LLMGenerator:
             kwargs["response_format"] = {"type": "json_object"}
             
             response = client.chat.completions.create(**kwargs)
+            if not response.choices or response.choices[0].message is None:
+                raise ValueError("LLM returned empty or filtered response")
             content = response.choices[0].message.content
 
             if isinstance(content, str):

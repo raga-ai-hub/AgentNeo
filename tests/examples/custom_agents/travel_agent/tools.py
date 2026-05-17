@@ -44,6 +44,8 @@ def llm_call(prompt, max_tokens=512, name="default", model_name="gpt-4o-mini", p
         temperature=0.7,
     )
 
+    if not response.choices or response.choices[0].message is None:
+        raise ValueError("LLM returned empty or filtered response")
     return response.choices[0].message.content.strip()
 
 @trace_tool(name="weather_tool", tool_type="api")
