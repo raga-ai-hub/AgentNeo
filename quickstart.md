@@ -1,4 +1,4 @@
-# Quickstart
+# Quickstart | RagaAI Catalyst
 
 ## **1. Install RagaAI Catalyst**
 
@@ -17,8 +17,6 @@ pip install ragaai-catalyst
 2. Navigate to **Profile Settings** → **Authentication**.
 3. Click **Generate New Key** to obtain your **Access Key** and **Secret Key**.
 
-![How to generate authentication keys](docs/img/autheticate.gif)
-
 ### **Initialize the SDK**
 
 To begin using Catalyst, initialize it as follows:
@@ -29,9 +27,10 @@ from ragaai_catalyst import RagaAICatalyst
 catalyst = RagaAICatalyst(
     access_key="YOUR_ACCESS_KEY",  # Replace with your access key
     secret_key="YOUR_SECRET_KEY",  # Replace with your secret key
-    base_url="BASE_URL"  
+    base_url="BASE_URL"
 )
 ```
+
 
 ## **3. Create Your First Project**
 
@@ -47,8 +46,6 @@ project = catalyst.create_project(
 # List available use cases
 print(catalyst.project_use_cases())
 ```
-![Projects](docs/img/create_project.gif)
-
 
 ### **Add a Dataset**
 Initialize the dataset manager and create a dataset from a CSV file, DataFrame, or JSONl file.
@@ -74,7 +71,7 @@ dataset_manager.create_from_csv(
 # View dataset schema
 print(dataset_manager.get_schema_mapping())
 ```
-![Dataset](docs/img/dataset.gif)
+
 
 ## **4. Trace Your Application**
 
@@ -89,11 +86,11 @@ Auto-Instrumentation automatically traces your application after initializing th
 ```python
 from ragaai_catalyst import init_tracing, Tracer
 
-# Initialize the tracer 
+# Initialize the tracer
 tracer = Tracer(
     project_name="Project_Name",
     dataset_name="Dataset_Name",
-    tracer_type="agentic/langgraph"  
+    tracer_type="agentic/langgraph"
 )
 
 # Enable auto-instrumentation
@@ -147,7 +144,7 @@ tracer.stop()
 # Verify data capture
 print(tracer.get_upload_status())
 ```
-![Tracing](docs/img/last_main.png)
+
 
 
 ## **5. Evaluation Framework**
@@ -192,4 +189,12 @@ evaluation.add_metrics(
 print(f"Status: {evaluation.get_status()}")
 print(f"Results: {evaluation.get_results()}")
 ```
-![Evaluation](docs/img/evaluation.gif)
+
+
+
+## **Next Steps**
+- **Explore the Dashboard:** Visualize metrics and insights in the RagaAI Web UI.
+
+
+
+**Version:** 1.0.0 | **Last Updated:** Mar 2025

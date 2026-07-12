@@ -24,7 +24,7 @@ current_span().add_metrics(name='Accuracy', score=0.5, reasoning='some reasoning
 tracer.add_metrics(name='hallucination_1', score=0.5, reasoning='some reasoning')
 ```
 
-3- add gt 
+3- add gt
 
 ```python
 current_span().add_gt("This is the ground truth")
@@ -71,19 +71,19 @@ from ragaai_catalyst.tracers import Tracer
 def initialize_catalyst():
     """Initialize RagaAI Catalyst using environment credentials."""
     catalyst = RagaAICatalyst(
-        access_key=os.getenv('CATALYST_ACCESS_KEY'), 
-        secret_key=os.getenv('CATALYST_SECRET_KEY'), 
+        access_key=os.getenv('CATALYST_ACCESS_KEY'),
+        secret_key=os.getenv('CATALYST_SECRET_KEY'),
         base_url=os.getenv('CATALYST_BASE_URL')
     )
-    
+
     tracer = Tracer(
         project_name=os.environ['PROJECT_NAME'],
         dataset_name=os.environ['DATASET_NAME'],
         tracer_type="agentic/langgraph",
     )
-    
+
     init_tracing(catalyst=catalyst, tracer=tracer)
-    
+
 
 # Initialize language models and tools
 def initialize_models(model_name: str = "gpt-4o-mini", temperature: float = 0.5, max_results: int = 2):
@@ -98,12 +98,12 @@ llm, tavily_tool = initialize_models()
 
 # State structure
 class ResearchState(TypedDict):
-    topic: str  
-    sub_questions: List[str]  
-    answers: List[dict] 
-    synthesis: str 
-    criticism: str 
-    iteration: Annotated[int, operator.add]  
+    topic: str
+    sub_questions: List[str]
+    answers: List[dict]
+    synthesis: str
+    criticism: str
+    iteration: Annotated[int, operator.add]
     status: str
 
 # Nodes
@@ -207,11 +207,11 @@ app = workflow.compile()
 
 def run_research_assistant(topic: str = "Impact of AI on healthcare by 2030", print_results: bool = True) -> Dict[str, Any]:
     """Run the research assistant workflow with the given topic.
-    
+
     Args:
         topic: The research topic to investigate
         print_results: Whether to print the results to the console
-        
+
     Returns:
         The final state of the workflow
     """
@@ -225,19 +225,19 @@ def run_research_assistant(topic: str = "Impact of AI on healthcare by 2030", pr
         "iteration": 0,
         "status": "start"
     }
-    
+
     # Start timing
     start_time = time.time()
-    
+
     # Run the workflow with tracing
     if print_results:
         print(f"Starting the Personal Research Assistant for topic: '{topic}'...")
-    
+
     result = app.invoke(initial_state)
-    
+
     # Calculate duration
     duration = time.time() - start_time
-    
+
     # Print results if requested
     if print_results:
         print("\nFinal Research Report:")
@@ -245,18 +245,18 @@ def run_research_assistant(topic: str = "Impact of AI on healthcare by 2030", pr
         print("\nSub-Questions:")
         for i, question in enumerate(result['sub_questions'], 1):
             print(f"  {i}. {question}")
-        
+
         print("\nResearch Findings:")
         for i, ans in enumerate(result["answers"], 1):
             print(f"\nQ{i}: {ans['question']}")
             print(f"A: {ans['answer']}")
             print(f"Sources: {ans['sources']}")
-        
+
         print(f"\nSynthesis:\n{result['synthesis']}")
         print(f"\nCritique: {result['criticism']}")
         print(f"Iterations: {result['iteration']}")
         print(f"Total execution time: {duration:.2f} seconds")
-    
+
     return result
 
 if __name__ == "__main__":

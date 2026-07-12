@@ -1,4 +1,4 @@
-# RagaAI Catalyst&nbsp; ![GitHub release (latest by date)](https://img.shields.io/github/v/release/raga-ai-hub/ragaai-catalyst) ![GitHub stars](https://img.shields.io/github/stars/raga-ai-hub/ragaai-catalyst?style=social)  ![Issues](https://img.shields.io/github/issues/raga-ai-hub/ragaai-catalyst) 
+# RagaAI Catalyst&nbsp; ![GitHub release (latest by date)](https://img.shields.io/github/v/release/raga-ai-hub/ragaai-catalyst) ![GitHub stars](https://img.shields.io/github/stars/raga-ai-hub/ragaai-catalyst?style=social)  ![Issues](https://img.shields.io/github/issues/raga-ai-hub/ragaai-catalyst)
 
 RagaAI Catalyst is a comprehensive platform designed to enhance the management and optimization of LLM projects. It offers a wide range of features, including project management, dataset management, evaluation management, trace management, prompt management, synthetic data generation, and guardrail management. These functionalities enable you to efficiently evaluate, and safeguard your LLM applications.
 
@@ -42,7 +42,7 @@ catalyst = RagaAICatalyst(
 you'll need to generate authentication credentials:
 
 1. Navigate to your profile settings
-2. Select "Authenticate" 
+2. Select "Authenticate"
 3. Click "Generate New Key" to create your access and secret keys
 
 ![How to generate authentication keys](docs/img/autheticate.gif)
@@ -129,7 +129,7 @@ schema_mapping={
 evaluation.add_metrics(
     metrics=[
       {"name": "Faithfulness", "config": {"model": "gpt-4o-mini", "provider": "openai", "threshold": {"gte": 0.232323}}, "column_name": "Faithfulness_v1", "schema_mapping": schema_mapping},
-    
+
     ]
 )
 
@@ -162,7 +162,7 @@ evaluation.append_metrics(display_name="Faithfulness_v1")
 ### Trace Management
 
 Record and analyze traces of your RAG application:
-            
+
 ```python
 from ragaai_catalyst import RagaAICatalyst, Tracer
 
@@ -326,17 +326,17 @@ sdg.get_supported_providers()
 
 # Generate examples
 examples = sdg.generate_examples(
-    user_instruction = 'Generate query like this.', 
+    user_instruction = 'Generate query like this.',
     user_examples = 'How to do it?', # Can be a string or list of strings.
-    user_context = 'Context to generate examples', 
-    no_examples = 10, 
+    user_context = 'Context to generate examples',
+    no_examples = 10,
     model_config = {"provider":"openai","model":"gpt-4o-mini"}
 )
 
 # Generate examples from a csv
 sdg.generate_examples_from_csv(
-    csv_path = 'path/to/csv', 
-    no_examples = 5, 
+    csv_path = 'path/to/csv',
+    no_examples = 5,
     model_config = {'provider': 'openai', 'model': 'gpt-4o-mini'}
 )
 ```
@@ -440,7 +440,7 @@ The Red-teaming module provides comprehensive scans to detect model vulnerabilit
 - Allow users to add their own test cases
 - Flexible evaluation scenarios
 - Detailed reporting and analysis
-  
+
 ![RedTeam](ragaai_catalyst/redteaming/utils/rt.png)
 
 #### Initialization
@@ -470,7 +470,7 @@ examples = [
 detectors = [
     "stereotypes",
     "harmful_content",
-    {'custom': 'Prevent AI from discussing killing anything'} 
+    {'custom': 'Prevent AI from discussing killing anything'}
 ]
 
 # Run the test

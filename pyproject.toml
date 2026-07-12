@@ -63,10 +63,10 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.3.5",
-    "pytest-cov", 
-    "black", 
-    "isort", 
-    "mypy", 
+    "pytest-cov",
+    "black",
+    "isort",
+    "mypy",
     "flake8"
 ]
 
